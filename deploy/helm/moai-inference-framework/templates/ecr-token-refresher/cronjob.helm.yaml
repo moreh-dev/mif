@@ -1,0 +1,14 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "mif.ecrTokenRefresher.fullname" . }}
+  namespace: {{ include "common.names.namespace" . }}
+  labels:
+    {{- include "mif.ecrTokenRefresher.labels" . | nindent 4 }}
+spec:
+  schedule: {{ .Values.ecrTokenRefresher.schedule | quote }}
+  jobTemplate:
+    spec:
+      template:
+        {{- include "mif.ecrTokenRefresher.jobTemplate" . | nindent 8 }}

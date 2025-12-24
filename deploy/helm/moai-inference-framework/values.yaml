@@ -1,0 +1,67 @@
+# -- Chart name override.
+nameOverride: ""
+
+# -- Full name override.
+fullnameOverride: ""
+
+# -- Namespace override.
+namespaceOverride: ""
+
+# -- Labels applied to all resources.
+commonLabels: {}
+
+# -- global values are shared across all sub-charts if the value's key matches.
+global:
+  # -- Image pull secrets.
+  imagePullSecrets: []
+
+lws:
+  # -- Enable kubernetes-sigs/lws. Set to false if already deployed.
+  enabled: true
+
+kubernetes-replicator:
+  # -- Enable Kubernetes Replicator. Set to false if already deployed.
+  enabled: true
+
+ecrTokenRefresher:
+  image:
+    # -- Image repository.
+    repository: heyvaldemar/aws-kubectl
+    # -- Image tag (defaults to chart appVersion if not set).
+    tag: 58dad7caa5986ceacd1bc818010a5e132d80452b
+    # -- Image pull policy.
+    pullPolicy: IfNotPresent
+    # -- Image pull secrets.
+    pullSecrets: []
+
+  # -- Cron schedule in standard cron format.
+  schedule: "0 */6 * * *"
+
+  aws:
+    # -- AWS Region.
+    region: ap-northeast-2
+    # -- AWS_ACCESS_KEY_ID
+    accessKeyId: ""
+    # -- AWS_SECRET_ACCESS_KEY
+    secretAccessKey: ""
+
+  pullSecret:
+    # -- Name of the container registry secret to create or update.
+    name: moreh-registry
+    # -- URL of the container registry.
+    server: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com
+    # -- Username for the container registry access.
+    username: AWS
+    # -- Annotations to add to the generated secret.
+    annotations:
+      replicator.v1.mittwald.de/replicate-to-matching: "mif=enabled"
+
+  serviceAccount:
+    # -- Whether to create a ServiceAccount.
+    create: true
+    # -- Whether to automatically mount API credentials.
+    automount: true
+    # -- Annotations added to the ServiceAccount.
+    annotations: {}
+    # -- Name of the ServiceAccount (auto-generated if empty and create is true).
+    name: ""

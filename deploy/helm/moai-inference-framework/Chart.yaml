@@ -1,0 +1,21 @@
+apiVersion: v2
+name: moai-inference-framework
+description: Moreh Inference Framework
+type: application
+version: 0.0.0
+appVersion: "0.0.0"
+home: https://github.com/moreh-dev/mif
+sources:
+  - https://github.com/moreh-dev/mif/tree/main/deploy/helm/moai-inference-framework
+dependencies:
+  - name: common
+    version: 2.31.4
+    repository: oci://registry-1.docker.io/bitnamicharts
+  - name: lws
+    version: 0.7.0
+    repository: oci://registry.k8s.io/lws/charts
+    condition: lws.enabled
+  - name: kubernetes-replicator
+    version: 2.12.2
+    repository: https://helm.mittwald.de
+    condition: kubernetes-replicator.enabled

@@ -1,0 +1,12 @@
+dependencies:
+- name: common
+  repository: oci://registry-1.docker.io/bitnamicharts
+  version: 2.31.4
+- name: lws
+  repository: oci://registry.k8s.io/lws/charts
+  version: 0.7.0
+- name: kubernetes-replicator
+  repository: https://helm.mittwald.de
+  version: 2.12.2
+digest: sha256:9839afee1d2faba5770d929ab7c3b2ab9a499d84e027cc717312dfb89776c96c
+generated: "2025-12-24T23:30:50.909735741+09:00"
