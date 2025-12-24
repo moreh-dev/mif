@@ -33,3 +33,5 @@ The commit message should be structured as follows:
 - `chore`: Changes without a direct impact on the codebase (build process, dependencies, etc.).
 
 ### Scope
+
+- `deploy`: Changes related to deployment (Helm charts, container files, etc.)

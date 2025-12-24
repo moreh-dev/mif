@@ -1,0 +1,44 @@
+name: PR Checker
+
+concurrency:
+  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      helm: ${{ steps.filter.outputs.helm }}
+    steps:
+      - name: Find changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          list-files: shell
+          filters: |
+            helm:
+              - "deploy/helm/**"
+
+  helm-lint:
+    needs: changes
+    if: needs.changes.outputs.helm == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: asdf-vm/actions/setup@v4
+      - uses: asdf-vm/actions/plugins-add@v4
+      - run: |
+          asdf install helm-docs
+
+      - name: Generate Helm Docs
+        run: |
+          make helm-docs
+          git diff --exit-code || (echo "::error::helm-docs made changes." && exit 1)

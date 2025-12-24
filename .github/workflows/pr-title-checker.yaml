@@ -1,0 +1,41 @@
+name: PR Title Checker
+
+concurrency:
+  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - edited
+      - reopened
+      - synchronize
+      - ready_for_review
+  workflow_dispatch:
+
+jobs:
+  pr-title-check:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    steps:
+      - name: Ensure PR title follows Conventional Commit format
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = context.payload.pull_request?.title ?? '';
+            const pattern = /^(feat|fix|refactor|style|test|docs|chore)(\([a-z0-9_\/-]+\))?(!)?: .+/;
+            if (!pattern.test(title)) {
+              core.setFailed(
+                [
+                  `PR title "${title}" does not match the expected pattern.`,
+                  'Use Conventional Commits (e.g. "feat(filter): add new filter").',
+                  'Allowed types: feat, fix, refactor, style, test, docs, chore.',
+                  'Optional scope may include lowercase letters, digits, "/", or "-".',
+                  'Add "!" before the colon for breaking changes.'
+                ].join(' ')
+              );
+            }

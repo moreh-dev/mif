@@ -1,0 +1,14 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "mif.ecrTokenRefresher.fullname" . }}-init
+  namespace: {{ include "common.names.namespace" . }}
+  labels:
+    {{- include "mif.ecrTokenRefresher.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+    "helm.sh/hook-weight": "5"
+spec:
+  template:
+    {{- include "mif.ecrTokenRefresher.jobTemplate" . | nindent 4 }}
