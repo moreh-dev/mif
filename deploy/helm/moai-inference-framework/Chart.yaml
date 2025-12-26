@@ -15,6 +15,14 @@ dependencies:
     version: 0.7.0
     repository: oci://registry.k8s.io/lws/charts
     condition: lws.enabled
+  - name: odin
+    version: v0.3.0
+    repository: https://moreh-dev.github.io/helm-charts
+    condition: odin.enabled
+  - name: odin-crd
+    version: v0.3.0
+    repository: https://moreh-dev.github.io/helm-charts
+    condition: odin-crd.enabled
   - name: kubernetes-replicator
     version: 2.12.2
     repository: https://helm.mittwald.de

@@ -8,5 +8,11 @@ dependencies:
 - name: kubernetes-replicator
   repository: https://helm.mittwald.de
   version: 2.12.2
-digest: sha256:9839afee1d2faba5770d929ab7c3b2ab9a499d84e027cc717312dfb89776c96c
-generated: "2025-12-24T23:30:50.909735741+09:00"
+- name: odin
+  repository: https://moreh-dev.github.io/helm-charts
+  version: v0.3.0
+- name: odin-crd
+  repository: https://moreh-dev.github.io/helm-charts
+  version: v0.3.0
+digest: sha256:c5fee931da073fad053a376948d7d9d3c09a3f628d1ab2bded981730b8160da2
+generated: "2025-12-26T21:41:21.603343091+09:00"
