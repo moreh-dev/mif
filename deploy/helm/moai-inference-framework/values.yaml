@@ -19,8 +19,16 @@ lws:
   # -- Enable kubernetes-sigs/lws. Set to false if already deployed.
   enabled: true
 
+odin:
+  # -- Enable moreh/odin. Set to false if already deployed.
+  enabled: true
+
+odin-crd:
+  # -- Enable moreh/odin CRD. Set to false if already deployed.
+  enabled: true
+
 kubernetes-replicator:
-  # -- Enable Kubernetes Replicator. Set to false if already deployed.
+  # -- Enable mittwald/kubernetes-replicator. Set to false if already deployed.
   enabled: true
 
 ecrTokenRefresher:
