@@ -15,7 +15,7 @@ global:
   # -- Image pull secrets.
   imagePullSecrets: []
 
-kube-prometheus-stack:
+prometheus-stack:
   # -- Enable prometheus-community/kube-prometheus-stack. Set to false if already deployed.
   enabled: true
 
@@ -64,11 +64,15 @@ odin:
   # -- Enable moreh/odin. Set to false if already deployed.
   enabled: true
 
+  image:
+    pullSecrets:
+      - name: moreh-registry # This secret is created by ecrTokenRefresher
+
 odin-crd:
   # -- Enable moreh/odin CRD. Set to false if already deployed.
   enabled: true
 
-kubernetes-replicator:
+replicator:
   # -- Enable mittwald/kubernetes-replicator. Set to false if already deployed.
   enabled: true
 
