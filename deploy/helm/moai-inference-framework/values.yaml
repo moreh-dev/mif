@@ -15,6 +15,47 @@ global:
   # -- Image pull secrets.
   imagePullSecrets: []
 
+kube-prometheus-stack:
+  # -- Enable prometheus-community/kube-prometheus-stack. Set to false if already deployed.
+  enabled: true
+
+  defaultRules:
+    create: false
+  windowsMonitoring:
+    enabled: false
+  alertmanager:
+    enabled: false
+  grafana:
+    enabled: true
+  kubernetesServiceMonitors:
+    enabled: true
+  kubeApiServer:
+    enabled: false
+  kubelet:
+    enabled: true
+  kubeControllerManager:
+    enabled: false
+  coreDns:
+    enabled: false
+  kubeDns:
+    enabled: false
+  kubeEtcd:
+    enabled: false
+  kubeScheduler:
+    enabled: false
+  kubeProxy:
+    enabled: false
+  kubeStateMetrics:
+    enabled: true
+  nodeExporter:
+    enabled: true
+  prometheusOperator:
+    enabled: true
+  prometheus:
+    enabled: true
+  thanosRuler:
+    enabled: false
+
 lws:
   # -- Enable kubernetes-sigs/lws. Set to false if already deployed.
   enabled: true

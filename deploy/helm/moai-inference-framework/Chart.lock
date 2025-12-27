@@ -2,17 +2,20 @@ dependencies:
 - name: common
   repository: oci://registry-1.docker.io/bitnamicharts
   version: 2.31.4
+- name: kube-prometheus-stack
+  repository: https://prometheus-community.github.io/helm-charts
+  version: 80.7.0
 - name: lws
   repository: oci://registry.k8s.io/lws/charts
   version: 0.7.0
-- name: kubernetes-replicator
-  repository: https://helm.mittwald.de
-  version: 2.12.2
 - name: odin
   repository: https://moreh-dev.github.io/helm-charts
   version: v0.3.0
 - name: odin-crd
   repository: https://moreh-dev.github.io/helm-charts
   version: v0.3.0
-digest: sha256:c5fee931da073fad053a376948d7d9d3c09a3f628d1ab2bded981730b8160da2
-generated: "2025-12-26T21:41:21.603343091+09:00"
+- name: kubernetes-replicator
+  repository: https://helm.mittwald.de
+  version: 2.12.2
+digest: sha256:e6cfaf1e4c577658223ef9360e677f32cb5905fac06a5de20ccb9f7b9f6593eb
+generated: "2025-12-27T17:57:11.72789151+09:00"

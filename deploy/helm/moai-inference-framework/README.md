@@ -17,6 +17,7 @@ Moreh Inference Framework
 | https://helm.mittwald.de | kubernetes-replicator | 2.12.2 |
 | https://moreh-dev.github.io/helm-charts | odin | v0.3.0 |
 | https://moreh-dev.github.io/helm-charts | odin-crd | v0.3.0 |
+| https://prometheus-community.github.io/helm-charts | kube-prometheus-stack | 80.7.0 |
 | oci://registry-1.docker.io/bitnamicharts | common | 2.31.4 |
 | oci://registry.k8s.io/lws/charts | lws | 0.7.0 |
 
@@ -44,6 +45,7 @@ Moreh Inference Framework
 | fullnameOverride | string | `""` | Full name override. |
 | global | object | `{"imagePullSecrets":[]}` | global values are shared across all sub-charts if the value's key matches. |
 | global.imagePullSecrets | list | `[]` | Image pull secrets. |
+| kube-prometheus-stack.enabled | bool | `true` | Enable prometheus-community/kube-prometheus-stack. Set to false if already deployed. |
 | kubernetes-replicator.enabled | bool | `true` | Enable mittwald/kubernetes-replicator. Set to false if already deployed. |
 | lws.enabled | bool | `true` | Enable kubernetes-sigs/lws. Set to false if already deployed. |
 | nameOverride | string | `""` | Chart name override. |
