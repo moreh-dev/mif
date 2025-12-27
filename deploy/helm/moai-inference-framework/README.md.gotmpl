@@ -11,7 +11,12 @@
 
 {{ template "chart.sourcesSection" . }}
 
-{{ template "chart.requirementsSection" . }}
+{{ template "chart.requirementsHeader" . }}
+
+> [!CAUTION]
+> Prerequisite: `cert-manager` must be installed before you begin. The below dependencies will be installed automatically with this chart unless they are disabled in the `values.yaml` file.
+
+{{ template "chart.requirementsTable" . }}
 
 {{ template "chart.valuesSection" . }}
 

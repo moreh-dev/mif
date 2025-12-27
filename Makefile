@@ -20,3 +20,7 @@ help: ## Display this help.
 .PHONY: helm-docs
 helm-docs: ## Generate Helm chart documentation.
 	@helm-docs --chart-search-root=./deploy/helm
+
+.PHONY: helm-dependency
+helm-dependency: ## Update Helm chart dependencies.
+	@helm dependency update ./deploy/helm/moai-inference-framework

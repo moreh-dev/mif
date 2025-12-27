@@ -11,6 +11,11 @@ dependencies:
   - name: common
     version: 2.31.4
     repository: oci://registry-1.docker.io/bitnamicharts
+  - name: kube-prometheus-stack
+    alias: prometheus-stack
+    version: 80.7.0
+    repository: https://prometheus-community.github.io/helm-charts
+    condition: prometheus-stack.enabled
   - name: lws
     version: 0.7.0
     repository: oci://registry.k8s.io/lws/charts
@@ -24,6 +29,7 @@ dependencies:
     repository: https://moreh-dev.github.io/helm-charts
     condition: odin-crd.enabled
   - name: kubernetes-replicator
+    alias: replicator
     version: 2.12.2
     repository: https://helm.mittwald.de
-    condition: kubernetes-replicator.enabled
+    condition: replicator.enabled
