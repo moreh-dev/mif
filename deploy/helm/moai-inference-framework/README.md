@@ -18,6 +18,7 @@ Moreh Inference Framework
 | Repository | Name | Version |
 |------------|------|---------|
 | https://helm.mittwald.de | replicator(kubernetes-replicator) | 2.12.2 |
+| https://kedacore.github.io/charts | keda | 2.18.0 |
 | https://moreh-dev.github.io/helm-charts | odin | v0.3.0 |
 | https://moreh-dev.github.io/helm-charts | odin-crd | v0.3.0 |
 | https://prometheus-community.github.io/helm-charts | prometheus-stack(kube-prometheus-stack) | 80.7.0 |
@@ -48,6 +49,7 @@ Moreh Inference Framework
 | fullnameOverride | string | `""` | Full name override. |
 | global | object | `{"imagePullSecrets":[]}` | global values are shared across all sub-charts if the value's key matches. |
 | global.imagePullSecrets | list | `[]` | Image pull secrets. |
+| keda.enabled | bool | `true` | Enable kedacore/keda. Set to false if already deployed. |
 | lws.enabled | bool | `true` | Enable kubernetes-sigs/lws. Set to false if already deployed. |
 | nameOverride | string | `""` | Chart name override. |
 | namespaceOverride | string | `""` | Namespace override. |
