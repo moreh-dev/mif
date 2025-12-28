@@ -28,6 +28,10 @@ dependencies:
     version: v0.3.0
     repository: https://moreh-dev.github.io/helm-charts
     condition: odin-crd.enabled
+  - name: keda
+    version: 2.18.0
+    repository: https://kedacore.github.io/charts
+    condition: keda.enabled
   - name: kubernetes-replicator
     alias: replicator
     version: 2.12.2

@@ -72,6 +72,10 @@ odin-crd:
   # -- Enable moreh/odin CRD. Set to false if already deployed.
   enabled: true
 
+keda:
+  # -- Enable kedacore/keda. Set to false if already deployed.
+  enabled: true
+
 replicator:
   # -- Enable mittwald/kubernetes-replicator. Set to false if already deployed.
   enabled: true
