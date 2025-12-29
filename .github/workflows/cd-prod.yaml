@@ -20,12 +20,12 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Release Helm Chart
-        uses: moreh-dev/actions/release-chart@main
+        uses: ./.github/workflows/release-chart
         with:
           chart_name: moai-inference-framework
           chart_path: deploy/helm/moai-inference-framework
           chart_version: ${{ steps.set-version.outputs.version }}
-          github_token: ${{ secrets.INTERNAL_ACCESS_TOKEN }}
+          github_token: ${{ secrets.GITOPS_TOKEN }}
 
   release-note:
     name: Publish auto release note
