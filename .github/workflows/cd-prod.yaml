@@ -19,7 +19,7 @@ jobs:
           echo VERSION=$VERSION
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Release CRD Helm Chart
+      - name: Release Helm Chart
         uses: moreh-dev/actions/release-chart@main
         with:
           chart_name: moai-inference-framework
