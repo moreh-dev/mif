@@ -1,0 +1,40 @@
+name: moai-inference-framework-prod-deploy
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+jobs:
+  release:
+    name: Release(Prod)
+    runs-on: [ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set Version
+        id: set-version
+        run: |
+          VERSION=${{ github.ref_name }}
+          echo VERSION=$VERSION
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Release CRD Helm Chart
+        uses: moreh-dev/actions/release-chart@main
+        with:
+          chart_name: moai-inference-framework
+          chart_path: deploy/helm/moai-inference-framework
+          chart_version: ${{ steps.set-version.outputs.version }}
+          github_token: ${{ secrets.INTERNAL_ACCESS_TOKEN }}
+
+  release-note:
+    name: Publish auto release note
+    runs-on: ubuntu-latest
+    needs: [release]
+    permissions:
+      contents: write
+    steps:
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
