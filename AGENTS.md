@@ -34,4 +34,5 @@ The commit message should be structured as follows:
 
 ### Scope
 
+- `workflow`: Changes related to CI/CD workflows.
 - `deploy`: Changes related to deployment (Helm charts, container files, etc.)
