@@ -1,0 +1,62 @@
+name: "Release Helm Chart"
+description: "Release Helm Chart "
+inputs:
+  chart_name:
+    required: true
+    description: "The name of helm chart"
+  chart_path:
+    required: true
+    description: "The path of helm chart"
+  chart_version:
+    required: true
+    description: "The version of application. It should be a semantic version"
+  github_token:
+    required: true
+    description: "Github repo access internal token"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout GitOps
+      uses: actions/checkout@v4
+      with:
+        repository: moreh-dev/helm-charts
+        ref: main
+        path: helm-charts
+        token: ${{ inputs.github_token }}
+
+    - name: Setup Helm
+      uses: azure/setup-helm@v4.2.0
+
+    - name: Package Helm Chart
+      run: |
+        # `chart_version` should be a semantic version
+        sed -i "s/^version:.*/version: \"${{ inputs.chart_version }}\"/g" ${{ inputs.chart_path }}/Chart.yaml
+        sed -i "s/^appVersion:.*/appVersion: \"${{ inputs.chart_version }}\"/g" ${{ inputs.chart_path }}/Chart.yaml
+
+        helm package ${{ inputs.chart_path }}
+      shell: bash
+
+    - name: Copy Helm Chart
+      run: |
+        mv ${{ inputs.chart_name }}-${{ inputs.chart_version }}.tgz helm-charts/charts
+        cd helm-charts
+        make index
+      shell: bash
+
+    - name: Commit files
+      run: |
+        cd helm-charts
+        git add .
+        git config --global user.name "${{ github.event.head_commit.author.name }}"
+        git config --global user.email "${{ github.event.head_commit.author.email }}"
+        git commit -m "feat: add ${{ inputs.chart_name }} ${{ inputs.chart_version }}"
+      shell: bash
+
+    - name: Push changes
+      uses: ad-m/github-push-action@master
+      with:
+        repository: moreh-dev/helm-charts
+        branch: main
+        directory: helm-charts
+        github_token: ${{ inputs.github_token }}
