@@ -1,5 +1,5 @@
 # Change InferenceServiceTemplate to Helm template
-# 1. Add`{{- include "preset.labels" . | nindent 4 }}` under .metadata.labels
+# 1. Add `{{- include "preset.labels" . | nindent 4 }}` under .metadata.labels
 # 2. Escape Go/template syntax `{{` and `}}`
 # 3. --from <file|dir>
 # 4. --to <file|dir>
