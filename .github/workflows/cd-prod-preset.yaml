@@ -1,0 +1,28 @@
+name: moai-inference-preset-prod-deploy
+
+on:
+  push:
+    tags:
+      - "preset/v[0-9]+.[0-9]+.[0-9]+"
+
+jobs:
+  release:
+    name: Release(Prod)
+    runs-on: [ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set Version
+        id: set-version
+        run: |
+          VERSION=$(echo "${{ github.ref_name }}" | sed 's/^preset\///')
+          echo VERSION=$VERSION
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Release Helm Chart
+        uses: ./.github/workflows/release-chart
+        with:
+          chart_name: moai-inference-preset
+          chart_path: deploy/helm/moai-inference-preset
+          chart_version: ${{ steps.set-version.outputs.version }}
+          github_token: ${{ secrets.GITOPS_TOKEN }}

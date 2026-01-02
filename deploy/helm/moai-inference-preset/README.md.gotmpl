@@ -1,0 +1,23 @@
+{{ template "chart.header" . }}
+{{ template "chart.deprecationWarning" . }}
+
+{{ template "chart.badgesSection" . }}
+
+{{ template "chart.description" . }}
+
+{{ template "chart.homepageLine" . }}
+
+{{ template "chart.maintainersSection" . }}
+
+{{ template "chart.sourcesSection" . }}
+
+{{ template "chart.requirementsHeader" . }}
+
+> [!CAUTION]
+> Prerequisite: `moreh/moai-inference-framework` must be installed before you begin. The below dependencies will be installed automatically with this chart unless they are disabled in the `values.yaml` file.
+
+{{ template "chart.requirementsTable" . }}
+
+{{ template "chart.valuesSection" . }}
+
+{{ template "helm-docs.versionFooter" . }}
