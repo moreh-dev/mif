@@ -1,6 +1,6 @@
-# Change InferenceServiceTemplate to Helm template
-# 1. Add `{{- include "common.labels.standard" . | nindent 4 }}` under .metadata.labels
-# 2. Escape Go/template syntax `{{` and `}}`
+# Change InferenceServiceTemplate to a Helm-compatible template
+# 1. Escape Go/template syntax `{{` and `}}` so they are preserved in the output
+# 2. Ensure a `.metadata.labels` block is present and populated with a Helm labels include
 # 3. --from <file|dir>
 # 4. --to <file|dir>
 # 5. If `--to <dir>` is given, output files are named as `<original_name>.helm.yaml`
