@@ -23,4 +23,9 @@ helm-docs: ## Generate Helm chart documentation.
 
 .PHONY: helm-dependency
 helm-dependency: helm-docs ## Update Helm chart dependencies.
-	@helm dependency update ./deploy/helm/moai-inference-framework
+	@for chart in ./deploy/helm/*; do \
+	  if [ -d "$$chart" ] && [ -f "$$chart/Chart.yaml" ]; then \
+	    echo "Updating dependencies for $$chart"; \
+	    helm dependency update "$$chart"; \
+	  fi; \
+	done
