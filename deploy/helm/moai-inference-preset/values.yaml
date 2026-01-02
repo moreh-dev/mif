@@ -1,0 +1,11 @@
+# -- Chart name override.
+nameOverride: ""
+
+# -- Full name override.
+fullnameOverride: ""
+
+# -- Namespace override.
+namespaceOverride: ""
+
+# -- Labels applied to all resources.
+commonLabels: {}
