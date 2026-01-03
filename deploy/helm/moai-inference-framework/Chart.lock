@@ -10,15 +10,15 @@ dependencies:
   version: 0.7.0
 - name: odin
   repository: https://moreh-dev.github.io/helm-charts
-  version: v0.4.0
+  version: v0.5.0
 - name: odin-crd
   repository: https://moreh-dev.github.io/helm-charts
-  version: v0.4.0
+  version: v0.5.0
 - name: keda
   repository: https://kedacore.github.io/charts
   version: 2.18.0
 - name: kubernetes-replicator
   repository: https://helm.mittwald.de
   version: 2.12.2
-digest: sha256:c18934ca049b4a4ac6a230085421a799b0977eca4f450b445f52a82a78ed31c1
-generated: "2025-12-30T21:02:25.005186336+09:00"
+digest: sha256:ea7d5146c1526486cc2a64a66c1e0ba39fa5e4936a1c427322a2d3ab09ed0cd0
+generated: "2026-01-03T23:19:32.793564942+09:00"

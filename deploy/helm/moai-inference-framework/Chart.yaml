@@ -4,7 +4,7 @@ description: Moreh Inference Framework
 type: application
 version: 0.0.0
 appVersion: "0.0.0"
-home: https://github.com/moreh-dev/mif
+home: https://docs.moreh.io/
 sources:
   - https://github.com/moreh-dev/mif/tree/main/deploy/helm/moai-inference-framework
 dependencies:
@@ -21,11 +21,11 @@ dependencies:
     repository: oci://registry.k8s.io/lws/charts
     condition: lws.enabled
   - name: odin
-    version: v0.4.0
+    version: v0.5.0
     repository: https://moreh-dev.github.io/helm-charts
     condition: odin.enabled
   - name: odin-crd
-    version: v0.4.0
+    version: v0.5.0
     repository: https://moreh-dev.github.io/helm-charts
     condition: odin-crd.enabled
   - name: keda

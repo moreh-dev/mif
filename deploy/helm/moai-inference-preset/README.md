@@ -4,7 +4,7 @@
 
 Moreh Inference Framework Preset
 
-**Homepage:** <https://github.com/moreh-dev/mif>
+**Homepage:** <https://docs.moreh.io/>
 
 ## Source Code
 

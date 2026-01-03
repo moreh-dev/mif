@@ -17,12 +17,16 @@ help: ## Display this help.
 
 ##@ Development
 
+.PHONY: helm-lint
+helm-lint: ## Lint Helm charts.
+	@helm lint ./deploy/helm/*
+
 .PHONY: helm-docs
 helm-docs: ## Generate Helm chart documentation.
 	@helm-docs --chart-search-root=./deploy/helm
 
 .PHONY: helm-dependency
-helm-dependency: helm-docs ## Update Helm chart dependencies.
+helm-dependency: ## Update Helm chart dependencies.
 	@for chart in ./deploy/helm/*; do \
 	  if [ -d "$$chart" ] && [ -f "$$chart/Chart.yaml" ]; then \
 	    echo "Updating dependencies for $$chart"; \
