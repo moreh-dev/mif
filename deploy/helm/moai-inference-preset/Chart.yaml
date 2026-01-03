@@ -4,7 +4,7 @@ description: Moreh Inference Framework Preset
 type: application
 version: 0.0.0
 appVersion: "0.0.0"
-home: https://github.com/moreh-dev/mif
+home: https://docs.moreh.io/
 sources:
   - https://github.com/moreh-dev/mif/tree/main/deploy/helm/moai-inference-preset
 dependencies:

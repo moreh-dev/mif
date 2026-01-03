@@ -4,7 +4,7 @@
 
 Moreh Inference Framework
 
-**Homepage:** <https://github.com/moreh-dev/mif>
+**Homepage:** <https://docs.moreh.io/>
 
 ## Source Code
 
@@ -19,8 +19,8 @@ Moreh Inference Framework
 |------------|------|---------|
 | https://helm.mittwald.de | replicator(kubernetes-replicator) | 2.12.2 |
 | https://kedacore.github.io/charts | keda | 2.18.0 |
-| https://moreh-dev.github.io/helm-charts | odin | v0.4.0 |
-| https://moreh-dev.github.io/helm-charts | odin-crd | v0.4.0 |
+| https://moreh-dev.github.io/helm-charts | odin | v0.5.0 |
+| https://moreh-dev.github.io/helm-charts | odin-crd | v0.5.0 |
 | https://prometheus-community.github.io/helm-charts | prometheus-stack(kube-prometheus-stack) | 80.7.0 |
 | oci://registry-1.docker.io/bitnamicharts | common | 2.31.4 |
 | oci://registry.k8s.io/lws/charts | lws | 0.7.0 |
