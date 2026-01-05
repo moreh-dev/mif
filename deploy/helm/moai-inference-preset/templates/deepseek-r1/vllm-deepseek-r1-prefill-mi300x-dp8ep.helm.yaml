@@ -67,5 +67,3 @@ spec:
                 --block-size 32 
                 --max-model-len 16384 
                 --max-num-seqs 2048 
-
-
