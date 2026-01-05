@@ -51,19 +51,19 @@ spec:
             - name: ISVC_EXTRA_ARGS
               value: >-
                 $(ISVC_MODEL_NAME)
-                --served-model-name $(ISVC_MODEL_NAME) 
-                --trust-remote-code 
-                --kv-transfer-config '{"kv_connector":"NixlConnector","kv_role":"kv_both"}' 
-                --disable-uvicorn-access-log 
-                --no-enable-log-requests 
-                --prefix-caching-hash-algo sha256_cbor 
-                --enable-prefix-caching 
+                --served-model-name $(ISVC_MODEL_NAME)
+                --trust-remote-code
+                --kv-transfer-config '{"kv_connector":"NixlConnector","kv_role":"kv_both"}'
+                --disable-uvicorn-access-log
+                --no-enable-log-requests
+                --prefix-caching-hash-algo sha256_cbor
+                --enable-prefix-caching
                 --kv-cache-dtype fp8_e4m3
-                --quantization ds_fp8_per_token 
-                --no-enable-chunked-prefill 
-                --enforce-eager 
-                --max-num-batched-token 65536 
-                --gpu-memory-utilization 0.7 
-                --block-size 32 
-                --max-model-len 16384 
-                --max-num-seqs 2048 
+                --quantization ds_fp8_per_token
+                --no-enable-chunked-prefill
+                --enforce-eager
+                --max-num-batched-token 65536
+                --gpu-memory-utilization 0.7
+                --block-size 32
+                --max-model-len 16384
+                --max-num-seqs 2048
