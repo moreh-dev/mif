@@ -1,0 +1,53 @@
+apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceServiceTemplate
+metadata:
+  name: workertemplate-decode-proxy
+spec:
+  workerTemplate:
+    spec:
+      initContainers:
+        - name: proxy
+          image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/heimdall-proxy:v0.6.0
+          restartPolicy: Always
+          command:
+            - /bin/bash
+            - -c
+          args:
+            - |
+              set -ex
+
+              exec /app/proxy \
+                --port $(ISVC_PORT) \
+                --decoder-ip $(POD_IP) \
+                --decoder-port 8200 \
+                --data-parallel-size {{ or .Spec.Parallelism.DataLocal 1 }} \
+                $(ISVC_EXTRA_ARGS)
+          env:
+            - name: ISVC_PORT
+              value: "8000"
+            - name: ISVC_EXTRA_ARGS
+              value: >-
+                --pd-coordinator vllm/nixl
+                --log-format json
+                --log-level warn
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          readinessProbe:
+            httpGet:
+              path: /health-proxy
+              port: 8000
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+      containers:
+        - name: main
+          env:
+            - name: ISVC_PORT
+              value: "8200"
+            - name: ISVC_KV_PORT_OFFSET
+              value: "200"

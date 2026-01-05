@@ -1,0 +1,68 @@
+---
+apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceService
+metadata:
+  name: deepseek-r1-mi300-prefill-prefix-cache
+spec:
+  replicas: 1
+  inferencePoolRefs:
+    - name: heimdall
+  templateRefs:
+    - name: vllm-data-parallel
+    - name: workertemplate-prefill-meta
+    - name: workertemplate-deepseek-r1-mi300-prefill-ep  
+  parallelism:
+    data: 8
+    expert: true
+  workerTemplate:
+    spec:
+      containers:
+        - name: main
+          image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/quickstart/moreh-vllm:vllm_0.11.0rc1_251230
+          env:
+            - name: HF_TOKEN
+              value: "<huggingface_token>"
+            - name: ISVC_USE_KV_EVENTS
+              value: "true"
+          resources:
+            limits:
+              amd.com/gpu: "8"
+              mellanox/hca: "1"
+            requests:
+              amd.com/gpu: "8"
+              mellanox/hca: "1"
+
+---
+apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceService
+metadata:
+  name: deepseek-r1-mi300-decode-prefix-cache
+spec:
+  replicas: 1
+  inferencePoolRefs:
+    - name: heimdall
+  templateRefs:
+    - name: vllm-data-parallel
+    - name: workertemplate-decode-meta
+    - name: workertemplate-decode-proxy
+    - name: workertemplate-deepseek-r1-mi300-decode-ep
+  parallelism:
+    data: 8
+    expert: true
+  workerTemplate:
+    spec:
+      containers:
+        - name: main
+          image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/quickstart/moreh-vllm:vllm_0.11.0rc1_251230
+          env:
+            - name: HF_TOKEN
+              value: "<huggingface_token>"
+            - name: ISVC_USE_KV_EVENTS
+              value: "true"
+          resources:
+            limits:
+              amd.com/gpu: "8"
+              mellanox/hca: "1"
+            requests:
+              amd.com/gpu: "8"
+              mellanox/hca: "1"
