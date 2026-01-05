@@ -1,10 +1,14 @@
 apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceServiceTemplate
 metadata:
-  name: workertemplate-decode-proxy
+  name: vllm-dp-decode-proxy
+  labels:
+    {{- include "common.labels.standard" . | nindent 4 }}
 spec:
   workerTemplate:
     spec:
+      imagePullSecrets:
+        - name: moreh-registry
       initContainers:
         - name: proxy
           image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/heimdall-proxy:v0.6.0
@@ -20,7 +24,7 @@ spec:
                 --port $(ISVC_PORT) \
                 --decoder-ip $(POD_IP) \
                 --decoder-port 8200 \
-                --data-parallel-size {{ or .Spec.Parallelism.DataLocal 1 }} \
+                --data-parallel-size {{ "{{" }} or .Spec.Parallelism.DataLocal 1 {{ "}}" }} \
                 $(ISVC_EXTRA_ARGS)
           env:
             - name: ISVC_PORT

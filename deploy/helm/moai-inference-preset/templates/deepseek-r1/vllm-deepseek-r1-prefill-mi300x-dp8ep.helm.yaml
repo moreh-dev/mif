@@ -1,7 +1,9 @@
 apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceServiceTemplate
 metadata:
-  name: workertemplate-deepseek-r1-mi300-prefill-ep
+  name: vllm-deepseek-r1-prefill-mi300x-dp8ep
+  labels:
+    {{- include "common.labels.standard" . | nindent 4 }}
 spec:
   workerTemplate:
     spec:
