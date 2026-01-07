@@ -447,27 +447,20 @@ func InstallIstiod(valuesPath string) error {
 }
 
 func InstallInferenceService(namespace, valuesPath string) error {
-	cmd := exec.Command("helm", "repo", "add", "moreh", "https://moreh-dev.github.io/helm-charts")
-	if _, err := Run(cmd); err != nil && !strings.Contains(err.Error(), "already exists") {
-		return fmt.Errorf("failed to add moreh helm repo: %w", err)
+	if valuesPath == "" {
+		return fmt.Errorf("inference service manifest path must be provided")
 	}
 
-	cmd = exec.Command("helm", "repo", "update", "moreh")
-	if _, err := Run(cmd); err != nil {
-		return fmt.Errorf("failed to update moreh helm repo: %w", err)
+	kubectlArgs := []string{
+		"apply",
+		"-f", valuesPath,
 	}
 
-	helmArgs := []string{
-		"upgrade", "-i", "inference-service",
-		"moreh/inference-service",
-		"--version", "v0.3.1",
-		"-n", namespace,
-	}
-	if valuesPath != "" {
-		helmArgs = append(helmArgs, "-f", valuesPath)
+	if namespace != "" {
+		kubectlArgs = append(kubectlArgs, "-n", namespace)
 	}
 
-	cmd = exec.Command("helm", helmArgs...)
+	cmd := exec.Command("kubectl", kubectlArgs...)
 	_, err := Run(cmd)
 	return err
 }

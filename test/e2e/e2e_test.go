@@ -22,9 +22,9 @@ import (
 	"github.com/moreh-dev/mif/test/utils"
 )
 
-var _ = Describe("Prefill-Decode Disaggregation", Ordered, func() {
-	var inferenceServiceName = "pd-disaggregation-test"
+const inferenceServiceName = "pd-disaggregation-test"
 
+var _ = Describe("Prefill-Decode Disaggregation", Ordered, func() {
 	cleanupTestResources := func() {
 		if skipKindCreate {
 			_, _ = fmt.Fprintf(GinkgoWriter, "Using existing cluster (kubeconfig). Skipping resource cleanup for safety.\n")
@@ -346,141 +346,183 @@ func createInferenceServiceValuesFile() (string, error) {
 	hfToken := os.Getenv("HF_TOKEN")
 	hfEndpoint := os.Getenv("HF_ENDPOINT")
 
-	baseYAML := `global:
-  imagePullSecrets:
-    - name: moreh-registry
-
-extraArgs:
-  - meta-llama/Llama-3.2-1B-Instruct
-  - --quantization
-  - "None"
-  - --tensor-parallel-size
-  - "2"
-  - --max-num-batched-tokens
-  - "8192"
-  - --no-enable-prefix-caching
-  - --no-enable-log-requests
-  - --disable-uvicorn-access-log
-
-extraEnvVars:
-  - name: HF_TOKEN
-    value: "<huggingfaceToken>"
-
-_common:
-  image:
-    repository: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/quickstart/moreh-vllm
-    tag: "20250915.1"
-
-  resources:
-    requests:
-      amd.com/gpu: "2"
-    limits:
-      amd.com/gpu: "2"
-
-  podMonitor:
-    labels:
-      release: prometheus-stack
-
-decode:
+	baseYAML := `apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceService
+metadata:
+  name: vllm-llama3-1b-instruct-tp2
+  namespace: quickstart
+spec:
   replicas: 2
-
-prefill:
-  enabled: false
+  inferencePoolRefs:
+    - name: heimdall
+  template:
+    spec:
+      imagePullSecrets:
+        - name: moreh-registry
+      containers:
+        - name: main
+          image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/quickstart/moreh-vllm:20250915.1
+          securityContext:
+            capabilities:
+              add:
+              - IPC_LOCK
+          command:
+            - vllm
+            - serve
+          args:
+            - meta-llama/Llama-3.2-1B-Instruct
+            - --port
+            - "8000"
+            - --quantization
+            - "None"
+            - --tensor-parallel-size
+            - "2"
+            - --max-num-batched-tokens
+            - "8192"
+            - --no-enable-prefix-caching
+            - --no-enable-log-requests
+            - --disable-uvicorn-access-log
+          env:
+            - name: HF_TOKEN
+              value: "<huggingfaceToken>"
+          resources:
+            requests:
+              amd.com/gpu: "2"
+            limits:
+              amd.com/gpu: "2"
+          ports:
+            - containerPort: 8000
+              name: http
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+              scheme: HTTP
+            initialDelaySeconds: 120
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 5
+          volumeMounts:
+            - mountPath: /dev/shm
+              name: shm
+      volumes:
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: "2Gi"
+      tolerations:
+        - key: "amd.com/gpu"
+          operator: "Exists"
+          effect: "NoSchedule"
 `
 
-	var values map[string]interface{}
-	err = yaml.Unmarshal([]byte(baseYAML), &values)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse base YAML: %w", err)
+	var manifest map[string]interface{}
+	if err := yaml.Unmarshal([]byte(baseYAML), &manifest); err != nil {
+		return "", fmt.Errorf("failed to parse base Odin InferenceService YAML: %w", err)
 	}
 
-	_common := values["_common"].(map[string]interface{})
-	_common["image"].(map[string]interface{})["repository"] = imageRepo
-	_common["image"].(map[string]interface{})["tag"] = imageTag
+	if md, ok := manifest["metadata"].(map[string]interface{}); ok {
+		md["name"] = inferenceServiceName
+		md["namespace"] = testNamespace
+	}
+
+	spec, ok := manifest["spec"].(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("invalid Odin InferenceService manifest: missing spec")
+	}
+
+	template, ok := spec["template"].(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("invalid Odin InferenceService manifest: missing spec.template")
+	}
+
+	podSpec, ok := template["spec"].(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("invalid Odin InferenceService manifest: missing spec.template.spec")
+	}
+
+	containers, ok := podSpec["containers"].([]interface{})
+	if !ok || len(containers) == 0 {
+		return "", fmt.Errorf("invalid Odin InferenceService manifest: missing containers")
+	}
+
+	mainContainer, ok := containers[0].(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("invalid Odin InferenceService manifest: malformed main container")
+	}
+
+	mainContainer["image"] = fmt.Sprintf("%s:%s", imageRepo, imageTag)
 
 	if isUsingKindCluster {
-		// Override command and extraArgs for llm-d-inference-sim (kind cluster) to match official CLI usage.
-		_common["command"] = []interface{}{
+		mainContainer["command"] = []interface{}{
 			"/app/llm-d-inference-sim",
 		}
-		values["extraArgs"] = []interface{}{
+		mainContainer["args"] = []interface{}{
 			"--model",
 			testModel,
+			"--port",
+			"8000",
 		}
 	}
 
 	if resources := getGPUResources("2", "2"); resources != nil {
-		_common["resources"] = resources
+		mainContainer["resources"] = resources
 	} else {
-		delete(_common, "resources")
-	}
-
-	common := values["_common"].(map[string]interface{})
-	for k, v := range common {
-		if k == "resources" && getGPUResources("2", "2") == nil {
-			continue
-		}
-		values["decode"].(map[string]interface{})[k] = v
-		values["prefill"].(map[string]interface{})[k] = v
+		delete(mainContainer, "resources")
 	}
 
 	if hfToken != "" || hfEndpoint != "" {
-		var extraEnv []map[string]interface{}
+		var envList []interface{}
 		if hfToken != "" {
-			extraEnv = append(extraEnv, map[string]interface{}{
+			envList = append(envList, map[string]interface{}{
 				"name":  "HF_TOKEN",
 				"value": hfToken,
 			})
 		}
 		if hfEndpoint != "" {
-			extraEnv = append(extraEnv, map[string]interface{}{
+			envList = append(envList, map[string]interface{}{
 				"name":  "HF_ENDPOINT",
 				"value": hfEndpoint,
 			})
 		}
-		values["extraEnvVars"] = extraEnv
+		if len(envList) > 0 {
+			mainContainer["env"] = envList
+		}
 	} else {
-		delete(values, "extraEnvVars")
+		delete(mainContainer, "env")
 	}
 
-	valuesYAML, err := yaml.Marshal(values)
+	manifestYAML, err := yaml.Marshal(manifest)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal inference-service values: %w", err)
+		return "", fmt.Errorf("failed to marshal Odin InferenceService manifest: %w", err)
 	}
 
-	valuesPath := filepath.Join(projectDir, "test/e2e/inference-service-values.yaml")
-	if err := os.WriteFile(valuesPath, valuesYAML, 0600); err != nil {
-		return "", fmt.Errorf("failed to write inference-service values file: %w", err)
+	manifestPath := filepath.Join(projectDir, "test/e2e/inference-service-values.yaml")
+	if err := os.WriteFile(manifestPath, manifestYAML, 0600); err != nil {
+		return "", fmt.Errorf("failed to write Odin InferenceService manifest file: %w", err)
 	}
 
-	return valuesPath, nil
+	return manifestPath, nil
 }
 
 func installInferenceServiceForTest() {
-	By("creating inference-service values file")
-	valuesPath, err := createInferenceServiceValuesFile()
-	Expect(err).NotTo(HaveOccurred(), "Failed to create inference-service values file")
+	By("creating Odin InferenceService manifest file for test")
+	manifestPath, err := createInferenceServiceValuesFile()
+	Expect(err).NotTo(HaveOccurred(), "Failed to create Odin InferenceService manifest file for test")
 
-	By("installing inference-service via Helm")
-	Expect(utils.InstallInferenceService(testNamespace, valuesPath)).To(Succeed(), "Failed to install inference-service")
+	By("installing Odin InferenceService for test")
+	Expect(utils.InstallInferenceService(testNamespace, manifestPath)).To(Succeed(), "Failed to install Odin InferenceService for test")
 
-	By("waiting for inference-service decode deployment to be ready")
+	By("waiting for Odin InferenceService deployment to be ready")
 	Eventually(func(g Gomega) {
 		cmd := exec.Command("kubectl", "get", "deployment",
+			inferenceServiceName,
 			"-n", testNamespace,
-			"-l", "app.kubernetes.io/instance=inference-service,heimdall/role=decode",
-			"-o", "jsonpath={.items[0].status.conditions[?(@.type=='Available')].status}")
+			"-o", "jsonpath={.status.conditions[?(@.type=='Available')].status}")
 		output, err := utils.Run(cmd)
-		if err != nil || strings.TrimSpace(output) == "" {
-			// Fallback: try by deployment name directly
-			cmd = exec.Command("kubectl", "get", "deployment",
-				"inference-service-decode",
-				"-n", testNamespace,
-				"-o", "jsonpath={.status.conditions[?(@.type=='Available')].status}")
-			output, err = utils.Run(cmd)
-		}
 		g.Expect(err).NotTo(HaveOccurred())
-		g.Expect(strings.TrimSpace(output)).To(Equal("True"), "inference-service decode deployment not available")
+		g.Expect(strings.TrimSpace(output)).To(Equal("True"), "Odin InferenceService deployment not available")
 	}, 15*time.Minute, 15*time.Second).Should(Succeed())
 }
 
@@ -514,20 +556,13 @@ func verifyInferenceEndpoint() {
 	Eventually(func(g Gomega) {
 		cmd := exec.Command("kubectl", "get", "pods",
 			"-n", testNamespace,
-			"-l", "app.kubernetes.io/instance=inference-service,heimdall/role=decode",
+			"-l", fmt.Sprintf("app.kubernetes.io/name=%s", inferenceServiceName),
+			"--field-selector=status.phase=Running",
 			"--no-headers", "-o", "custom-columns=:metadata.name")
 		output, err := utils.Run(cmd)
-		if err != nil || strings.TrimSpace(output) == "" {
-			cmd = exec.Command("kubectl", "get", "pods",
-				"-n", testNamespace,
-				"-l", "app.kubernetes.io/instance=inference-service",
-				"--field-selector=status.phase=Running",
-				"--no-headers", "-o", "custom-columns=:metadata.name")
-			output, err = utils.Run(cmd)
-		}
 		g.Expect(err).NotTo(HaveOccurred())
 		podNames := utils.GetNonEmptyLines(output)
-		g.Expect(len(podNames)).To(BeNumerically(">=", 1), "No inference-service decode pods found")
+		g.Expect(len(podNames)).To(BeNumerically(">=", 1), "No Odin InferenceService pods found")
 	}, 15*time.Minute, 15*time.Second).Should(Succeed())
 }
 

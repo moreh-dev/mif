@@ -48,4 +48,5 @@ test-e2e-no-cleanup: ## Run E2E tests without automatic cleanup (for debugging).
 
 .PHONY: test-e2e-clean
 test-e2e-clean: ## Manually clean up E2E test resources.
-	@kubectl delete namespace mif --ignore-not-found=true
+	@echo "Deleting kind cluster 'mif-e2e' (if it exists)..."
+	@kind get clusters | grep -q '^mif-e2e$$' && kind delete cluster --name mif-e2e || echo "kind cluster 'mif-e2e' not found, nothing to delete."

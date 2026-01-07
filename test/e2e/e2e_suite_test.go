@@ -297,33 +297,39 @@ var _ = BeforeSuite(func() {
 })
 
 var _ = AfterSuite(func() {
-	cleanupKindCluster()
+	// Always clean up temporary value/manifest files, regardless of cluster type or SKIP_CLEANUP.
+	cleanupE2ETempFiles()
 
 	if !isUsingKindCluster {
 		_, _ = fmt.Fprintf(GinkgoWriter, "Using existing cluster (kubeconfig). Skipping resource cleanup for safety.\n")
 		return
 	}
 
-	if !skipCleanup {
-		By("ensuring test namespace is cleaned up")
-		cleanupTestNamespace()
+	if skipCleanup {
+		_, _ = fmt.Fprintf(GinkgoWriter, "SKIP_CLEANUP=true: skipping test namespace, resources, and kind cluster deletion.\n")
+		return
+	}
 
-		if !skipPresetDeploy {
-			By("uninstalling moai-inference-preset")
-			utils.UninstallMIFPreset(testNamespace)
-		}
+	By("ensuring test namespace is cleaned up")
+	cleanupTestNamespace()
 
-		if !skipMIFDeploy {
-			By("uninstalling MIF")
-			cmd := exec.Command("helm", "uninstall", "moai-inference-framework", "-n", testNamespace, "--ignore-not-found=true")
-			_, _ = utils.Run(cmd)
-		}
+	if !skipPresetDeploy {
+		By("uninstalling moai-inference-preset")
+		utils.UninstallMIFPreset(testNamespace)
+	}
+
+	if !skipMIFDeploy {
+		By("uninstalling MIF")
+		cmd := exec.Command("helm", "uninstall", "moai-inference-framework", "-n", testNamespace, "--ignore-not-found=true")
+		_, _ = utils.Run(cmd)
 	}
 
 	if !skipCertManagerInstall && !isCertManagerAlreadyInstalled {
 		_, _ = fmt.Fprintf(GinkgoWriter, "Uninstalling CertManager...\n")
 		utils.UninstallCertManager()
 	}
+
+	cleanupKindCluster()
 })
 
 func cleanupTestNamespace() {
@@ -355,6 +361,28 @@ func cleanupTestNamespace() {
 		_, _ = utils.Run(cmd)
 	} else if output != "" {
 		_, _ = fmt.Fprintf(GinkgoWriter, "Namespace deletion output: %s\n", output)
+	}
+}
+
+func cleanupE2ETempFiles() {
+	projectDir, err := utils.GetProjectDir()
+	if err != nil {
+		_, _ = fmt.Fprintf(GinkgoWriter, "warning: failed to get project dir for temp file cleanup: %v\n", err)
+		return
+	}
+
+	tempFiles := []string{
+		"test/e2e/moai-inference-framework-values.yaml",
+		"test/e2e/heimdall-values.yaml",
+		"test/e2e/inference-service-values.yaml",
+		"test/e2e/istiod-values.yaml",
+	}
+
+	for _, rel := range tempFiles {
+		path := filepath.Join(projectDir, rel)
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			_, _ = fmt.Fprintf(GinkgoWriter, "warning: failed to remove temp file %s: %v\n", path, err)
+		}
 	}
 }
 
