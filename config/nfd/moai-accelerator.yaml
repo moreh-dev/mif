@@ -3,13 +3,13 @@ kind: NodeFeatureRule
 metadata:
   name: moai-accelerator
 spec:
-  # https://github.com/ROCm/gpu-operator/blob/main/helm-charts-k8s/templates/gpu-nfd-default-rule.yaml
-  # the PCI info is from these websites:
-  # source1: https://admin.pci-ids.ucw.cz/read/PC/1002
-  # source2: https://devicehunt.com/view/type/pci/vendor/1002
   rules:
+    # https://github.com/ROCm/gpu-operator/blob/main/helm-charts-k8s/templates/gpu-nfd-default-rule.yaml
+    # the PCI info is from these websites:
+    # source1: https://admin.pci-ids.ucw.cz/read/PC/1002
+    # source2: https://devicehunt.com/view/type/pci/vendor/1002
     # --- AMD Instinct Series ---
-    - name: "accelerator-amd-mi355x"
+    - name: accelerator-amd-mi355x
       labels:
         moai.moreh.io/accelerator.vendor: amd
         moai.moreh.io/accelerator.model: mi355x
@@ -20,7 +20,7 @@ spec:
                 vendor: { op: In, value: ["1002"] }
                 device: { op: In, value: ["75a3"] }
 
-    - name: "accelerator-amd-mi350x"
+    - name: accelerator-amd-mi350x
       labels:
         moai.moreh.io/accelerator.vendor: amd
         moai.moreh.io/accelerator.model: mi350x
@@ -31,7 +31,7 @@ spec:
                 vendor: { op: In, value: ["1002"] }
                 device: { op: In, value: ["75a0"] }
 
-    - name: "accelerator-amd-mi325x"
+    - name: accelerator-amd-mi325x
       labels:
         moai.moreh.io/accelerator.vendor: amd
         moai.moreh.io/accelerator.model: mi325x
@@ -42,7 +42,7 @@ spec:
                 vendor: { op: In, value: ["1002"] }
                 device: { op: In, value: ["74a5"] }
 
-    - name: "accelerator-amd-mi308x"
+    - name: accelerator-amd-mi308x
       labels:
         moai.moreh.io/accelerator.vendor: amd
         moai.moreh.io/accelerator.model: mi308x
@@ -53,7 +53,7 @@ spec:
                 vendor: { op: In, value: ["1002"] }
                 device: { op: In, value: ["74a2"] }
 
-    - name: "accelerator-amd-mi300a"
+    - name: accelerator-amd-mi300a
       labels:
         moai.moreh.io/accelerator.vendor: amd
         moai.moreh.io/accelerator.model: mi300a
@@ -64,7 +64,7 @@ spec:
                 vendor: { op: In, value: ["1002"] }
                 device: { op: In, value: ["74a0"] }
 
-    - name: "accelerator-amd-mi300x"
+    - name: accelerator-amd-mi300x
       labels:
         moai.moreh.io/accelerator.vendor: amd
         moai.moreh.io/accelerator.model: mi300x
@@ -75,7 +75,7 @@ spec:
                 vendor: { op: In, value: ["1002"] }
                 device: { op: In, value: ["74a1"] }
 
-    - name: "accelerator-amd-mi300x-hf"
+    - name: accelerator-amd-mi300x-hf
       labels:
         moai.moreh.io/accelerator.vendor: amd
         moai.moreh.io/accelerator.model: mi300x-hf
@@ -86,7 +86,7 @@ spec:
                 vendor: { op: In, value: ["1002"] }
                 device: { op: In, value: ["74a9"] }
 
-    - name: "accelerator-amd-mi250x"
+    - name: accelerator-amd-mi250x
       labels:
         moai.moreh.io/accelerator.vendor: amd
         moai.moreh.io/accelerator.model: mi250x
@@ -97,7 +97,7 @@ spec:
                 vendor: { op: In, value: ["1002"] }
                 device: { op: In, value: ["7408"] }
 
-    - name: "accelerator-amd-mi250"
+    - name: accelerator-amd-mi250
       labels:
         moai.moreh.io/accelerator.vendor: amd
         moai.moreh.io/accelerator.model: mi250
@@ -108,7 +108,7 @@ spec:
                 vendor: { op: In, value: ["1002"] }
                 device: { op: In, value: ["740c"] }
 
-    - name: "accelerator-amd-mi210"
+    - name: accelerator-amd-mi210
       labels:
         moai.moreh.io/accelerator.vendor: amd
         moai.moreh.io/accelerator.model: mi210
@@ -119,7 +119,7 @@ spec:
                 vendor: { op: In, value: ["1002"] }
                 device: { op: In, value: ["740f"] }
 
-    - name: "accelerator-amd-mi100"
+    - name: accelerator-amd-mi100
       labels:
         moai.moreh.io/accelerator.vendor: amd
         moai.moreh.io/accelerator.model: mi100
@@ -129,3 +129,30 @@ spec:
               matchExpressions:
                 vendor: { op: In, value: ["1002"] }
                 device: { op: In, value: ["738c", "738e"] }
+
+    # the PCI info is from these websites:
+    # https://github.com/NVIDIA/gpu-operator/blob/main/deployments/gpu-operator/templates/nodefeaturerules.yaml
+    # source1: https://admin.pci-ids.ucw.cz/read/PC/10de
+    # source2: https://devicehunt.com/view/type/pci/vendor/10de
+    # --- NVIDIA ---
+    - name: accelerator-nvidia-a100-40gb-pcie
+      labels:
+        moai.moreh.io/accelerator.vendor: nvidia
+        moai.moreh.io/accelerator.model: a100-40gb-pcie
+      matchAny:
+        - matchFeatures:
+            - feature: pci.device
+              matchExpressions:
+                vendor: { op: In, value: ["10de"] }
+                device: { op: In, value: ["20b1", "20f1"] }
+
+    - name: accelerator-nvidia-a100-80gb-pcie
+      labels:
+        moai.moreh.io/accelerator.vendor: nvidia
+        moai.moreh.io/accelerator.model: a100-80gb-pcie
+      matchAny:
+        - matchFeatures:
+            - feature: pci.device
+              matchExpressions:
+                vendor: { op: In, value: ["10de"] }
+                device: { op: In, value: ["20b5"] }
