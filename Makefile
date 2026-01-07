@@ -33,3 +33,19 @@ helm-dependency: ## Update Helm chart dependencies.
 	    helm dependency update "$$chart"; \
 	  fi; \
 	done
+
+##@ Testing
+
+.PHONY: test-e2e
+test-e2e: ## Run E2E tests using Ginkgo (with automatic cleanup).
+	@go test -tags=e2e -v ./test/e2e/... -timeout 30m \
+		-ginkgo.v -ginkgo.show-node-events
+
+.PHONY: test-e2e-no-cleanup
+test-e2e-no-cleanup: ## Run E2E tests without automatic cleanup (for debugging).
+	@SKIP_CLEANUP=true go test -tags=e2e -v ./test/e2e/... -timeout 30m \
+		-ginkgo.v -ginkgo.show-node-events
+
+.PHONY: test-e2e-clean
+test-e2e-clean: ## Manually clean up E2E test resources.
+	@kubectl delete namespace mif --ignore-not-found=true
