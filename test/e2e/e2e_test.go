@@ -22,7 +22,7 @@ import (
 	"github.com/moreh-dev/mif/test/utils"
 )
 
-const inferenceServiceName = "pd-disaggregation-test"
+const inferenceServiceName = testInferenceServiceName
 
 var _ = Describe("Prefill-Decode Disaggregation", Ordered, func() {
 	cleanupTestResources := func() {
@@ -54,8 +54,8 @@ var _ = Describe("Prefill-Decode Disaggregation", Ordered, func() {
 		}
 	})
 
-	SetDefaultEventuallyTimeout(15 * time.Minute)
-	SetDefaultEventuallyPollingInterval(5 * time.Second)
+	SetDefaultEventuallyTimeout(timeoutShort)
+	SetDefaultEventuallyPollingInterval(intervalShort)
 
 	Context("MIF Infrastructure", func() {
 		It("should deploy MIF components successfully", func() {
@@ -92,11 +92,11 @@ var _ = Describe("Prefill-Decode Disaggregation", Ordered, func() {
 					g.Expect(status).To(Equal("True"), "Some pods are not ready")
 				}
 			}
-			Eventually(verifyAllPodsReady, 15*time.Minute).Should(Succeed())
+			Eventually(verifyAllPodsReady, timeoutVeryLong).Should(Succeed())
 		})
 	})
 
-	Context("Gateway and Helm-based inference-service integration", func() {
+	Context("Gateway and InferenceService CR integration", func() {
 		BeforeAll(func() {
 			applyGatewayResource()
 			installHeimdallForTest()
@@ -120,17 +120,19 @@ func getInferenceImageInfo() (repo, tag string) {
 
 	if repo == "" {
 		if cfg.isUsingKindCluster {
-			repo = "ghcr.io/llm-d/llm-d-inference-sim"
+			repo = imageRepoKindDefault
 		} else {
-			repo = "255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/quickstart/moreh-vllm"
+			// Use default from YAML template
+			repo = ""
 		}
 	}
 
 	if tag == "" {
 		if cfg.isUsingKindCluster {
-			tag = "v0.6.1"
+			tag = imageTagKindDefault
 		} else {
-			tag = "20250915.1"
+			// Use default from YAML template
+			tag = ""
 		}
 	}
 
@@ -313,7 +315,7 @@ spec:
 		for _, p := range phases {
 			g.Expect(p).To(Equal("Running"), "Gateway pod is not running")
 		}
-	}, 10*time.Minute, 10*time.Second).Should(Succeed())
+	}, timeoutLong, intervalLong).Should(Succeed())
 }
 
 func installHeimdallForTest() {
@@ -333,7 +335,7 @@ func installHeimdallForTest() {
 		output, err := utils.Run(cmd)
 		g.Expect(err).NotTo(HaveOccurred())
 		g.Expect(strings.TrimSpace(output)).To(Equal("True"), "Heimdall deployment not available")
-	}, 10*time.Minute, 10*time.Second).Should(Succeed())
+	}, timeoutLong, intervalLong).Should(Succeed())
 }
 
 func createInferenceServiceValuesFile() (string, error) {
@@ -343,6 +345,12 @@ func createInferenceServiceValuesFile() (string, error) {
 	}
 
 	imageRepo, imageTag := getInferenceImageInfo()
+	var image string
+	if imageRepo == "" && imageTag == "" {
+		image = ""
+	} else {
+		image = fmt.Sprintf("%s:%s", imageRepo, imageTag)
+	}
 
 	baseYAML := `apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceService
@@ -450,7 +458,17 @@ spec:
 		return "", fmt.Errorf("invalid Odin InferenceService manifest: malformed main container")
 	}
 
-	mainContainer["image"] = fmt.Sprintf("%s:%s", imageRepo, imageTag)
+	// Set imagePullSecrets
+	if imagePullSecrets, ok := podSpec["imagePullSecrets"].([]interface{}); ok && len(imagePullSecrets) > 0 {
+		if secret, ok := imagePullSecrets[0].(map[string]interface{}); ok {
+			secret["name"] = secretNameMorehRegistry
+		}
+	}
+
+	// Set image only if provided, otherwise use YAML default
+	if image != "" {
+		mainContainer["image"] = image
+	}
 
 	if cfg.isUsingKindCluster {
 		mainContainer["command"] = []interface{}{
@@ -461,6 +479,11 @@ spec:
 			cfg.testModel,
 			"--port",
 			"8000",
+		}
+
+		// Set initialDelaySeconds to 10 for kind cluster
+		if readinessProbe, ok := mainContainer["readinessProbe"].(map[string]interface{}); ok {
+			readinessProbe["initialDelaySeconds"] = 10
 		}
 	}
 
@@ -496,7 +519,7 @@ spec:
 		return "", fmt.Errorf("failed to marshal Odin InferenceService manifest: %w", err)
 	}
 
-	manifestPath := filepath.Join(projectDir, "test/e2e/inference-service-values.yaml")
+	manifestPath := filepath.Join(projectDir, tempFileISValues)
 	if err := os.WriteFile(manifestPath, manifestYAML, 0600); err != nil {
 		return "", fmt.Errorf("failed to write Odin InferenceService manifest file: %w", err)
 	}
@@ -521,7 +544,7 @@ func installInferenceServiceForTest() {
 		output, err := utils.Run(cmd)
 		g.Expect(err).NotTo(HaveOccurred())
 		g.Expect(strings.TrimSpace(output)).To(Equal("True"), "Odin InferenceService deployment not available")
-	}, 15*time.Minute, 15*time.Second).Should(Succeed())
+	}, timeoutVeryLong, intervalLong).Should(Succeed())
 }
 
 func verifyInferenceEndpoint() {
@@ -548,7 +571,7 @@ func verifyInferenceEndpoint() {
 		}
 		g.Expect(err).NotTo(HaveOccurred())
 		g.Expect(strings.TrimSpace(output)).NotTo(BeEmpty(), "Gateway service not found")
-	}, 10*time.Minute, 10*time.Second).Should(Succeed())
+	}, timeoutLong, intervalLong).Should(Succeed())
 
 	By("verifying inference-service decode pods are running")
 	Eventually(func(g Gomega) {
@@ -561,7 +584,7 @@ func verifyInferenceEndpoint() {
 		g.Expect(err).NotTo(HaveOccurred())
 		podNames := utils.GetNonEmptyLines(output)
 		g.Expect(len(podNames)).To(BeNumerically(">=", 1), "No Odin InferenceService pods found")
-	}, 15*time.Minute, 15*time.Second).Should(Succeed())
+	}, timeoutVeryLong, intervalLong).Should(Succeed())
 }
 
 func testInferenceAPI() {
@@ -590,7 +613,7 @@ func testInferenceAPI() {
 		g.Expect(err).NotTo(HaveOccurred())
 		serviceName = strings.TrimSpace(output)
 		g.Expect(serviceName).NotTo(BeEmpty(), "Gateway service not found")
-	}, 5*time.Minute, 5*time.Second).Should(Succeed())
+	}, timeoutMedium, intervalMedium).Should(Succeed())
 
 	By("setting up port-forward to Gateway service")
 	portForwardPort := "8000"
@@ -644,7 +667,7 @@ func testInferenceAPI() {
 		resp, err = client.Do(req)
 		g.Expect(err).NotTo(HaveOccurred(), "Failed to send HTTP request")
 		g.Expect(resp.StatusCode).To(Equal(http.StatusOK), fmt.Sprintf("Expected status 200, got %d", resp.StatusCode))
-	}, 5*time.Minute, 10*time.Second).Should(Succeed())
+	}, timeoutMedium, intervalLong).Should(Succeed())
 
 	defer resp.Body.Close()
 

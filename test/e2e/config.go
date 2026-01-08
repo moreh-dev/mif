@@ -7,6 +7,9 @@ import (
 	"os"
 )
 
+// testConfig holds all configuration values for E2E tests.
+// Values are initialized from environment variables in the init() function.
+
 type testConfig struct {
 	skipCertManagerInstall        bool
 	isCertManagerAlreadyInstalled bool
@@ -53,41 +56,42 @@ var cfg testConfig
 
 func init() {
 	cfg = testConfig{
-		skipCertManagerInstall:        getEnvBool("SKIP_CERT_MANAGER", false),
+		skipCertManagerInstall:        getEnvBool(envSkipCertManager, false),
 		isCertManagerAlreadyInstalled: false,
-		skipCleanup:                   getEnvBool("SKIP_CLEANUP", false),
+		skipCleanup:                   getEnvBool(envSkipCleanup, false),
 
-		testNamespace:   getEnv("NAMESPACE", "mif"),
-		mifChartPath:    getEnv("MIF_CHART_PATH", "deploy/helm/moai-inference-framework"),
-		presetChartPath: getEnv("PRESET_CHART_PATH", "deploy/helm/moai-inference-preset"),
-		testModel:       getEnv("TEST_MODEL", "meta-llama/Llama-3.2-1B-Instruct"),
-		gatewayClass:    getEnv("GATEWAY_CLASS_NAME", "istio"),
+		testNamespace:   getEnv(envNamespace, "mif"),
+		mifChartPath:    getEnv(envMIFChartPath, "deploy/helm/moai-inference-framework"),
+		presetChartPath: getEnv(envPresetChartPath, "deploy/helm/moai-inference-preset"),
+		testModel:       getEnv(envTestModel, "meta-llama/Llama-3.2-1B-Instruct"),
+		gatewayClass:    getEnv(envGatewayClassName, "istio"),
 
-		kindClusterName:               getEnv("KIND_CLUSTER_NAME", "mif-e2e"),
-		skipKind:                      getEnvBool("SKIP_KIND", false),
-		skipKindDelete:                getEnvBool("SKIP_KIND_DELETE", false),
-		skipMIFDeploy:                 getEnvBool("SKIP_MIF_DEPLOY", false),
-		skipPresetDeploy:              getEnvBool("SKIP_PRESET_DEPLOY", false),
-		skipGatewayAPI:                getEnvBool("SKIP_GATEWAY_API", false),
-		skipGatewayInferenceExtension: getEnvBool("SKIP_GATEWAY_INFERENCE_EXTENSION", false),
-		skipGatewayController:         getEnvBool("SKIP_GATEWAY_CONTROLLER", false),
+		kindClusterName:               getEnv(envKindClusterName, "mif-e2e"),
+		skipKind:                      getEnvBool(envSkipKind, false),
+		skipKindDelete:                getEnvBool(envSkipKindDelete, false),
+		skipMIFDeploy:                 getEnvBool(envSkipMIFDeploy, false),
+		skipPresetDeploy:              getEnvBool(envSkipPresetDeploy, false),
+		skipGatewayAPI:                getEnvBool(envSkipGatewayAPI, false),
+		skipGatewayInferenceExtension: getEnvBool(envSkipGatewayInferenceExtension, false),
+		skipGatewayController:         getEnvBool(envSkipGatewayController, false),
 		isUsingKindCluster:            false,
 
-		awsAccessKeyID:     getEnv("AWS_ACCESS_KEY_ID", ""),
-		awsSecretAccessKey: getEnv("AWS_SECRET_ACCESS_KEY", ""),
-		hfToken:            getEnv("HF_TOKEN", ""),
-		hfEndpoint:         getEnv("HF_ENDPOINT", ""),
+		awsAccessKeyID:     getEnv(envAWSAccessKeyID, ""),
+		awsSecretAccessKey: getEnv(envAWSSecretAccessKey, ""),
+		hfToken:            getEnv(envHFToken, ""),
+		hfEndpoint:         getEnv(envHFEndpoint, ""),
 
-		inferenceImageRepo: getEnv("INFERENCE_IMAGE_REPO", ""),
-		inferenceImageTag:  getEnv("INFERENCE_IMAGE_TAG", ""),
+		inferenceImageRepo: getEnv(envInferenceImageRepo, ""),
+		inferenceImageTag:  getEnv(envInferenceImageTag, ""),
 
-		kedaEnabled:            getEnvBool("KEDA_ENABLED", true),
-		lwsEnabled:             getEnvBool("LWS_ENABLED", true),
-		odinCRDEnabled:         getEnvBool("ODIN_CRD_ENABLED", true),
-		prometheusStackEnabled: getEnvBool("PROMETHEUS_STACK_ENABLED", false),
+		kedaEnabled:            getEnvBool(envKEDAEnabled, true),
+		lwsEnabled:             getEnvBool(envLWSEnabled, true),
+		odinCRDEnabled:         getEnvBool(envOdinCRDEnabled, true),
+		prometheusStackEnabled: getEnvBool(envPrometheusStackEnabled, false),
 	}
 }
 
+// getEnv retrieves an environment variable value or returns the default if not set.
 func getEnv(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
 		return value
@@ -95,6 +99,8 @@ func getEnv(key, defaultValue string) string {
 	return defaultValue
 }
 
+// getEnvBool retrieves a boolean environment variable value.
+// Returns true only if the value is exactly "true", otherwise returns the default.
 func getEnvBool(key string, defaultValue bool) bool {
 	value := os.Getenv(key)
 	if value == "" {

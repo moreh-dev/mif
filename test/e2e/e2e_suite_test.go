@@ -38,13 +38,13 @@ func setupInterruptHandler() {
 	go func() {
 		sig := <-sigChan
 		_, _ = fmt.Fprintf(GinkgoWriter, "\nReceived signal: %v. Initiating immediate cleanup...\n", sig)
-		cleanupKindClusterOnInterrupt()
+		cleanupKindCluster()
 	}()
 }
 
 func cleanupKindCluster() {
 	if cfg.skipKindDelete {
-		_, _ = fmt.Fprintf(GinkgoWriter, "Skipping kind cluster deletion (SKIP_KIND_DELETE=true)\n")
+		_, _ = fmt.Fprintf(GinkgoWriter, "Skipping kind cluster deletion (%s=true)\n", envSkipKindDelete)
 		return
 	}
 
@@ -65,10 +65,6 @@ func cleanupKindCluster() {
 	} else {
 		_, _ = fmt.Fprintf(GinkgoWriter, "Successfully deleted kind cluster %s\n", cfg.kindClusterName)
 	}
-}
-
-func cleanupKindClusterOnInterrupt() {
-	cleanupKindCluster()
 }
 
 var _ = BeforeSuite(func() {
@@ -109,7 +105,7 @@ var _ = BeforeSuite(func() {
 		}
 
 		By("adding moreh Helm repository")
-		cmd := exec.Command("helm", "repo", "add", "moreh", "https://moreh-dev.github.io/helm-charts")
+		cmd := exec.Command("helm", "repo", "add", helmRepoName, helmRepoURL)
 		if _, err := utils.Run(cmd); err != nil {
 			if !strings.Contains(err.Error(), "already exists") {
 				_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to add moreh helm repo: %v\n", err)
@@ -157,16 +153,17 @@ var _ = BeforeSuite(func() {
 			} else {
 				_, _ = fmt.Fprintf(
 					GinkgoWriter,
-					"AWS_ACCESS_KEY_ID or AWS_SECRET_ACCESS_KEY is not set; skipping ecrTokenRefresher configuration for MIF chart.\n",
+					"%s or %s is not set; skipping ecrTokenRefresher configuration for MIF chart.\n",
+					envAWSAccessKeyID, envAWSSecretAccessKey,
 				)
 			}
 
 			helmArgs := []string{
-				"upgrade", "--install", "moai-inference-framework",
+				"upgrade", "--install", helmReleaseMIF,
 				cfg.mifChartPath,
 				"--namespace", cfg.testNamespace,
 				"--wait",
-				"--timeout", "15m",
+				fmt.Sprintf("--timeout=%v", timeoutVeryLong),
 				"--set", "odin.enabled=true",
 				"--set", fmt.Sprintf("odin-crd.enabled=%t", cfg.odinCRDEnabled),
 				"--set", fmt.Sprintf("prometheus-stack.enabled=%t", cfg.prometheusStackEnabled),
@@ -212,7 +209,7 @@ var _ = BeforeSuite(func() {
 			Expect(utils.InstallGatewayAPI()).To(Succeed(), "Failed to install Gateway API standard CRDs")
 		}
 	} else {
-		_, _ = fmt.Fprintf(GinkgoWriter, "Skipping Gateway API installation (SKIP_GATEWAY_API=true)\n")
+		_, _ = fmt.Fprintf(GinkgoWriter, "Skipping Gateway API installation (%s=true)\n", envSkipGatewayAPI)
 	}
 
 	if !cfg.skipGatewayInferenceExtension {
@@ -225,12 +222,12 @@ var _ = BeforeSuite(func() {
 			Expect(utils.InstallGatewayInferenceExtension()).To(Succeed(), "Failed to install Gateway API Inference Extension CRDs")
 		}
 	} else {
-		_, _ = fmt.Fprintf(GinkgoWriter, "Skipping Gateway API Inference Extension installation (SKIP_GATEWAY_INFERENCE_EXTENSION=true)\n")
+		_, _ = fmt.Fprintf(GinkgoWriter, "Skipping Gateway API Inference Extension installation (%s=true)\n", envSkipGatewayInferenceExtension)
 	}
 
 	if !cfg.skipGatewayController {
 		switch cfg.gatewayClass {
-		case "istio":
+		case gatewayClassIstio:
 			By("checking if Istio is already installed")
 			cfg.isIstioAlreadyInstalled = utils.IsIstioInstalled()
 			if cfg.isIstioAlreadyInstalled {
@@ -246,7 +243,7 @@ var _ = BeforeSuite(func() {
 				By("installing Istiod control plane")
 				Expect(utils.InstallIstiod(istiodValuesPath)).To(Succeed(), "Failed to install Istiod control plane")
 			}
-		case "kgateway":
+		case gatewayClassKgateway:
 			By("checking if Kgateway is already installed")
 			cfg.isKgatewayAlreadyInstalled = utils.IsKgatewayInstalled()
 			if cfg.isKgatewayAlreadyInstalled {
@@ -263,17 +260,17 @@ var _ = BeforeSuite(func() {
 				Expect(utils.InstallKgateway(kgatewayValuesPath)).To(Succeed(), "Failed to install Kgateway controller")
 			}
 		default:
-			Fail(fmt.Sprintf("Unsupported GATEWAY_CLASS_NAME=%s. Supported values are: istio, kgateway", cfg.gatewayClass))
+			Fail(fmt.Sprintf("Unsupported %s=%s. Supported values are: %s, %s", envGatewayClassName, cfg.gatewayClass, gatewayClassIstio, gatewayClassKgateway))
 		}
 	} else {
-		_, _ = fmt.Fprintf(GinkgoWriter, "Skipping Gateway controller installation (SKIP_GATEWAY_CONTROLLER=true)\n")
+		_, _ = fmt.Fprintf(GinkgoWriter, "Skipping Gateway controller installation (%s=true)\n", envSkipGatewayController)
 	}
 
 	By("auto-detecting cluster state and adjusting component enable flags")
 	// If environment variables are not explicitly set, check cluster state and adjust flags accordingly.
 	// This prevents conflicts when components are already installed in the cluster.
 
-	if os.Getenv("KEDA_ENABLED") == "" {
+	if os.Getenv(envKEDAEnabled) == "" {
 		By("checking if KEDA is already installed")
 		cfg.kedaEnabled = !utils.IsKEDAInstalled()
 		if cfg.kedaEnabled {
@@ -283,7 +280,7 @@ var _ = BeforeSuite(func() {
 		}
 	}
 
-	if os.Getenv("LWS_ENABLED") == "" {
+	if os.Getenv(envLWSEnabled) == "" {
 		By("checking if LWS is already installed")
 		cfg.lwsEnabled = !utils.IsLWSInstalled()
 		if cfg.lwsEnabled {
@@ -293,7 +290,7 @@ var _ = BeforeSuite(func() {
 		}
 	}
 
-	if os.Getenv("ODIN_CRD_ENABLED") == "" {
+	if os.Getenv(envOdinCRDEnabled) == "" {
 		By("checking if Odin CRD is already installed")
 		cfg.odinCRDEnabled = !utils.IsOdinCRDInstalled()
 		if cfg.odinCRDEnabled {
@@ -303,14 +300,14 @@ var _ = BeforeSuite(func() {
 		}
 	}
 
-	if os.Getenv("PROMETHEUS_STACK_ENABLED") == "" {
+	if os.Getenv(envPrometheusStackEnabled) == "" {
 		By("checking if Prometheus is already installed")
 		if utils.IsPrometheusInstalled() {
 			cfg.prometheusStackEnabled = false
 			_, _ = fmt.Fprintf(GinkgoWriter, "Prometheus is already installed in the cluster. Disabling Prometheus Stack in MIF chart to avoid conflicts.\n")
 		} else {
 			cfg.prometheusStackEnabled = false
-			_, _ = fmt.Fprintf(GinkgoWriter, "Prometheus Stack disabled by default in E2E tests to avoid resource issues. Set PROMETHEUS_STACK_ENABLED=true to enable.\n")
+			_, _ = fmt.Fprintf(GinkgoWriter, "Prometheus Stack disabled by default in E2E tests to avoid resource issues. Set %s=true to enable.\n", envPrometheusStackEnabled)
 		}
 	}
 })
@@ -325,12 +322,12 @@ var _ = AfterSuite(func() {
 	}
 
 	if cfg.skipCleanup {
-		_, _ = fmt.Fprintf(GinkgoWriter, "SKIP_CLEANUP=true: skipping test namespace, resources, and kind cluster deletion.\n")
+		_, _ = fmt.Fprintf(GinkgoWriter, "%s=true: skipping test namespace, resources, and kind cluster deletion.\n", envSkipCleanup)
 		return
 	}
 
 	By("deleting InferenceService")
-	cmd := exec.Command("kubectl", "delete", "inferenceservice", "pd-disaggregation-test",
+	cmd := exec.Command("kubectl", "delete", "inferenceservice", testInferenceServiceName,
 		"-n", cfg.testNamespace, "--ignore-not-found=true")
 	_, _ = utils.Run(cmd)
 
@@ -341,7 +338,7 @@ var _ = AfterSuite(func() {
 
 	if !cfg.skipMIFDeploy && !cfg.isMIFAlreadyInstalled {
 		By("uninstalling MIF")
-		cmd := exec.Command("helm", "uninstall", "moai-inference-framework", "-n", cfg.testNamespace, "--ignore-not-found=true")
+		cmd := exec.Command("helm", "uninstall", helmReleaseMIF, "-n", cfg.testNamespace, "--ignore-not-found=true")
 		_, _ = utils.Run(cmd)
 	}
 
@@ -349,12 +346,12 @@ var _ = AfterSuite(func() {
 	cleanupTestNamespace()
 
 	if !cfg.skipGatewayController {
-		if cfg.gatewayClass == "istio" && !cfg.isIstioAlreadyInstalled {
+		if cfg.gatewayClass == gatewayClassIstio && !cfg.isIstioAlreadyInstalled {
 			By("uninstalling Istio")
 			if err := utils.UninstallGatewayController(cfg.gatewayClass); err != nil {
 				_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to uninstall Gateway controller: %v\n", err)
 			}
-		} else if cfg.gatewayClass == "kgateway" && !cfg.isKgatewayAlreadyInstalled {
+		} else if cfg.gatewayClass == gatewayClassKgateway && !cfg.isKgatewayAlreadyInstalled {
 			By("uninstalling Kgateway")
 			if err := utils.UninstallGatewayController(cfg.gatewayClass); err != nil {
 				_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to uninstall Gateway controller: %v\n", err)
@@ -411,10 +408,11 @@ func cleanupE2ETempFiles() {
 	}
 
 	tempFiles := []string{
-		"test/e2e/moai-inference-framework-values.yaml",
-		"test/e2e/heimdall-values.yaml",
-		"test/e2e/inference-service-values.yaml",
-		"test/e2e/istiod-values.yaml",
+		tempFileMIFValues,
+		tempFileHeimdallValues,
+		tempFileISValues,
+		tempFileIstiodValues,
+		tempFileKgatewayValues,
 	}
 
 	for _, rel := range tempFiles {
@@ -431,7 +429,7 @@ func checkPrerequisites() {
 		requiredTools = append(requiredTools, "kind")
 		cmd := exec.Command("which", "kind")
 		if err := cmd.Run(); err != nil {
-			Fail(fmt.Sprintf("kind is required but not available. Install kind or set SKIP_KIND=true to use existing cluster"))
+			Fail(fmt.Sprintf("kind is required but not available. Install kind or set %s=true to use existing cluster", envSkipKind))
 		}
 	}
 	for _, tool := range requiredTools {
@@ -450,79 +448,61 @@ func checkPrerequisites() {
 	Expect(err).NotTo(HaveOccurred(), "Cannot connect to Kubernetes cluster. Please check your kubeconfig.")
 }
 
-func createMIFValuesFile(awsAccessKeyID, awsSecretAccessKey string) (string, error) {
+// writeValuesFile is a helper function to write Helm values files.
+func writeValuesFile(relativePath, content string, mode os.FileMode) (string, error) {
 	projectDir, err := utils.GetProjectDir()
 	if err != nil {
 		return "", err
 	}
 
+	valuesPath := filepath.Join(projectDir, relativePath)
+	if err := os.WriteFile(valuesPath, []byte(content), mode); err != nil {
+		return "", fmt.Errorf("failed to write values file %s: %w", relativePath, err)
+	}
+
+	return valuesPath, nil
+}
+
+func createMIFValuesFile(awsAccessKeyID, awsSecretAccessKey string) (string, error) {
 	valuesContent := fmt.Sprintf(`ecrTokenRefresher:
   aws:
     accessKeyId: %s
     secretAccessKey: %s
 `, awsAccessKeyID, awsSecretAccessKey)
 
-	valuesPath := filepath.Join(projectDir, "test/e2e/moai-inference-framework-values.yaml")
-	err = os.WriteFile(valuesPath, []byte(valuesContent), 0600)
-	if err != nil {
-		return "", fmt.Errorf("failed to write moai-inference-framework values file: %w", err)
-	}
-
-	return valuesPath, nil
+	return writeValuesFile(tempFileMIFValues, valuesContent, 0600)
 }
 
 func createKgatewayValuesFile() (string, error) {
-	projectDir, err := utils.GetProjectDir()
-	if err != nil {
-		return "", err
-	}
-
 	valuesContent := `inferenceExtension:
   enabled: true
 `
 
-	valuesPath := filepath.Join(projectDir, "test/e2e/kgateway-values.yaml")
-	err = os.WriteFile(valuesPath, []byte(valuesContent), 0644)
-	if err != nil {
-		return "", fmt.Errorf("failed to write Kgateway values file: %w", err)
-	}
-
-	return valuesPath, nil
+	return writeValuesFile(tempFileKgatewayValues, valuesContent, 0644)
 }
 
 func createIstiodValuesFile() (string, error) {
-	projectDir, err := utils.GetProjectDir()
-	if err != nil {
-		return "", err
-	}
-
 	valuesContent := `pilot:
   env:
     PILOT_ENABLE_ALPHA_GATEWAY_API: "true"
     ENABLE_GATEWAY_API_INFERENCE_EXTENSION: "true"
 `
 
-	valuesPath := filepath.Join(projectDir, "test/e2e/istiod-values.yaml")
-	err = os.WriteFile(valuesPath, []byte(valuesContent), 0644)
-	if err != nil {
-		return "", fmt.Errorf("failed to write istiod values file: %w", err)
-	}
-
-	return valuesPath, nil
+	return writeValuesFile(tempFileIstiodValues, valuesContent, 0644)
 }
 
 func ensureECRTokenRefresherSecret(namespace string) {
-	cronJobName := "moai-inference-framework-ecr-token-refresher"
-	jobName := "ecr-token-refresher-init-manual"
-	secretName := "moreh-registry"
-	ecrCredsSecretName := "moai-inference-framework-ecr-token-refresher"
+	cronJobName := cronJobNameECRRefresher
+	jobName := jobNameECRRefresher
+	secretName := secretNameMorehRegistry
+	ecrCredsSecretName := secretNameECRCreds
 
 	By(fmt.Sprintf("waiting for secret %s to be created", ecrCredsSecretName))
 	Eventually(func() bool {
 		cmd := exec.Command("kubectl", "get", "secret", ecrCredsSecretName, "-n", namespace)
 		_, err := utils.Run(cmd)
 		return err == nil
-	}, "2m", "5s").Should(BeTrue(), fmt.Sprintf("Secret %s should be created", ecrCredsSecretName))
+	}, timeoutShort, intervalMedium).Should(BeTrue(), fmt.Sprintf("Secret %s should be created", ecrCredsSecretName))
 
 	cmd := exec.Command("kubectl", "get", "secret", secretName, "-n", namespace)
 	_, err := utils.Run(cmd)
@@ -536,7 +516,7 @@ func ensureECRTokenRefresherSecret(namespace string) {
 		cmd = exec.Command("kubectl", "get", "cronjob", cronJobName, "-n", namespace)
 		_, err = utils.Run(cmd)
 		return err == nil
-	}, "2m", "5s").Should(BeTrue(), fmt.Sprintf("CronJob %s should be created", cronJobName))
+	}, timeoutShort, intervalMedium).Should(BeTrue(), fmt.Sprintf("CronJob %s should be created", cronJobName))
 
 	cmd = exec.Command("kubectl", "delete", "job", jobName, "-n", namespace, "--ignore-not-found=true")
 	_, _ = utils.Run(cmd)
@@ -551,7 +531,7 @@ func ensureECRTokenRefresherSecret(namespace string) {
 		cmd := exec.Command("kubectl", "get", "job", jobName, "-n", namespace, "-o", "jsonpath={.status.conditions[?(@.type==\"Complete\")].status}")
 		output, err := utils.Run(cmd)
 		return err == nil && strings.TrimSpace(output) == "True"
-	}, "3m", "5s").Should(BeTrue(), fmt.Sprintf("Job %s should complete successfully", jobName))
+	}, timeoutMedium, intervalMedium).Should(BeTrue(), fmt.Sprintf("Job %s should complete successfully", jobName))
 
 	cmd = exec.Command("kubectl", "get", "job", jobName, "-n", namespace, "-o", "jsonpath={.status.conditions[?(@.type==\"Failed\")].status}")
 	output, _ := utils.Run(cmd)
@@ -566,7 +546,7 @@ func ensureECRTokenRefresherSecret(namespace string) {
 		cmd := exec.Command("kubectl", "get", "secret", secretName, "-n", namespace)
 		_, err := utils.Run(cmd)
 		return err == nil
-	}, "1m", "2s").Should(BeTrue(), fmt.Sprintf("Secret %s should be created", secretName))
+	}, timeoutShort, intervalShort).Should(BeTrue(), fmt.Sprintf("Secret %s should be created", secretName))
 
 	_, _ = fmt.Fprintf(GinkgoWriter, "Successfully created secret %s via ecrTokenRefresher\n", secretName)
 }
@@ -604,7 +584,17 @@ gateway:
 		return "", fmt.Errorf("failed to parse base Heimdall values YAML: %w", err)
 	}
 
+	// Set dynamic values after parsing
+	if global, ok := values["global"].(map[string]interface{}); ok {
+		if imagePullSecrets, ok := global["imagePullSecrets"].([]interface{}); ok && len(imagePullSecrets) > 0 {
+			if secret, ok := imagePullSecrets[0].(map[string]interface{}); ok {
+				secret["name"] = secretNameMorehRegistry
+			}
+		}
+	}
+
 	if gateway, ok := values["gateway"].(map[string]interface{}); ok {
+		gateway["name"] = gatewayName
 		gateway["gatewayClassName"] = cfg.gatewayClass
 	}
 
@@ -626,7 +616,7 @@ gateway:
 		return "", fmt.Errorf("failed to marshal Heimdall values YAML: %w", err)
 	}
 
-	valuesPath := filepath.Join(projectDir, "test/e2e/heimdall-values.yaml")
+	valuesPath := filepath.Join(projectDir, tempFileHeimdallValues)
 	err = os.WriteFile(valuesPath, valuesYAML, 0644)
 	if err != nil {
 		return "", fmt.Errorf("failed to write Heimdall values file: %w", err)
@@ -650,9 +640,9 @@ func waitForMIFComponents() {
 		if err != nil || strings.TrimSpace(output) == "" {
 			_, _ = fmt.Fprintf(GinkgoWriter, "Warning: Could not find Odin deployment by label, trying common name pattern\n")
 			cmd = exec.Command("kubectl", "wait", "--for=condition=Available",
-				"deployment/moai-inference-framework-odin",
+				fmt.Sprintf("deployment/%s-odin", helmReleaseMIF),
 				"-n", cfg.testNamespace,
-				"--timeout=5m")
+				fmt.Sprintf("--timeout=%v", timeoutMedium))
 			_, _ = utils.Run(cmd)
 			return
 		}
@@ -663,7 +653,7 @@ func waitForMIFComponents() {
 	cmd = exec.Command("kubectl", "wait", "--for=condition=Available",
 		fmt.Sprintf("deployment/%s", odinDeploymentName),
 		"-n", cfg.testNamespace,
-		"--timeout=10m")
+		fmt.Sprintf("--timeout=%v", timeoutLong))
 	output, err = utils.Run(cmd)
 	if err != nil {
 		_, _ = fmt.Fprintf(GinkgoWriter, "Warning: Odin deployment wait completed with error (may already be ready): %v\n", err)
@@ -677,7 +667,7 @@ func waitForMIFComponents() {
 		"--all",
 		"--field-selector=status.phase!=Succeeded",
 		"-n", cfg.testNamespace,
-		"--timeout=10m")
+		fmt.Sprintf("--timeout=%v", timeoutLong))
 	output, err = utils.Run(cmd)
 	if err != nil {
 		_, _ = fmt.Fprintf(GinkgoWriter, "Warning: Some pods may not be ready yet: %v\n", err)
