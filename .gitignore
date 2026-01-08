@@ -115,3 +115,10 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.toptal.com/developers/gitignore/api/vim,linux,macos,windows,visualstudiocode
+
+# E2E test temporary files (may contain sensitive credentials)
+test/e2e/moai-inference-framework-values.yaml
+test/e2e/heimdall-values.yaml
+test/e2e/inference-service-values.yaml
+test/e2e/istiod-values.yaml
+test/e2e/kgateway-values.yaml
