@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2" // nolint:revive,staticcheck
@@ -105,15 +106,27 @@ func IsCertManagerCRDsInstalled() bool {
 	}
 
 	crdList := GetNonEmptyLines(output)
+	foundCRDs := make(map[string]bool, len(certManagerCRDs))
 	for _, crd := range certManagerCRDs {
-		for _, line := range crdList {
+		foundCRDs[crd] = false
+	}
+
+	for _, line := range crdList {
+		for _, crd := range certManagerCRDs {
 			if strings.Contains(line, crd) {
-				return true
+				foundCRDs[crd] = true
+				break
 			}
 		}
 	}
 
-	return false
+	for _, found := range foundCRDs {
+		if !found {
+			return false
+		}
+	}
+
+	return true
 }
 
 func IsKEDAInstalled() bool {
@@ -131,12 +144,30 @@ func IsKEDAInstalled() bool {
 	}
 
 	crdList := GetNonEmptyLines(output)
+	foundCRDs := make(map[string]bool, len(kedaCRDs))
 	for _, crd := range kedaCRDs {
-		for _, line := range crdList {
+		foundCRDs[crd] = false
+	}
+
+	for _, line := range crdList {
+		for _, crd := range kedaCRDs {
 			if strings.Contains(line, crd) {
-				return true
+				foundCRDs[crd] = true
+				break
 			}
 		}
+	}
+
+	allCRDsPresent := true
+	for _, found := range foundCRDs {
+		if !found {
+			allCRDsPresent = false
+			break
+		}
+	}
+
+	if allCRDsPresent {
+		return true
 	}
 
 	cmd = exec.Command("helm", "list", "-A", "-q", "-f", "^keda$")
@@ -160,12 +191,23 @@ func IsLWSInstalled() bool {
 	}
 
 	crdList := GetNonEmptyLines(output)
+	allCRDsPresent := true
 	for _, crd := range lwsCRDs {
+		found := false
 		for _, line := range crdList {
 			if strings.Contains(line, crd) {
-				return true
+				found = true
+				break
 			}
 		}
+		if !found {
+			allCRDsPresent = false
+			break
+		}
+	}
+
+	if allCRDsPresent {
+		return true
 	}
 
 	cmd = exec.Command("helm", "list", "-A", "-q", "-f", "^lws$")
@@ -190,12 +232,25 @@ func IsOdinCRDInstalled() bool {
 	}
 
 	crdList := GetNonEmptyLines(output)
-	for _, crd := range odinCRDs {
-		for _, line := range crdList {
+	crdFound := make(map[string]bool, len(odinCRDs))
+	for _, line := range crdList {
+		for _, crd := range odinCRDs {
 			if strings.Contains(line, crd) {
-				return true
+				crdFound[crd] = true
 			}
 		}
+	}
+
+	allFound := true
+	for _, crd := range odinCRDs {
+		if !crdFound[crd] {
+			allFound = false
+			break
+		}
+	}
+
+	if allFound {
+		return true
 	}
 
 	cmd = exec.Command("helm", "list", "-A", "-q", "-f", "^odin-crd$")
@@ -221,12 +276,29 @@ func IsPrometheusInstalled() bool {
 	}
 
 	crdList := GetNonEmptyLines(output)
+	foundCRDs := make(map[string]bool, len(prometheusCRDs))
 	for _, crd := range prometheusCRDs {
-		for _, line := range crdList {
+		foundCRDs[crd] = false
+	}
+
+	for _, line := range crdList {
+		for crd := range foundCRDs {
 			if strings.Contains(line, crd) {
-				return true
+				foundCRDs[crd] = true
 			}
 		}
+	}
+
+	allPresent := true
+	for _, present := range foundCRDs {
+		if !present {
+			allPresent = false
+			break
+		}
+	}
+
+	if allPresent {
+		return true
 	}
 
 	cmd = exec.Command("helm", "list", "-A", "-q", "-f", "^kube-prometheus-stack$|^prometheus-stack$")
@@ -315,9 +387,22 @@ func GetProjectDir() (string, error) {
 	if err != nil {
 		return wd, fmt.Errorf("failed to get current working directory: %w", err)
 	}
-	wd = strings.ReplaceAll(wd, "/test/e2e", "")
-	wd = strings.ReplaceAll(wd, "/test/utils", "")
-	return wd, nil
+
+	dir := wd
+	for {
+		if _, err := os.Stat(dir + "/go.mod"); err == nil {
+			return dir, nil
+		}
+		parent := dir + "/.."
+		parentAbs, err := filepath.Abs(parent)
+		if err != nil {
+			return wd, fmt.Errorf("failed to resolve parent directory: %w", err)
+		}
+		if parentAbs == dir {
+			return wd, fmt.Errorf("go.mod not found in any parent directory")
+		}
+		dir = parentAbs
+	}
 }
 
 func CreateKindCluster(clusterName string) error {
@@ -502,7 +587,7 @@ func InstallIstiod(valuesPath string) error {
 
 func InstallInferenceService(namespace, valuesPath string) error {
 	if valuesPath == "" {
-		return fmt.Errorf("inference service manifest path must be provided")
+		return fmt.Errorf("inference service manifest path is required (e.g., path/to/manifest.yaml)")
 	}
 
 	kubectlArgs := []string{

@@ -27,19 +27,30 @@ import (
 func TestE2E(t *testing.T) {
 	RegisterFailHandler(Fail)
 	_, _ = fmt.Fprintf(GinkgoWriter, "Starting MIF E2E test suite\n")
-	setupInterruptHandler()
+	stopInterruptHandler := setupInterruptHandler()
+	defer stopInterruptHandler()
 	RunSpecs(t, "MIF E2E Suite")
 }
 
-func setupInterruptHandler() {
+func setupInterruptHandler() func() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+	done := make(chan struct{})
 
 	go func() {
-		sig := <-sigChan
-		_, _ = fmt.Fprintf(GinkgoWriter, "\nReceived signal: %v. Initiating immediate cleanup...\n", sig)
-		cleanupKindCluster()
+		select {
+		case sig := <-sigChan:
+			_, _ = fmt.Fprintf(GinkgoWriter, "\nReceived signal: %v. Initiating immediate cleanup...\n", sig)
+			cleanupKindCluster()
+		case <-done:
+			return
+		}
 	}()
+
+	return func() {
+		signal.Stop(sigChan)
+		close(done)
+	}
 }
 
 func cleanupKindCluster() {
@@ -126,6 +137,48 @@ var _ = BeforeSuite(func() {
 			Expect(utils.InstallCertManager()).To(Succeed(), "Failed to install CertManager")
 		} else {
 			_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: CertManager is already installed. Skipping installation...\n")
+		}
+	}
+
+	By("auto-detecting cluster state and adjusting component enable flags")
+	if os.Getenv(envKEDAEnabled) == "" {
+		By("checking if KEDA is already installed")
+		cfg.kedaEnabled = !utils.IsKEDAInstalled()
+		if cfg.kedaEnabled {
+			_, _ = fmt.Fprintf(GinkgoWriter, "KEDA is not installed. Enabling KEDA in MIF chart.\n")
+		} else {
+			_, _ = fmt.Fprintf(GinkgoWriter, "KEDA is already installed in the cluster. Disabling KEDA in MIF chart to avoid conflicts.\n")
+		}
+	}
+
+	if os.Getenv(envLWSEnabled) == "" {
+		By("checking if LWS is already installed")
+		cfg.lwsEnabled = !utils.IsLWSInstalled()
+		if cfg.lwsEnabled {
+			_, _ = fmt.Fprintf(GinkgoWriter, "LWS is not installed. Enabling LWS in MIF chart.\n")
+		} else {
+			_, _ = fmt.Fprintf(GinkgoWriter, "LWS is already installed in the cluster. Disabling LWS in MIF chart to avoid conflicts.\n")
+		}
+	}
+
+	if os.Getenv(envOdinCRDEnabled) == "" {
+		By("checking if Odin CRD is already installed")
+		cfg.odinCRDEnabled = !utils.IsOdinCRDInstalled()
+		if cfg.odinCRDEnabled {
+			_, _ = fmt.Fprintf(GinkgoWriter, "Odin CRD is not installed. Enabling Odin CRD in MIF chart.\n")
+		} else {
+			_, _ = fmt.Fprintf(GinkgoWriter, "Odin CRD is already installed in the cluster. Disabling Odin CRD in MIF chart to avoid conflicts.\n")
+		}
+	}
+
+	if os.Getenv(envPrometheusStackEnabled) == "" {
+		By("checking if Prometheus is already installed")
+		if utils.IsPrometheusInstalled() {
+			cfg.prometheusStackEnabled = false
+			_, _ = fmt.Fprintf(GinkgoWriter, "Prometheus is already installed in the cluster. Disabling Prometheus Stack in MIF chart to avoid conflicts.\n")
+		} else {
+			cfg.prometheusStackEnabled = false
+			_, _ = fmt.Fprintf(GinkgoWriter, "Prometheus Stack disabled by default in E2E tests to avoid resource issues. Set %s=true to enable.\n", envPrometheusStackEnabled)
 		}
 	}
 
@@ -264,51 +317,6 @@ var _ = BeforeSuite(func() {
 		}
 	} else {
 		_, _ = fmt.Fprintf(GinkgoWriter, "Skipping Gateway controller installation (%s=true)\n", envSkipGatewayController)
-	}
-
-	By("auto-detecting cluster state and adjusting component enable flags")
-	// If environment variables are not explicitly set, check cluster state and adjust flags accordingly.
-	// This prevents conflicts when components are already installed in the cluster.
-
-	if os.Getenv(envKEDAEnabled) == "" {
-		By("checking if KEDA is already installed")
-		cfg.kedaEnabled = !utils.IsKEDAInstalled()
-		if cfg.kedaEnabled {
-			_, _ = fmt.Fprintf(GinkgoWriter, "KEDA is not installed. Enabling KEDA in MIF chart.\n")
-		} else {
-			_, _ = fmt.Fprintf(GinkgoWriter, "KEDA is already installed in the cluster. Disabling KEDA in MIF chart to avoid conflicts.\n")
-		}
-	}
-
-	if os.Getenv(envLWSEnabled) == "" {
-		By("checking if LWS is already installed")
-		cfg.lwsEnabled = !utils.IsLWSInstalled()
-		if cfg.lwsEnabled {
-			_, _ = fmt.Fprintf(GinkgoWriter, "LWS is not installed. Enabling LWS in MIF chart.\n")
-		} else {
-			_, _ = fmt.Fprintf(GinkgoWriter, "LWS is already installed in the cluster. Disabling LWS in MIF chart to avoid conflicts.\n")
-		}
-	}
-
-	if os.Getenv(envOdinCRDEnabled) == "" {
-		By("checking if Odin CRD is already installed")
-		cfg.odinCRDEnabled = !utils.IsOdinCRDInstalled()
-		if cfg.odinCRDEnabled {
-			_, _ = fmt.Fprintf(GinkgoWriter, "Odin CRD is not installed. Enabling Odin CRD in MIF chart.\n")
-		} else {
-			_, _ = fmt.Fprintf(GinkgoWriter, "Odin CRD is already installed in the cluster. Disabling Odin CRD in MIF chart to avoid conflicts.\n")
-		}
-	}
-
-	if os.Getenv(envPrometheusStackEnabled) == "" {
-		By("checking if Prometheus is already installed")
-		if utils.IsPrometheusInstalled() {
-			cfg.prometheusStackEnabled = false
-			_, _ = fmt.Fprintf(GinkgoWriter, "Prometheus is already installed in the cluster. Disabling Prometheus Stack in MIF chart to avoid conflicts.\n")
-		} else {
-			cfg.prometheusStackEnabled = false
-			_, _ = fmt.Fprintf(GinkgoWriter, "Prometheus Stack disabled by default in E2E tests to avoid resource issues. Set %s=true to enable.\n", envPrometheusStackEnabled)
-		}
 	}
 })
 

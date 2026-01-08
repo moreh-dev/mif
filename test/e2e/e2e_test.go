@@ -624,13 +624,14 @@ func testInferenceAPI() {
 	cmd.Stdout = GinkgoWriter
 	cmd.Stderr = GinkgoWriter
 
-	err := cmd.Start()
-	Expect(err).NotTo(HaveOccurred(), "Failed to start port-forward")
 	defer func() {
 		if cmd.Process != nil {
 			cmd.Process.Kill()
 		}
 	}()
+
+	err := cmd.Start()
+	Expect(err).NotTo(HaveOccurred(), "Failed to start port-forward")
 
 	time.Sleep(2 * time.Second)
 
@@ -653,10 +654,6 @@ func testInferenceAPI() {
 	Expect(err).NotTo(HaveOccurred(), "Failed to marshal request body")
 
 	url := fmt.Sprintf("http://localhost:%s/v1/chat/completions", portForwardPort)
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonBody))
-	Expect(err).NotTo(HaveOccurred(), "Failed to create HTTP request")
-
-	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{
 		Timeout: 2 * time.Minute,
@@ -664,6 +661,10 @@ func testInferenceAPI() {
 
 	var resp *http.Response
 	Eventually(func(g Gomega) {
+		req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonBody))
+		g.Expect(err).NotTo(HaveOccurred(), "Failed to create HTTP request")
+		req.Header.Set("Content-Type", "application/json")
+
 		resp, err = client.Do(req)
 		g.Expect(err).NotTo(HaveOccurred(), "Failed to send HTTP request")
 		g.Expect(resp.StatusCode).To(Equal(http.StatusOK), fmt.Sprintf("Expected status 200, got %d", resp.StatusCode))

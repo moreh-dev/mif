@@ -80,6 +80,8 @@ jobs:
       - name: Set up kubeconfig
         run: |
           mkdir -p ~/.kube
+          # KUBECONFIG_BASE64 secret must be set in repository secrets
+          # It should contain a base64-encoded kubeconfig file for the target cluster
           echo "${{ secrets.KUBECONFIG_BASE64 }}" | base64 --decode > $KUBECONFIG
           chmod 600 $KUBECONFIG
           kubectl cluster-info
@@ -132,6 +134,12 @@ jobs:
           name: mif-e2e-test-reports-${{ github.run_id }}
           path: test-reports
           retention-days: 7
+
+      - name: Wait for termination (debugging)
+        if: always() && inputs.wait_for_termination > 0
+        run: |
+          echo "Waiting ${{ inputs.wait_for_termination }} minutes before termination for debugging..."
+          sleep $(( ${{ inputs.wait_for_termination }} * 60 ))
 
   test-summary:
     name: Test Summary

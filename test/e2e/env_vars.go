@@ -84,16 +84,13 @@ var envVars = []envVarInfo{
 	{envPrometheusStackEnabled, "Enable/disable Prometheus Stack", "false", "Component Enable/Disable", "bool"},
 }
 
-// getUsedEnvVars returns a map of environment variable names used in init().
-// It dynamically generates the map from envVars, excluding optional variables
-// that are not used in the configuration initialization.
+// getUsedEnvVars returns a map of environment variable names that are
+// considered in the validation logic. Currently, this includes all
+// environment variables defined in envVars.
 func getUsedEnvVars() map[string]bool {
 	used := make(map[string]bool)
 	for _, env := range envVars {
-		// Include all variables except optional ones that are not used in init()
-		if env.Name != envKindK8sVersion {
-			used[env.Name] = true
-		}
+		used[env.Name] = true
 	}
 	return used
 }
