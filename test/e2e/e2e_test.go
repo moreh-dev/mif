@@ -115,7 +115,6 @@ var _ = Describe("Prefill-Decode Disaggregation", Ordered, func() {
 	Context("Gateway and InferenceService CR integration", func() {
 		BeforeAll(func() {
 			createWorkloadNamespace()
-			copyMorehRegistrySecret()
 			
 			applyGatewayResource()
 			installHeimdallForTest()
@@ -211,59 +210,15 @@ func createWorkloadNamespace() {
 	if err != nil && !strings.Contains(err.Error(), "AlreadyExists") {
 		Expect(err).NotTo(HaveOccurred(), "Failed to create workload namespace")
 	}
-}
 
-func copyMorehRegistrySecret() {
-	if cfg.mifNamespace == cfg.workloadNamespace {
-		By("skipping moreh-registry secret copy (mif and workload namespaces are the same)")
-		return
-	}
-
-	By("copying moreh-registry secret from mif namespace to workload namespace")
-	cmd := exec.Command("kubectl", "get", "secret", secretNameMorehRegistry,
-		"-n", cfg.mifNamespace,
-		"-o", "json")
-	output, err := utils.Run(cmd)
-	if err != nil {
-		_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to get moreh-registry secret from %s namespace: %v\n", cfg.mifNamespace, err)
-		_, _ = fmt.Fprintf(GinkgoWriter, "Heimdall may fail to pull images if the secret is not available.\n")
-		return
-	}
-
-	var sourceSecret map[string]interface{}
-	if err := json.Unmarshal([]byte(output), &sourceSecret); err != nil {
-		_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to parse secret JSON: %v\n", err)
-		return
-	}
-
-	targetSecret := map[string]interface{}{
-		"apiVersion": "v1",
-		"kind":       "Secret",
-		"metadata": map[string]interface{}{
-			"name": secretNameMorehRegistry,
-		},
-	}
-
-	if secretType, ok := sourceSecret["type"]; ok {
-		targetSecret["type"] = secretType
-	}
-
-	if data, ok := sourceSecret["data"].(map[string]interface{}); ok {
-		targetSecret["data"] = data
-	}
-
-	secretJSON, err := json.Marshal(targetSecret)
-	if err != nil {
-		_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to marshal secret JSON: %v\n", err)
-		return
-	}
-
-	cmd = exec.Command("kubectl", "apply", "-f", "-", "-n", cfg.workloadNamespace)
-	cmd.Stdin = strings.NewReader(string(secretJSON))
-	_, err = utils.Run(cmd)
-	if err != nil {
-		_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to copy moreh-registry secret to %s namespace: %v\n", cfg.workloadNamespace, err)
-		_, _ = fmt.Fprintf(GinkgoWriter, "Heimdall may fail to pull images if the secret is not available.\n")
+	if cfg.mifNamespace != cfg.workloadNamespace {
+		By("adding mif=enabled label to workload namespace for automatic secret copying")
+		cmd = exec.Command("kubectl", "label", "namespace", cfg.workloadNamespace,
+			"mif=enabled", "--overwrite")
+		_, err = utils.Run(cmd)
+		if err != nil {
+			_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to add mif=enabled label to namespace: %v\n", err)
+		}
 	}
 }
 
