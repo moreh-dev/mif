@@ -8,6 +8,14 @@ on:
         required: true
         default: ""
         type: string
+      cluster_type:
+        description: "Cluster type to use for testing"
+        required: true
+        default: "kubeconfig"
+        type: choice
+        options:
+          - kind
+          - kubeconfig
       wait_for_termination:
         description: "Wait time (in minutes) before terminating for debugging"
         required: true
@@ -31,7 +39,7 @@ jobs:
 
     container:
       image: golang:1.24
-      options: --user root
+      options: --user root --privileged -v /var/run/docker.sock:/var/run/docker.sock
 
     outputs:
       test_passed: ${{ steps.validate.outputs.test_passed }}
@@ -77,7 +85,30 @@ jobs:
           curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
           helm version
 
-      - name: Set up kubeconfig
+      - name: Determine cluster type
+        id: cluster_type
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            CLUSTER_TYPE="${{ inputs.cluster_type }}"
+          else
+            CLUSTER_TYPE="kubeconfig"
+          fi
+          echo "cluster_type=$CLUSTER_TYPE" >> "$GITHUB_OUTPUT"
+          echo "Using cluster type: $CLUSTER_TYPE"
+
+      - name: Install Docker and kind (for kind cluster)
+        if: steps.cluster_type.outputs.cluster_type == 'kind'
+        run: |
+          apt-get update
+          apt-get install -y docker.io
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
+          chmod +x ./kind
+          mv ./kind /usr/local/bin/kind
+          kind version
+          docker --version || echo "Docker may not be accessible in container. Ensure Docker socket is mounted or use Docker-in-Docker."
+
+      - name: Set up kubeconfig (for kubeconfig cluster)
+        if: steps.cluster_type.outputs.cluster_type == 'kubeconfig'
         run: |
           mkdir -p ~/.kube
           # KUBECONFIG_BASE64 secret must be set in repository secrets
@@ -108,6 +139,7 @@ jobs:
           MIF_CHART_PATH: ${{ env.MIF_CHART_PATH }}
           TEST_MODEL: ${{ env.TEST_MODEL }}
           KUBECONFIG: ${{ env.KUBECONFIG }}
+          SKIP_KIND: ${{ steps.cluster_type.outputs.cluster_type == 'kubeconfig' && 'true' || 'false' }}
           SKIP_PREREQUISITE: "false"
           SKIP_CLEANUP: "false"
         run: |
