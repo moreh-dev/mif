@@ -361,6 +361,7 @@ spec:
 				break
 			}
 			Expect(err).NotTo(HaveOccurred(), "Failed to parse base YAML")
+			return
 		}
 		if metadata, ok := doc["metadata"].(map[string]interface{}); ok {
 			metadata["namespace"] = cfg.workloadNamespace

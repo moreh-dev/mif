@@ -39,7 +39,7 @@ jobs:
     env:
       KUBECONFIG: /tmp/kubeconfig
       VERSION: ${{ github.event.inputs.version || github.ref_name }}
-      NAMESPACE: mif
+      MIF_NAMESPACE: mif
       MIF_CHART_PATH: deploy/helm/moai-inference-framework
       TEST_MODEL: "Qwen/Qwen3-0.6B"
 
@@ -104,11 +104,11 @@ jobs:
       - name: Run E2E PD-Disaggregation test
         id: validate
         env:
-          NAMESPACE: ${{ env.NAMESPACE }}
+          MIF_NAMESPACE: ${{ env.MIF_NAMESPACE }}
           MIF_CHART_PATH: ${{ env.MIF_CHART_PATH }}
           TEST_MODEL: ${{ env.TEST_MODEL }}
           KUBECONFIG: ${{ env.KUBECONFIG }}
-          SKIP_CERT_MANAGER: "false"
+          SKIP_PREREQUISITE: "false"
           SKIP_CLEANUP: "false"
         run: |
           go test -tags=e2e -v ./test/e2e/... -timeout 30m
