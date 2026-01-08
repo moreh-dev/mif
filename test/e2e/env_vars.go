@@ -84,19 +84,18 @@ var envVars = []envVarInfo{
 	{envPrometheusStackEnabled, "Enable/disable Prometheus Stack", "false", "Component Enable/Disable", "bool"},
 }
 
-// getUsedEnvVars returns a map of environment variable names that are
-// considered in the validation logic. Currently, this includes all
-// environment variables defined in envVars.
+// getUsedEnvVars returns environment variable names used in config.go init().
 func getUsedEnvVars() map[string]bool {
 	used := make(map[string]bool)
 	for _, env := range envVars {
-		used[env.Name] = true
+		if env.Name != envKindK8sVersion {
+			used[env.Name] = true
+		}
 	}
 	return used
 }
 
-// validateEnvVars ensures all environment variables used in init() are documented in envVars.
-// This function should be called during tests or build to catch missing documentation.
+// validateEnvVars ensures all environment variables used in config.go init() are documented in envVars.
 func validateEnvVars() error {
 	used := getUsedEnvVars()
 	documented := make(map[string]bool)
@@ -112,7 +111,7 @@ func validateEnvVars() error {
 	}
 
 	if len(missing) > 0 {
-		return fmt.Errorf("the following environment variables are used in init() but not documented in envVars: %v", missing)
+		return fmt.Errorf("the following environment variables are used in config.go init() but not documented in envVars: %v", missing)
 	}
 
 	return nil

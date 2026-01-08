@@ -1,5 +1,5 @@
-//go:build e2e
-// +build e2e
+//go:build e2e && !printenv
+// +build e2e,!printenv
 
 package e2e
 
