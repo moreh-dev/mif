@@ -152,7 +152,6 @@ jobs:
           fi
 
       - name: Collect test reports
-        if: always()
         run: |
           mkdir -p test-reports
           if [ -d "./test/e2e" ]; then
@@ -161,14 +160,13 @@ jobs:
 
       - name: Upload test reports
         uses: actions/upload-artifact@v4
-        if: always()
         with:
           name: mif-e2e-test-reports-${{ github.run_id }}
           path: test-reports
           retention-days: 7
 
       - name: Wait for termination (debugging)
-        if: always() && inputs.wait_for_termination > 0
+        if: github.event_name == 'workflow_dispatch' && inputs.wait_for_termination > 0
         run: |
           echo "Waiting ${{ inputs.wait_for_termination }} minutes before termination for debugging..."
           sleep $(( ${{ inputs.wait_for_termination }} * 60 ))
@@ -177,7 +175,6 @@ jobs:
     name: Test Summary
     runs-on: ubuntu-latest
     needs: [e2e-test]
-    if: always()
 
     steps:
       - name: Check test result

@@ -428,9 +428,7 @@ func createInferenceServiceValuesFile() (string, error) {
 
 	imageRepo, imageTag := getInferenceImageInfo()
 	var image string
-	if imageRepo == "" && imageTag == "" {
-		image = ""
-	} else {
+	if imageRepo != "" && imageTag != "" {
 		image = fmt.Sprintf("%s:%s", imageRepo, imageTag)
 	}
 
