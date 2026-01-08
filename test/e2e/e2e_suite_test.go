@@ -570,7 +570,6 @@ gateway:
 		return "", fmt.Errorf("failed to parse base Heimdall values YAML: %w", err)
 	}
 
-	// Set dynamic values after parsing
 	if global, ok := values["global"].(map[string]interface{}); ok {
 		if imagePullSecrets, ok := global["imagePullSecrets"].([]interface{}); ok && len(imagePullSecrets) > 0 {
 			if secret, ok := imagePullSecrets[0].(map[string]interface{}); ok {
