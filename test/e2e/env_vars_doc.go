@@ -10,6 +10,7 @@ import (
 
 // envVars, getUsedEnvVars, and validateEnvVars are defined in env_vars.go
 
+// PrintEnvVarsHelp prints documentation for E2E test environment variables.
 func PrintEnvVarsHelp() {
 	// Validate that all used env vars are documented
 	if err := validateEnvVars(); err != nil {

@@ -89,6 +89,7 @@ func InstallCertManager() error {
 	return err
 }
 
+// IsCertManagerCRDsInstalled checks if cert-manager CRDs are installed.
 func IsCertManagerCRDsInstalled() bool {
 	certManagerCRDs := []string{
 		"certificates.cert-manager.io",
@@ -129,6 +130,7 @@ func IsCertManagerCRDsInstalled() bool {
 	return true
 }
 
+// IsKEDAInstalled checks if KEDA is installed.
 func IsKEDAInstalled() bool {
 	kedaCRDs := []string{
 		"scaledobjects.keda.sh",
@@ -179,6 +181,7 @@ func IsKEDAInstalled() bool {
 	return false
 }
 
+// IsLWSInstalled checks if LWS is installed.
 func IsLWSInstalled() bool {
 	lwsCRDs := []string{
 		"leaderworkersets.leaderworkerset.x-k8s.io",
@@ -219,6 +222,7 @@ func IsLWSInstalled() bool {
 	return false
 }
 
+// IsOdinCRDInstalled checks if Odin CRDs are installed.
 func IsOdinCRDInstalled() bool {
 	odinCRDs := []string{
 		"inferenceservices.odin.moreh.io",
@@ -262,6 +266,7 @@ func IsOdinCRDInstalled() bool {
 	return false
 }
 
+// IsPrometheusInstalled checks if Prometheus Stack is installed.
 func IsPrometheusInstalled() bool {
 	prometheusCRDs := []string{
 		"prometheuses.monitoring.coreos.com",
@@ -316,6 +321,7 @@ func IsPrometheusInstalled() bool {
 	return false
 }
 
+// IsMIFInstalled checks if moai-inference-framework is installed in the given namespace.
 func IsMIFInstalled(namespace string) bool {
 	cmd := exec.Command("helm", "list", "-n", namespace, "-q", "-f", "^moai-inference-framework$")
 	output, err := Run(cmd)
@@ -325,6 +331,7 @@ func IsMIFInstalled(namespace string) bool {
 	return false
 }
 
+// IsPresetInstalled checks if moai-inference-preset is installed in the given namespace.
 func IsPresetInstalled(namespace string) bool {
 	cmd := exec.Command("helm", "list", "-n", namespace, "-q", "-f", "^moai-inference-preset$")
 	output, err := Run(cmd)
@@ -334,6 +341,7 @@ func IsPresetInstalled(namespace string) bool {
 	return false
 }
 
+// IsGatewayAPIInstalled checks if Gateway API is installed.
 func IsGatewayAPIInstalled() bool {
 	cmd := exec.Command("kubectl", "get", "crd", "gateways.gateway.networking.k8s.io", "--ignore-not-found")
 	output, err := Run(cmd)
@@ -343,6 +351,7 @@ func IsGatewayAPIInstalled() bool {
 	return false
 }
 
+// IsGatewayInferenceExtensionInstalled checks if Gateway Inference Extension is installed.
 func IsGatewayInferenceExtensionInstalled() bool {
 	cmd := exec.Command("kubectl", "get", "crd", "inferencepools.inference.networking.k8s.io", "--ignore-not-found")
 	output, err := Run(cmd)
@@ -352,6 +361,7 @@ func IsGatewayInferenceExtensionInstalled() bool {
 	return false
 }
 
+// IsIstioInstalled checks if Istio is installed.
 func IsIstioInstalled() bool {
 	cmd := exec.Command("helm", "list", "-n", "istio-system", "-q", "-f", "^istiod$|^istio-base$")
 	output, err := Run(cmd)
@@ -361,6 +371,7 @@ func IsIstioInstalled() bool {
 	return false
 }
 
+// IsKgatewayInstalled checks if KGateway is installed.
 func IsKgatewayInstalled() bool {
 	cmd := exec.Command("helm", "list", "-n", "kgateway-system", "-q", "-f", "^kgateway$|^kgateway-crds$")
 	output, err := Run(cmd)
@@ -370,6 +381,7 @@ func IsKgatewayInstalled() bool {
 	return false
 }
 
+// GetNonEmptyLines splits output into lines and returns non-empty lines.
 func GetNonEmptyLines(output string) []string {
 	var res []string
 	elements := strings.Split(output, "\n")
@@ -382,6 +394,7 @@ func GetNonEmptyLines(output string) []string {
 	return res
 }
 
+// GetProjectDir returns the project root directory by searching for go.mod.
 func GetProjectDir() (string, error) {
 	wd, err := os.Getwd()
 	if err != nil {
@@ -405,6 +418,7 @@ func GetProjectDir() (string, error) {
 	}
 }
 
+// CreateKindCluster creates a kind cluster with the given name.
 func CreateKindCluster(clusterName string) error {
 	k8sVersion := os.Getenv("KIND_K8S_VERSION")
 	args := []string{"create", "cluster", "--name", clusterName, "-v", "1"}
@@ -443,12 +457,14 @@ func CreateKindCluster(clusterName string) error {
 	return nil
 }
 
+// DeleteKindCluster deletes a kind cluster with the given name.
 func DeleteKindCluster(clusterName string) error {
 	cmd := exec.Command("kind", "delete", "cluster", "--name", clusterName)
 	_, err := Run(cmd)
 	return err
 }
 
+// IsKindClusterExists checks if a kind cluster with the given name exists.
 func IsKindClusterExists(clusterName string) bool {
 	cmd := exec.Command("kind", "get", "clusters")
 	output, err := Run(cmd)
@@ -464,6 +480,7 @@ func IsKindClusterExists(clusterName string) bool {
 	return false
 }
 
+// InstallHeimdall installs Heimdall in the given namespace.
 func InstallHeimdall(namespace string, valuesPath string) error {
 	By("adding moreh Helm repository")
 	cmd := exec.Command("helm", "repo", "add", "moreh", "https://moreh-dev.github.io/helm-charts")
@@ -495,12 +512,14 @@ func InstallHeimdall(namespace string, valuesPath string) error {
 	return err
 }
 
+// UninstallHeimdall uninstalls Heimdall from the given namespace.
 func UninstallHeimdall(namespace string) error {
 	cmd := exec.Command("helm", "uninstall", "heimdall", "-n", namespace, "--ignore-not-found=true")
 	_, err := Run(cmd)
 	return err
 }
 
+// DeployMIFPreset deploys moai-inference-preset in the given namespace.
 func DeployMIFPreset(namespace string, chartPath string) error {
 	By("deploying moai-inference-preset")
 	helmArgs := []string{
@@ -515,12 +534,14 @@ func DeployMIFPreset(namespace string, chartPath string) error {
 	return err
 }
 
+// UninstallMIFPreset uninstalls moai-inference-preset from the given namespace.
 func UninstallMIFPreset(namespace string) error {
 	cmd := exec.Command("helm", "uninstall", "moai-inference-preset", "-n", namespace, "--ignore-not-found=true")
 	_, err := Run(cmd)
 	return err
 }
 
+// InstallGatewayAPI installs Gateway API.
 func InstallGatewayAPI() error {
 	cmd := exec.Command("kubectl", "apply", "--server-side",
 		"-f", "https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.3.0/standard-install.yaml")
@@ -528,6 +549,7 @@ func InstallGatewayAPI() error {
 	return err
 }
 
+// InstallGatewayInferenceExtension installs Gateway Inference Extension.
 func InstallGatewayInferenceExtension() error {
 	cmd := exec.Command("kubectl", "apply",
 		"-f", "https://github.com/kubernetes-sigs/gateway-api-inference-extension/releases/download/v1.1.0/manifests.yaml")
@@ -535,6 +557,7 @@ func InstallGatewayInferenceExtension() error {
 	return err
 }
 
+// InstallKgatewayCRDs installs KGateway CRDs.
 func InstallKgatewayCRDs() error {
 	cmd := exec.Command("helm", "upgrade", "-i", "kgateway-crds",
 		"oci://cr.kgateway.dev/kgateway-dev/charts/kgateway-crds",
@@ -545,6 +568,7 @@ func InstallKgatewayCRDs() error {
 	return err
 }
 
+// InstallKgateway installs KGateway.
 func InstallKgateway(valuesPath string) error {
 	helmArgs := []string{
 		"upgrade", "-i", "kgateway",
@@ -560,6 +584,7 @@ func InstallKgateway(valuesPath string) error {
 	return err
 }
 
+// InstallIstioBase installs Istio base.
 func InstallIstioBase() error {
 	cmd := exec.Command("helm", "repo", "add", "istio", "https://istio-release.storage.googleapis.com/charts")
 	if _, err := Run(cmd); err != nil && !strings.Contains(err.Error(), "already exists") {
@@ -579,6 +604,7 @@ func InstallIstioBase() error {
 	return err
 }
 
+// InstallIstiod installs Istiod.
 func InstallIstiod(valuesPath string) error {
 	helmArgs := []string{
 		"upgrade", "-i", "istiod", "istio/istiod",
@@ -593,6 +619,7 @@ func InstallIstiod(valuesPath string) error {
 	return err
 }
 
+// InstallInferenceService applies an InferenceService manifest to the given namespace.
 func InstallInferenceService(namespace, valuesPath string) error {
 	if valuesPath == "" {
 		return fmt.Errorf("inference service manifest path is required (e.g., path/to/manifest.yaml)")
@@ -612,6 +639,7 @@ func InstallInferenceService(namespace, valuesPath string) error {
 	return err
 }
 
+// UninstallGatewayController uninstalls the gateway controller for the given gateway class.
 func UninstallGatewayController(gatewayClass string) error {
 	switch gatewayClass {
 	case "istio":
@@ -637,6 +665,7 @@ func UninstallGatewayController(gatewayClass string) error {
 	}
 }
 
+// UninstallGatewayInferenceExtension uninstalls Gateway Inference Extension.
 func UninstallGatewayInferenceExtension() error {
 	cmd := exec.Command("kubectl", "delete",
 		"-f", "https://github.com/kubernetes-sigs/gateway-api-inference-extension/releases/download/v1.1.0/manifests.yaml",
@@ -645,6 +674,7 @@ func UninstallGatewayInferenceExtension() error {
 	return err
 }
 
+// UninstallGatewayAPI uninstalls Gateway API.
 func UninstallGatewayAPI() error {
 	cmd := exec.Command("kubectl", "delete",
 		"-f", "https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.3.0/standard-install.yaml",
