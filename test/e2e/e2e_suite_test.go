@@ -20,9 +20,6 @@ import (
 	"github.com/moreh-dev/mif/test/utils"
 )
 
-// Config and environment variable documentation are defined in:
-// - config.go: testConfig struct and initialization
-// - env_vars_doc.go: environment variable documentation and validation
 
 func TestE2E(t *testing.T) {
 	RegisterFailHandler(Fail)

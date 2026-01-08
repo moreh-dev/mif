@@ -7,9 +7,6 @@ import (
 	"os"
 )
 
-// testConfig holds all configuration values for E2E tests.
-// Values are initialized from environment variables in the init() function.
-
 type testConfig struct {
 	skipPrerequisite        bool
 	isCertManagerAlreadyInstalled bool
@@ -88,7 +85,6 @@ func init() {
 	}
 }
 
-// getEnv retrieves an environment variable value or returns the default if not set.
 func getEnv(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
 		return value
@@ -96,8 +92,6 @@ func getEnv(key, defaultValue string) string {
 	return defaultValue
 }
 
-// getEnvBool retrieves a boolean environment variable value.
-// Returns true only if the value is exactly "true", otherwise returns the default.
 func getEnvBool(key string, defaultValue bool) bool {
 	value := os.Getenv(key)
 	if value == "" {

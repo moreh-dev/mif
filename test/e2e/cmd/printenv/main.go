@@ -1,8 +1,6 @@
 //go:build printenv && e2e
 // +build printenv,e2e
 
-// This file provides a main function to print environment variable documentation.
-// It uses PrintEnvVarsHelp from the e2e package
 package main
 
 import (

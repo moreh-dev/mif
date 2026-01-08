@@ -5,8 +5,6 @@ package e2e
 
 import "fmt"
 
-// Environment variable names used in the test configuration.
-// These constants ensure consistency across the codebase.
 const (
 	envSkipKind            = "SKIP_KIND"
 	envSkipPrerequisite    = "SKIP_PREREQUISITE"

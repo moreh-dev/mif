@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -377,7 +378,7 @@ spec:
 		}
 		Expect(encoder.Encode(doc)).To(Succeed())
 	}
-	encoder.Close()
+	Expect(encoder.Close()).To(Succeed())
 
 	cmd := exec.Command("kubectl", "apply", "-f", "-")
 	cmd.Stdin = strings.NewReader(yamlContent.String())
@@ -538,14 +539,12 @@ spec:
 		return "", fmt.Errorf("invalid Odin InferenceService manifest: malformed main container")
 	}
 
-	// Set imagePullSecrets
 	if imagePullSecrets, ok := podSpec["imagePullSecrets"].([]interface{}); ok && len(imagePullSecrets) > 0 {
 		if secret, ok := imagePullSecrets[0].(map[string]interface{}); ok {
 			secret["name"] = secretNameMorehRegistry
 		}
 	}
 
-	// Set image only if provided, otherwise use YAML default
 	if image != "" {
 		mainContainer["image"] = image
 	}
@@ -561,7 +560,6 @@ spec:
 			"8000",
 		}
 
-		// Set initialDelaySeconds to 10 for kind cluster
 		if readinessProbe, ok := mainContainer["readinessProbe"].(map[string]interface{}); ok {
 			readinessProbe["initialDelaySeconds"] = 10
 		}
@@ -571,6 +569,23 @@ spec:
 		mainContainer["resources"] = resources
 	} else {
 		delete(mainContainer, "resources")
+	}
+
+	if env, ok := mainContainer["env"].([]interface{}); ok {
+		var filteredEnv []interface{}
+		for _, envVar := range env {
+			if envMap, ok := envVar.(map[string]interface{}); ok {
+				if value, ok := envMap["value"].(string); ok && value == "<huggingfaceToken>" {
+					continue
+				}
+				filteredEnv = append(filteredEnv, envVar)
+			}
+		}
+		if len(filteredEnv) > 0 {
+			mainContainer["env"] = filteredEnv
+		} else {
+			delete(mainContainer, "env")
+		}
 	}
 
 	if cfg.hfToken != "" || cfg.hfEndpoint != "" {
@@ -590,7 +605,7 @@ spec:
 		if len(envList) > 0 {
 			mainContainer["env"] = envList
 		}
-	} else {
+	} else if _, exists := mainContainer["env"]; !exists {
 		delete(mainContainer, "env")
 	}
 
@@ -705,15 +720,27 @@ func testInferenceAPI() {
 	cmd.Stderr = GinkgoWriter
 
 	defer func() {
-		if cmd.Process != nil {
-			cmd.Process.Kill()
+		if cmd.Process == nil {
+			return
+		}
+		if cmd.ProcessState != nil && cmd.ProcessState.Exited() {
+			return
+		}
+		if err := cmd.Process.Kill(); err != nil {
+			_, _ = fmt.Fprintf(GinkgoWriter, "failed to kill port-forward process: %v\n", err)
 		}
 	}()
 
 	err := cmd.Start()
 	Expect(err).NotTo(HaveOccurred(), "Failed to start port-forward")
 
-	time.Sleep(2 * time.Second)
+	Eventually(func(g Gomega) {
+		conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%s", portForwardPort), 1*time.Second)
+		if err == nil {
+			conn.Close()
+		}
+		g.Expect(err).NotTo(HaveOccurred(), "port-forward not ready")
+	}, 30*time.Second, 1*time.Second).Should(Succeed())
 
 	By("sending chat completion request to inference endpoint")
 	requestBody := map[string]interface{}{
