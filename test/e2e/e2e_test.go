@@ -38,8 +38,23 @@ var _ = Describe("Prefill-Decode Disaggregation", Ordered, func() {
 
 		By("cleaning up test resources")
 		cmd := exec.Command("kubectl", "delete", "inferenceservice", inferenceServiceName,
-			"-n", cfg.testNamespace, "--ignore-not-found=true")
+			"-n", cfg.workloadNamespace, "--ignore-not-found=true")
 		_, _ = utils.Run(cmd)
+
+		By(fmt.Sprintf("deleting workload namespace %s", cfg.workloadNamespace))
+		cmd = exec.Command("kubectl", "delete", "ns", cfg.workloadNamespace, "--timeout=60s", "--ignore-not-found=true")
+		output, err := utils.Run(cmd)
+		if err != nil {
+			By("attempting to force delete namespace by removing finalizers")
+			cmd = exec.Command("kubectl", "patch", "namespace", cfg.workloadNamespace,
+				"--type=json", "-p", `[{"op": "replace", "path": "/spec/finalizers", "value": []}]`, "--ignore-not-found=true")
+			_, _ = utils.Run(cmd)
+
+			cmd = exec.Command("kubectl", "delete", "ns", cfg.workloadNamespace, "--timeout=30s", "--ignore-not-found=true")
+			_, _ = utils.Run(cmd)
+		} else if output != "" {
+			_, _ = fmt.Fprintf(GinkgoWriter, "Namespace deletion output: %s\n", output)
+		}
 	}
 
 	AfterAll(func() {
@@ -62,13 +77,13 @@ var _ = Describe("Prefill-Decode Disaggregation", Ordered, func() {
 			By("validating that Odin controller is running")
 			verifyOdinController := func(g Gomega) {
 				cmd := exec.Command("kubectl", "get", "deployment",
-					"-n", cfg.testNamespace,
+					"-n", cfg.mifNamespace,
 					"-l", "app.kubernetes.io/name=odin",
 					"-o", "jsonpath={.items[0].status.conditions[?(@.type=='Available')].status}")
 				output, err := utils.Run(cmd)
 				if err != nil || strings.TrimSpace(output) == "" {
 					cmd = exec.Command("kubectl", "get", "deployment",
-						"-n", cfg.testNamespace,
+						"-n", cfg.mifNamespace,
 						"-o", "jsonpath={.items[?(@.metadata.name=~\"odin.*\")].status.conditions[?(@.type=='Available')].status}")
 					output, err = utils.Run(cmd)
 				}
@@ -82,7 +97,7 @@ var _ = Describe("Prefill-Decode Disaggregation", Ordered, func() {
 			By("waiting for all pods to be ready")
 			verifyAllPodsReady := func(g Gomega) {
 				cmd := exec.Command("kubectl", "get", "pods",
-					"-n", cfg.testNamespace,
+					"-n", cfg.mifNamespace,
 					"--field-selector=status.phase!=Succeeded",
 					"-o", "jsonpath={.items[*].status.conditions[?(@.type=='Ready')].status}")
 				output, err := utils.Run(cmd)
@@ -98,6 +113,9 @@ var _ = Describe("Prefill-Decode Disaggregation", Ordered, func() {
 
 	Context("Gateway and InferenceService CR integration", func() {
 		BeforeAll(func() {
+			createWorkloadNamespace()
+			copyMorehRegistrySecret()
+			
 			applyGatewayResource()
 			installHeimdallForTest()
 			installInferenceServiceForTest()
@@ -156,13 +174,13 @@ func getGPUResources(requests, limits string) map[string]interface{} {
 func collectDebugInfo() {
 	By("fetching pod logs")
 	cmd := exec.Command("kubectl", "get", "pods",
-		"-n", cfg.testNamespace,
+		"-n", cfg.mifNamespace,
 		"-o", "jsonpath={.items[*].metadata.name}")
 	output, err := utils.Run(cmd)
 	if err == nil {
 		podNames := strings.Fields(output)
 		for _, podName := range podNames {
-			cmd = exec.Command("kubectl", "logs", podName, "-n", cfg.testNamespace, "--all-containers=true")
+			cmd = exec.Command("kubectl", "logs", podName, "-n", cfg.mifNamespace, "--all-containers=true")
 			logs, logErr := utils.Run(cmd)
 			if logErr == nil {
 				_, _ = fmt.Fprintf(GinkgoWriter, "Pod %s logs:\n%s\n", podName, logs)
@@ -171,17 +189,80 @@ func collectDebugInfo() {
 	}
 
 	By("fetching Kubernetes events")
-	cmd = exec.Command("kubectl", "get", "events", "-n", cfg.testNamespace, "--sort-by=.lastTimestamp")
+	cmd = exec.Command("kubectl", "get", "events", "-n", cfg.mifNamespace, "--sort-by=.lastTimestamp")
 	eventsOutput, err := utils.Run(cmd)
 	if err == nil {
 		_, _ = fmt.Fprintf(GinkgoWriter, "Kubernetes events:\n%s\n", eventsOutput)
 	}
 
 	By("fetching resource status")
-	cmd = exec.Command("kubectl", "get", "all", "-n", cfg.testNamespace)
+	cmd = exec.Command("kubectl", "get", "all", "-n", cfg.mifNamespace)
 	allOutput, err := utils.Run(cmd)
 	if err == nil {
 		_, _ = fmt.Fprintf(GinkgoWriter, "All resources:\n%s\n", allOutput)
+	}
+}
+
+func createWorkloadNamespace() {
+	By("creating workload namespace")
+	cmd := exec.Command("kubectl", "create", "ns", cfg.workloadNamespace)
+	_, err := utils.Run(cmd)
+	if err != nil && !strings.Contains(err.Error(), "AlreadyExists") {
+		Expect(err).NotTo(HaveOccurred(), "Failed to create workload namespace")
+	}
+}
+
+func copyMorehRegistrySecret() {
+	if cfg.mifNamespace == cfg.workloadNamespace {
+		By("skipping moreh-registry secret copy (mif and workload namespaces are the same)")
+		return
+	}
+
+	By("copying moreh-registry secret from mif namespace to workload namespace")
+	cmd := exec.Command("kubectl", "get", "secret", secretNameMorehRegistry,
+		"-n", cfg.mifNamespace,
+		"-o", "json")
+	output, err := utils.Run(cmd)
+	if err != nil {
+		_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to get moreh-registry secret from %s namespace: %v\n", cfg.mifNamespace, err)
+		_, _ = fmt.Fprintf(GinkgoWriter, "Heimdall may fail to pull images if the secret is not available.\n")
+		return
+	}
+
+	var sourceSecret map[string]interface{}
+	if err := json.Unmarshal([]byte(output), &sourceSecret); err != nil {
+		_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to parse secret JSON: %v\n", err)
+		return
+	}
+
+	targetSecret := map[string]interface{}{
+		"apiVersion": "v1",
+		"kind":       "Secret",
+		"metadata": map[string]interface{}{
+			"name": secretNameMorehRegistry,
+		},
+	}
+
+	if secretType, ok := sourceSecret["type"]; ok {
+		targetSecret["type"] = secretType
+	}
+
+	if data, ok := sourceSecret["data"].(map[string]interface{}); ok {
+		targetSecret["data"] = data
+	}
+
+	secretJSON, err := json.Marshal(targetSecret)
+	if err != nil {
+		_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to marshal secret JSON: %v\n", err)
+		return
+	}
+
+	cmd = exec.Command("kubectl", "apply", "-f", "-", "-n", cfg.workloadNamespace)
+	cmd.Stdin = strings.NewReader(string(secretJSON))
+	_, err = utils.Run(cmd)
+	if err != nil {
+		_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to copy moreh-registry secret to %s namespace: %v\n", cfg.workloadNamespace, err)
+		_, _ = fmt.Fprintf(GinkgoWriter, "Heimdall may fail to pull images if the secret is not available.\n")
 	}
 }
 
@@ -282,7 +363,7 @@ spec:
 			Expect(err).NotTo(HaveOccurred(), "Failed to parse base YAML")
 		}
 		if metadata, ok := doc["metadata"].(map[string]interface{}); ok {
-			metadata["namespace"] = cfg.testNamespace
+			metadata["namespace"] = cfg.workloadNamespace
 		}
 		yamlDocs = append(yamlDocs, doc)
 	}
@@ -305,7 +386,7 @@ spec:
 	By("waiting for Gateway pods to be ready")
 	Eventually(func(g Gomega) {
 		cmd := exec.Command("kubectl", "get", "pods",
-			"-n", cfg.testNamespace,
+			"-n", cfg.workloadNamespace,
 			"-l", "gateway.networking.k8s.io/gateway-name=mif",
 			"-o", "jsonpath={.items[*].status.phase}")
 		output, err := utils.Run(cmd)
@@ -324,12 +405,12 @@ func installHeimdallForTest() {
 	Expect(err).NotTo(HaveOccurred(), "Failed to create Heimdall values file for test")
 
 	By("installing Heimdall for test")
-	Expect(utils.InstallHeimdall(cfg.testNamespace, heimdallValuesPath)).To(Succeed(), "Failed to install Heimdall for test")
+	Expect(utils.InstallHeimdall(cfg.workloadNamespace, heimdallValuesPath)).To(Succeed(), "Failed to install Heimdall for test")
 
 	By("waiting for Heimdall deployment to be ready")
 	Eventually(func(g Gomega) {
 		cmd := exec.Command("kubectl", "get", "deployment",
-			"-n", cfg.testNamespace,
+			"-n", cfg.workloadNamespace,
 			"-l", "app.kubernetes.io/instance=heimdall",
 			"-o", "jsonpath={.items[0].status.conditions[?(@.type=='Available')].status}")
 		output, err := utils.Run(cmd)
@@ -430,7 +511,7 @@ spec:
 
 	if md, ok := manifest["metadata"].(map[string]interface{}); ok {
 		md["name"] = inferenceServiceName
-		md["namespace"] = cfg.testNamespace
+		md["namespace"] = cfg.workloadNamespace
 	}
 
 	spec, ok := manifest["spec"].(map[string]interface{})
@@ -533,13 +614,13 @@ func installInferenceServiceForTest() {
 	Expect(err).NotTo(HaveOccurred(), "Failed to create Odin InferenceService manifest file for test")
 
 	By("installing Odin InferenceService for test")
-	Expect(utils.InstallInferenceService(cfg.testNamespace, manifestPath)).To(Succeed(), "Failed to install Odin InferenceService for test")
+	Expect(utils.InstallInferenceService(cfg.workloadNamespace, manifestPath)).To(Succeed(), "Failed to install Odin InferenceService for test")
 
 	By("waiting for Odin InferenceService deployment to be ready")
 	Eventually(func(g Gomega) {
 		cmd := exec.Command("kubectl", "get", "deployment",
 			inferenceServiceName,
-			"-n", cfg.testNamespace,
+			"-n", cfg.workloadNamespace,
 			"-o", "jsonpath={.status.conditions[?(@.type=='Available')].status}")
 		output, err := utils.Run(cmd)
 		g.Expect(err).NotTo(HaveOccurred())
@@ -551,21 +632,21 @@ func verifyInferenceEndpoint() {
 	By("verifying Gateway service exists")
 	Eventually(func(g Gomega) {
 		cmd := exec.Command("kubectl", "get", "service",
-			"-n", cfg.testNamespace,
+			"-n", cfg.workloadNamespace,
 			"-l", "gateway.networking.k8s.io/gateway-name=mif",
 			"-o", "jsonpath={.items[0].metadata.name}")
 		output, err := utils.Run(cmd)
 		if err != nil || strings.TrimSpace(output) == "" {
 			cmd = exec.Command("kubectl", "get", "service",
 				"mif",
-				"-n", cfg.testNamespace,
+				"-n", cfg.workloadNamespace,
 				"-o", "jsonpath={.metadata.name}")
 			output, err = utils.Run(cmd)
 		}
 		if err != nil || strings.TrimSpace(output) == "" {
 			cmd = exec.Command("kubectl", "get", "service",
 				"gateway-mif",
-				"-n", cfg.testNamespace,
+				"-n", cfg.workloadNamespace,
 				"-o", "jsonpath={.metadata.name}")
 			output, err = utils.Run(cmd)
 		}
@@ -576,7 +657,7 @@ func verifyInferenceEndpoint() {
 	By("verifying inference-service decode pods are running")
 	Eventually(func(g Gomega) {
 		cmd := exec.Command("kubectl", "get", "pods",
-			"-n", cfg.testNamespace,
+			"-n", cfg.workloadNamespace,
 			"-l", fmt.Sprintf("app.kubernetes.io/name=%s", inferenceServiceName),
 			"--field-selector=status.phase=Running",
 			"--no-headers", "-o", "custom-columns=:metadata.name")
@@ -592,21 +673,21 @@ func testInferenceAPI() {
 	var serviceName string
 	Eventually(func(g Gomega) {
 		cmd := exec.Command("kubectl", "get", "service",
-			"-n", cfg.testNamespace,
+			"-n", cfg.workloadNamespace,
 			"-l", "gateway.networking.k8s.io/gateway-name=mif",
 			"-o", "jsonpath={.items[0].metadata.name}")
 		output, err := utils.Run(cmd)
 		if err != nil || strings.TrimSpace(output) == "" {
 			cmd = exec.Command("kubectl", "get", "service",
 				"mif",
-				"-n", cfg.testNamespace,
+				"-n", cfg.workloadNamespace,
 				"-o", "jsonpath={.metadata.name}")
 			output, err = utils.Run(cmd)
 		}
 		if err != nil || strings.TrimSpace(output) == "" {
 			cmd = exec.Command("kubectl", "get", "service",
 				"gateway-mif",
-				"-n", cfg.testNamespace,
+				"-n", cfg.workloadNamespace,
 				"-o", "jsonpath={.metadata.name}")
 			output, err = utils.Run(cmd)
 		}
@@ -618,7 +699,7 @@ func testInferenceAPI() {
 	By("setting up port-forward to Gateway service")
 	portForwardPort := "8000"
 	cmd := exec.Command("kubectl", "port-forward",
-		"-n", cfg.testNamespace,
+		"-n", cfg.workloadNamespace,
 		fmt.Sprintf("service/%s", serviceName),
 		fmt.Sprintf("%s:80", portForwardPort))
 	cmd.Stdout = GinkgoWriter

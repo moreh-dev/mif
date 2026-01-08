@@ -50,5 +50,5 @@ func PrintEnvVarsHelp() {
 	fmt.Println("  - kubeconfig: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/quickstart/moreh-vllm:20250915.1")
 	fmt.Println()
 	fmt.Println("Example:")
-	fmt.Println("  SKIP_KIND=true SKIP_CERT_MANAGER=true make test-e2e")
+	fmt.Println("  SKIP_KIND=true SKIP_PREREQUISITE=true make test-e2e")
 }

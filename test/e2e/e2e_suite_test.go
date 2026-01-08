@@ -54,11 +54,6 @@ func setupInterruptHandler() func() {
 }
 
 func cleanupKindCluster() {
-	if cfg.skipKindDelete {
-		_, _ = fmt.Fprintf(GinkgoWriter, "Skipping kind cluster deletion (%s=true)\n", envSkipKindDelete)
-		return
-	}
-
 	if cfg.skipKind {
 		return
 	}
@@ -129,7 +124,7 @@ var _ = BeforeSuite(func() {
 		_, _ = fmt.Fprintf(GinkgoWriter, "Using existing cluster (kubeconfig). Resource cleanup will be skipped for safety.\n")
 	}
 
-	if !cfg.skipCertManagerInstall {
+	if !cfg.skipPrerequisite {
 		By("checking if cert manager is installed already")
 		cfg.isCertManagerAlreadyInstalled = utils.IsCertManagerCRDsInstalled()
 		if !cfg.isCertManagerAlreadyInstalled {
@@ -182,77 +177,73 @@ var _ = BeforeSuite(func() {
 		}
 	}
 
-	if !cfg.skipMIFDeploy {
-		By("creating test namespace")
-		cmd := exec.Command("kubectl", "create", "ns", cfg.testNamespace)
-		_, err := utils.Run(cmd)
-		if err != nil && !strings.Contains(err.Error(), "AlreadyExists") {
-			Expect(err).NotTo(HaveOccurred(), "Failed to create namespace")
-		}
-
-		By("checking if MIF is already installed")
-		cfg.isMIFAlreadyInstalled = utils.IsMIFInstalled(cfg.testNamespace)
-		if cfg.isMIFAlreadyInstalled {
-			_, _ = fmt.Fprintf(GinkgoWriter, "MIF is already installed in namespace %s. Skipping installation...\n", cfg.testNamespace)
-		} else {
-			By("deploying MIF infrastructure via Helm")
-
-			if cfg.awsAccessKeyID != "" && cfg.awsSecretAccessKey != "" {
-				By("scheduling asynchronous ecrTokenRefresher execution to create moreh-registry secret")
-				go func(ns string) {
-					defer GinkgoRecover()
-					ensureECRTokenRefresherSecret(ns)
-				}(cfg.testNamespace)
-			} else {
-				_, _ = fmt.Fprintf(
-					GinkgoWriter,
-					"%s or %s is not set; skipping ecrTokenRefresher configuration for MIF chart.\n",
-					envAWSAccessKeyID, envAWSSecretAccessKey,
-				)
-			}
-
-			helmArgs := []string{
-				"upgrade", "--install", helmReleaseMIF,
-				cfg.mifChartPath,
-				"--namespace", cfg.testNamespace,
-				"--wait",
-				fmt.Sprintf("--timeout=%v", timeoutVeryLong),
-				"--set", "odin.enabled=true",
-				"--set", fmt.Sprintf("odin-crd.enabled=%t", cfg.odinCRDEnabled),
-				"--set", fmt.Sprintf("prometheus-stack.enabled=%t", cfg.prometheusStackEnabled),
-				"--set", fmt.Sprintf("keda.enabled=%t", cfg.kedaEnabled),
-				"--set", fmt.Sprintf("lws.enabled=%t", cfg.lwsEnabled),
-				"--set", "replicator.enabled=true",
-			}
-
-			if cfg.awsAccessKeyID != "" && cfg.awsSecretAccessKey != "" {
-				By("creating moai-inference-framework values file for ECR token refresher")
-				mifValuesPath, err := createMIFValuesFile(cfg.awsAccessKeyID, cfg.awsSecretAccessKey)
-				Expect(err).NotTo(HaveOccurred(), "Failed to create moai-inference-framework values file")
-				helmArgs = append(helmArgs, "-f", mifValuesPath)
-			}
-
-			cmd = exec.Command("helm", helmArgs...)
-			_, err = utils.Run(cmd)
-			Expect(err).NotTo(HaveOccurred(), "Failed to deploy MIF via Helm")
-
-			By("waiting for MIF components to be ready")
-			waitForMIFComponents()
-		}
+	By("creating MIF namespace")
+	cmd := exec.Command("kubectl", "create", "ns", cfg.mifNamespace)
+	_, err := utils.Run(cmd)
+	if err != nil && !strings.Contains(err.Error(), "AlreadyExists") {
+		Expect(err).NotTo(HaveOccurred(), "Failed to create MIF namespace")
 	}
 
-	if !cfg.skipPresetDeploy {
-		By("checking if moai-inference-preset is already installed")
-		cfg.isPresetAlreadyInstalled = utils.IsPresetInstalled(cfg.testNamespace)
-		if cfg.isPresetAlreadyInstalled {
-			_, _ = fmt.Fprintf(GinkgoWriter, "moai-inference-preset is already installed in namespace %s. Skipping installation...\n", cfg.testNamespace)
+	By("checking if MIF is already installed")
+	cfg.isMIFAlreadyInstalled = utils.IsMIFInstalled(cfg.mifNamespace)
+	if cfg.isMIFAlreadyInstalled {
+		_, _ = fmt.Fprintf(GinkgoWriter, "MIF is already installed in namespace %s. Skipping installation...\n", cfg.mifNamespace)
+	} else {
+		By("deploying MIF infrastructure via Helm")
+
+		if cfg.awsAccessKeyID != "" && cfg.awsSecretAccessKey != "" {
+			By("scheduling asynchronous ecrTokenRefresher execution to create moreh-registry secret")
+			go func(ns string) {
+				defer GinkgoRecover()
+				ensureECRTokenRefresherSecret(ns)
+			}(cfg.mifNamespace)
 		} else {
-			By("deploying moai-inference-preset")
-			Expect(utils.DeployMIFPreset(cfg.testNamespace, cfg.presetChartPath)).To(Succeed(), "Failed to deploy moai-inference-preset")
+			_, _ = fmt.Fprintf(
+				GinkgoWriter,
+				"%s or %s is not set; skipping ecrTokenRefresher configuration for MIF chart.\n",
+				envAWSAccessKeyID, envAWSSecretAccessKey,
+			)
 		}
+
+		helmArgs := []string{
+			"upgrade", "--install", helmReleaseMIF,
+			cfg.mifChartPath,
+			"--namespace", cfg.mifNamespace,
+			"--wait",
+			fmt.Sprintf("--timeout=%v", timeoutVeryLong),
+			"--set", "odin.enabled=true",
+			"--set", fmt.Sprintf("odin-crd.enabled=%t", cfg.odinCRDEnabled),
+			"--set", fmt.Sprintf("prometheus-stack.enabled=%t", cfg.prometheusStackEnabled),
+			"--set", fmt.Sprintf("keda.enabled=%t", cfg.kedaEnabled),
+			"--set", fmt.Sprintf("lws.enabled=%t", cfg.lwsEnabled),
+			"--set", "replicator.enabled=true",
+		}
+
+		if cfg.awsAccessKeyID != "" && cfg.awsSecretAccessKey != "" {
+			By("creating moai-inference-framework values file for ECR token refresher")
+			mifValuesPath, err := createMIFValuesFile(cfg.awsAccessKeyID, cfg.awsSecretAccessKey)
+			Expect(err).NotTo(HaveOccurred(), "Failed to create moai-inference-framework values file")
+			helmArgs = append(helmArgs, "-f", mifValuesPath)
+		}
+
+		cmd = exec.Command("helm", helmArgs...)
+		_, err = utils.Run(cmd)
+		Expect(err).NotTo(HaveOccurred(), "Failed to deploy MIF via Helm")
+
+		By("waiting for MIF components to be ready")
+		waitForMIFComponents()
 	}
 
-	if !cfg.skipGatewayAPI {
+	By("checking if moai-inference-preset is already installed")
+	cfg.isPresetAlreadyInstalled = utils.IsPresetInstalled(cfg.mifNamespace)
+	if cfg.isPresetAlreadyInstalled {
+		_, _ = fmt.Fprintf(GinkgoWriter, "moai-inference-preset is already installed in namespace %s. Skipping installation...\n", cfg.mifNamespace)
+	} else {
+		By("deploying moai-inference-preset")
+		Expect(utils.DeployMIFPreset(cfg.mifNamespace, cfg.presetChartPath)).To(Succeed(), "Failed to deploy moai-inference-preset")
+	}
+
+	if !cfg.skipPrerequisite {
 		By("checking if Gateway API is already installed")
 		cfg.isGatewayAPIAlreadyInstalled = utils.IsGatewayAPIInstalled()
 		if cfg.isGatewayAPIAlreadyInstalled {
@@ -261,11 +252,7 @@ var _ = BeforeSuite(func() {
 			By("installing Gateway API standard CRDs")
 			Expect(utils.InstallGatewayAPI()).To(Succeed(), "Failed to install Gateway API standard CRDs")
 		}
-	} else {
-		_, _ = fmt.Fprintf(GinkgoWriter, "Skipping Gateway API installation (%s=true)\n", envSkipGatewayAPI)
-	}
 
-	if !cfg.skipGatewayInferenceExtension {
 		By("checking if Gateway API Inference Extension is already installed")
 		cfg.isGatewayInferenceExtensionInstalled = utils.IsGatewayInferenceExtensionInstalled()
 		if cfg.isGatewayInferenceExtensionInstalled {
@@ -274,11 +261,7 @@ var _ = BeforeSuite(func() {
 			By("installing Gateway API Inference Extension CRDs")
 			Expect(utils.InstallGatewayInferenceExtension()).To(Succeed(), "Failed to install Gateway API Inference Extension CRDs")
 		}
-	} else {
-		_, _ = fmt.Fprintf(GinkgoWriter, "Skipping Gateway API Inference Extension installation (%s=true)\n", envSkipGatewayInferenceExtension)
-	}
 
-	if !cfg.skipGatewayController {
 		switch cfg.gatewayClass {
 		case gatewayClassIstio:
 			By("checking if Istio is already installed")
@@ -315,8 +298,6 @@ var _ = BeforeSuite(func() {
 		default:
 			Fail(fmt.Sprintf("Unsupported %s=%s. Supported values are: %s, %s", envGatewayClassName, cfg.gatewayClass, gatewayClassIstio, gatewayClassKgateway))
 		}
-	} else {
-		_, _ = fmt.Fprintf(GinkgoWriter, "Skipping Gateway controller installation (%s=true)\n", envSkipGatewayController)
 	}
 })
 
@@ -336,24 +317,24 @@ var _ = AfterSuite(func() {
 
 	By("deleting InferenceService")
 	cmd := exec.Command("kubectl", "delete", "inferenceservice", testInferenceServiceName,
-		"-n", cfg.testNamespace, "--ignore-not-found=true")
+		"-n", cfg.workloadNamespace, "--ignore-not-found=true")
 	_, _ = utils.Run(cmd)
 
-	if !cfg.skipPresetDeploy && !cfg.isPresetAlreadyInstalled {
+	if !cfg.isPresetAlreadyInstalled {
 		By("uninstalling moai-inference-preset")
-		utils.UninstallMIFPreset(cfg.testNamespace)
+		utils.UninstallMIFPreset(cfg.mifNamespace)
 	}
 
-	if !cfg.skipMIFDeploy && !cfg.isMIFAlreadyInstalled {
+	if !cfg.isMIFAlreadyInstalled {
 		By("uninstalling MIF")
-		cmd := exec.Command("helm", "uninstall", helmReleaseMIF, "-n", cfg.testNamespace, "--ignore-not-found=true")
+		cmd := exec.Command("helm", "uninstall", helmReleaseMIF, "-n", cfg.mifNamespace, "--ignore-not-found=true")
 		_, _ = utils.Run(cmd)
 	}
 
-	By("deleting test namespace")
-	cleanupTestNamespace()
+	By("deleting MIF namespace")
+	cleanupMIFNamespace()
 
-	if !cfg.skipGatewayController {
+	if !cfg.skipPrerequisite {
 		if cfg.gatewayClass == gatewayClassIstio && !cfg.isIstioAlreadyInstalled {
 			By("uninstalling Istio")
 			if err := utils.UninstallGatewayController(cfg.gatewayClass); err != nil {
@@ -365,34 +346,34 @@ var _ = AfterSuite(func() {
 				_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to uninstall Gateway controller: %v\n", err)
 			}
 		}
-	}
 
-	if !cfg.skipGatewayInferenceExtension && !cfg.isGatewayInferenceExtensionInstalled {
-		By("uninstalling Gateway API Inference Extension")
-		if err := utils.UninstallGatewayInferenceExtension(); err != nil {
-			_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to uninstall Gateway API Inference Extension: %v\n", err)
+		if !cfg.isGatewayInferenceExtensionInstalled {
+			By("uninstalling Gateway API Inference Extension")
+			if err := utils.UninstallGatewayInferenceExtension(); err != nil {
+				_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to uninstall Gateway API Inference Extension: %v\n", err)
+			}
 		}
-	}
 
-	if !cfg.skipGatewayAPI && !cfg.isGatewayAPIAlreadyInstalled {
-		By("uninstalling Gateway API")
-		if err := utils.UninstallGatewayAPI(); err != nil {
-			_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to uninstall Gateway API: %v\n", err)
+		if !cfg.isGatewayAPIAlreadyInstalled {
+			By("uninstalling Gateway API")
+			if err := utils.UninstallGatewayAPI(); err != nil {
+				_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to uninstall Gateway API: %v\n", err)
+			}
 		}
-	}
 
-	if !cfg.skipCertManagerInstall && !cfg.isCertManagerAlreadyInstalled {
-		_, _ = fmt.Fprintf(GinkgoWriter, "Uninstalling CertManager...\n")
-		utils.UninstallCertManager()
+		if !cfg.isCertManagerAlreadyInstalled {
+			_, _ = fmt.Fprintf(GinkgoWriter, "Uninstalling CertManager...\n")
+			utils.UninstallCertManager()
+		}
 	}
 
 	cleanupKindCluster()
 })
 
-func cleanupTestNamespace() {
-	namespace := cfg.testNamespace
+func cleanupMIFNamespace() {
+	namespace := cfg.mifNamespace
 
-	By(fmt.Sprintf("deleting test namespace %s", namespace))
+	By(fmt.Sprintf("deleting MIF namespace %s", namespace))
 	cmd := exec.Command("kubectl", "delete", "ns", namespace, "--timeout=60s", "--ignore-not-found=true")
 	output, err := utils.Run(cmd)
 	if err != nil {
@@ -636,20 +617,20 @@ gateway:
 func waitForMIFComponents() {
 	By("waiting for Odin controller deployment")
 	cmd := exec.Command("kubectl", "get", "deployment",
-		"-n", cfg.testNamespace,
+		"-n", cfg.mifNamespace,
 		"-l", "app.kubernetes.io/name=odin",
 		"-o", "jsonpath={.items[0].metadata.name}")
 	output, err := utils.Run(cmd)
 	if err != nil || strings.TrimSpace(output) == "" {
 		cmd = exec.Command("kubectl", "get", "deployment",
-			"-n", cfg.testNamespace,
+			"-n", cfg.mifNamespace,
 			"-o", "jsonpath={.items[?(@.metadata.name=~\"odin.*\")].metadata.name}")
 		output, err = utils.Run(cmd)
 		if err != nil || strings.TrimSpace(output) == "" {
 			_, _ = fmt.Fprintf(GinkgoWriter, "Warning: Could not find Odin deployment by label, trying common name pattern\n")
 			cmd = exec.Command("kubectl", "wait", "--for=condition=Available",
 				fmt.Sprintf("deployment/%s-odin", helmReleaseMIF),
-				"-n", cfg.testNamespace,
+				"-n", cfg.mifNamespace,
 				fmt.Sprintf("--timeout=%v", timeoutMedium))
 			_, _ = utils.Run(cmd)
 			return
@@ -660,7 +641,7 @@ func waitForMIFComponents() {
 
 	cmd = exec.Command("kubectl", "wait", "--for=condition=Available",
 		fmt.Sprintf("deployment/%s", odinDeploymentName),
-		"-n", cfg.testNamespace,
+		"-n", cfg.mifNamespace,
 		fmt.Sprintf("--timeout=%v", timeoutLong))
 	output, err = utils.Run(cmd)
 	if err != nil {
@@ -674,13 +655,13 @@ func waitForMIFComponents() {
 		"--for=condition=Ready",
 		"--all",
 		"--field-selector=status.phase!=Succeeded",
-		"-n", cfg.testNamespace,
+		"-n", cfg.mifNamespace,
 		fmt.Sprintf("--timeout=%v", timeoutLong))
 	output, err = utils.Run(cmd)
 	if err != nil {
 		_, _ = fmt.Fprintf(GinkgoWriter, "Warning: Some pods may not be ready yet: %v\n", err)
 		cmd = exec.Command("kubectl", "get", "pods",
-			"-n", cfg.testNamespace,
+			"-n", cfg.mifNamespace,
 			"--field-selector=status.phase!=Succeeded",
 			"-o", "wide")
 		statusOutput, _ := utils.Run(cmd)

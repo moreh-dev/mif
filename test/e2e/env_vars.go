@@ -8,32 +8,27 @@ import "fmt"
 // Environment variable names used in the test configuration.
 // These constants ensure consistency across the codebase.
 const (
-	envSkipCertManager               = "SKIP_CERT_MANAGER"
-	envSkipCleanup                   = "SKIP_CLEANUP"
-	envNamespace                     = "NAMESPACE"
-	envMIFChartPath                  = "MIF_CHART_PATH"
-	envPresetChartPath               = "PRESET_CHART_PATH"
-	envTestModel                     = "TEST_MODEL"
-	envGatewayClassName              = "GATEWAY_CLASS_NAME"
-	envKindClusterName               = "KIND_CLUSTER_NAME"
-	envKindK8sVersion                = "KIND_K8S_VERSION"
-	envSkipKind                      = "SKIP_KIND"
-	envSkipKindDelete                = "SKIP_KIND_DELETE"
-	envSkipMIFDeploy                 = "SKIP_MIF_DEPLOY"
-	envSkipPresetDeploy              = "SKIP_PRESET_DEPLOY"
-	envSkipGatewayAPI                = "SKIP_GATEWAY_API"
-	envSkipGatewayInferenceExtension = "SKIP_GATEWAY_INFERENCE_EXTENSION"
-	envSkipGatewayController         = "SKIP_GATEWAY_CONTROLLER"
-	envAWSAccessKeyID                = "AWS_ACCESS_KEY_ID"
-	envAWSSecretAccessKey            = "AWS_SECRET_ACCESS_KEY"
-	envHFToken                       = "HF_TOKEN"
-	envHFEndpoint                    = "HF_ENDPOINT"
-	envInferenceImageRepo            = "INFERENCE_IMAGE_REPO"
-	envInferenceImageTag             = "INFERENCE_IMAGE_TAG"
-	envKEDAEnabled                   = "KEDA_ENABLED"
-	envLWSEnabled                    = "LWS_ENABLED"
-	envOdinCRDEnabled                = "ODIN_CRD_ENABLED"
-	envPrometheusStackEnabled        = "PROMETHEUS_STACK_ENABLED"
+	envSkipKind            = "SKIP_KIND"
+	envSkipPrerequisite    = "SKIP_PREREQUISITE"
+	envSkipCleanup         = "SKIP_CLEANUP"
+	envMIFNamespace        = "MIF_NAMESPACE"
+	envWorkloadNamespace   = "WORKLOAD_NAMESPACE"
+	envMIFChartPath        = "MIF_CHART_PATH"
+	envPresetChartPath     = "PRESET_CHART_PATH"
+	envTestModel           = "TEST_MODEL"
+	envGatewayClassName    = "GATEWAY_CLASS_NAME"
+	envKindClusterName     = "KIND_CLUSTER_NAME"
+	envKindK8sVersion      = "KIND_K8S_VERSION"
+	envAWSAccessKeyID      = "AWS_ACCESS_KEY_ID"
+	envAWSSecretAccessKey  = "AWS_SECRET_ACCESS_KEY"
+	envHFToken             = "HF_TOKEN"
+	envHFEndpoint          = "HF_ENDPOINT"
+	envInferenceImageRepo  = "INFERENCE_IMAGE_REPO"
+	envInferenceImageTag   = "INFERENCE_IMAGE_TAG"
+	envKEDAEnabled         = "KEDA_ENABLED"
+	envLWSEnabled          = "LWS_ENABLED"
+	envOdinCRDEnabled      = "ODIN_CRD_ENABLED"
+	envPrometheusStackEnabled = "PROMETHEUS_STACK_ENABLED"
 )
 
 type envVarInfo struct {
@@ -45,19 +40,14 @@ type envVarInfo struct {
 }
 
 var envVars = []envVarInfo{
-	// Skip Installation
-	{envSkipKind, "Skip kind cluster creation", "false", "Skip Installation", "bool"},
-	{envSkipKindDelete, "Skip kind cluster deletion", "false", "Skip Installation", "bool"},
-	{envSkipCertManager, "Skip cert-manager installation", "false", "Skip Installation", "bool"},
-	{envSkipMIFDeploy, "Skip MIF deployment", "false", "Skip Installation", "bool"},
-	{envSkipPresetDeploy, "Skip preset deployment", "false", "Skip Installation", "bool"},
-	{envSkipGatewayAPI, "Skip Gateway API installation", "false", "Skip Installation", "bool"},
-	{envSkipGatewayInferenceExtension, "Skip Gateway Inference Extension installation", "false", "Skip Installation", "bool"},
-	{envSkipGatewayController, "Skip Gateway controller (Istio/Kgateway) installation", "false", "Skip Installation", "bool"},
-	{envSkipCleanup, "Skip cleanup after tests", "false", "Skip Installation", "bool"},
+	// Skip
+	{envSkipKind, "Skip kind cluster creation and deletion", "false", "Skip", "bool"},
+	{envSkipPrerequisite, "Skip prerequisite installation (cert-manager, Gateway API, Gateway controller, Gateway Inference Extension)", "false", "Skip", "bool"},
+	{envSkipCleanup, "Skip cleanup after tests", "false", "Skip", "bool"},
 
 	// Configuration
-	{envNamespace, "Test namespace", "mif", "Configuration", "string"},
+	{envMIFNamespace, "MIF namespace", "mif", "Configuration", "string"},
+	{envWorkloadNamespace, "Workload namespace for InferenceService", "quickstart", "Configuration", "string"},
 	{envMIFChartPath, "MIF Helm chart path", "deploy/helm/moai-inference-framework", "Configuration", "string"},
 	{envPresetChartPath, "Preset Helm chart path", "deploy/helm/moai-inference-preset", "Configuration", "string"},
 	{envTestModel, "Test model name", "meta-llama/Llama-3.2-1B-Instruct", "Configuration", "string"},

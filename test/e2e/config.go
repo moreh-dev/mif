@@ -11,32 +11,27 @@ import (
 // Values are initialized from environment variables in the init() function.
 
 type testConfig struct {
-	skipCertManagerInstall        bool
+	skipPrerequisite        bool
 	isCertManagerAlreadyInstalled bool
-	skipCleanup                   bool
-
-	testNamespace   string
-	mifChartPath    string
-	presetChartPath string
-	testModel       string
-	gatewayClass    string
-
-	kindClusterName               string
-	skipKind                      bool
-	skipKindDelete                bool
-	skipMIFDeploy                 bool
-	skipPresetDeploy              bool
-	skipGatewayAPI                bool
-	skipGatewayInferenceExtension bool
-	skipGatewayController         bool
-	isUsingKindCluster            bool
-
-	isMIFAlreadyInstalled                bool
-	isPresetAlreadyInstalled             bool
 	isGatewayAPIAlreadyInstalled         bool
 	isGatewayInferenceExtensionInstalled bool
 	isIstioAlreadyInstalled              bool
 	isKgatewayAlreadyInstalled           bool
+	skipCleanup                   bool
+
+	mifNamespace      string
+	workloadNamespace string
+	mifChartPath      string
+	presetChartPath   string
+	testModel         string
+	gatewayClass      string
+
+	kindClusterName    string
+	skipKind           bool
+	isUsingKindCluster bool
+
+	isMIFAlreadyInstalled    bool
+	isPresetAlreadyInstalled bool
 
 	awsAccessKeyID     string
 	awsSecretAccessKey string
@@ -56,25 +51,27 @@ var cfg testConfig
 
 func init() {
 	cfg = testConfig{
-		skipCertManagerInstall:        getEnvBool(envSkipCertManager, false),
+		skipPrerequisite:        getEnvBool(envSkipPrerequisite, false),
 		isCertManagerAlreadyInstalled: false,
-		skipCleanup:                   getEnvBool(envSkipCleanup, false),
+		isGatewayAPIAlreadyInstalled: false,
+		isGatewayInferenceExtensionInstalled: false,
+		isIstioAlreadyInstalled: false,
+		isKgatewayAlreadyInstalled: false,
+		skipCleanup:             getEnvBool(envSkipCleanup, false),
 
-		testNamespace:   getEnv(envNamespace, "mif"),
-		mifChartPath:    getEnv(envMIFChartPath, "deploy/helm/moai-inference-framework"),
-		presetChartPath: getEnv(envPresetChartPath, "deploy/helm/moai-inference-preset"),
-		testModel:       getEnv(envTestModel, "meta-llama/Llama-3.2-1B-Instruct"),
-		gatewayClass:    getEnv(envGatewayClassName, "istio"),
+		mifNamespace:      getEnv(envMIFNamespace, "mif"),
+		workloadNamespace: getEnv(envWorkloadNamespace, "quickstart"),
+		mifChartPath:      getEnv(envMIFChartPath, "deploy/helm/moai-inference-framework"),
+		presetChartPath:   getEnv(envPresetChartPath, "deploy/helm/moai-inference-preset"),
+		testModel:         getEnv(envTestModel, "meta-llama/Llama-3.2-1B-Instruct"),
+		gatewayClass:      getEnv(envGatewayClassName, "istio"),
 
-		kindClusterName:               getEnv(envKindClusterName, "mif-e2e"),
-		skipKind:                      getEnvBool(envSkipKind, false),
-		skipKindDelete:                getEnvBool(envSkipKindDelete, false),
-		skipMIFDeploy:                 getEnvBool(envSkipMIFDeploy, false),
-		skipPresetDeploy:              getEnvBool(envSkipPresetDeploy, false),
-		skipGatewayAPI:                getEnvBool(envSkipGatewayAPI, false),
-		skipGatewayInferenceExtension: getEnvBool(envSkipGatewayInferenceExtension, false),
-		skipGatewayController:         getEnvBool(envSkipGatewayController, false),
-		isUsingKindCluster:            false,
+		kindClusterName:    getEnv(envKindClusterName, "mif-e2e"),
+		skipKind:           getEnvBool(envSkipKind, false),
+		isUsingKindCluster: false,
+
+		isMIFAlreadyInstalled:    false,
+		isPresetAlreadyInstalled: false,
 
 		awsAccessKeyID:     getEnv(envAWSAccessKeyID, ""),
 		awsSecretAccessKey: getEnv(envAWSSecretAccessKey, ""),

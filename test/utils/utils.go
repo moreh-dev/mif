@@ -407,15 +407,23 @@ func GetProjectDir() (string, error) {
 
 func CreateKindCluster(clusterName string) error {
 	k8sVersion := os.Getenv("KIND_K8S_VERSION")
-	args := []string{"create", "cluster", "--name", clusterName}
+	args := []string{"create", "cluster", "--name", clusterName, "-v", "1"}
 	if k8sVersion != "" {
 		nodeImage := fmt.Sprintf("kindest/node:%s", k8sVersion)
 		args = append(args, "--image", nodeImage)
 	}
 
 	cmd := exec.Command("kind", args...)
-	_, err := Run(cmd)
-	if err != nil {
+	dir, _ := GetProjectDir()
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "GO111MODULE=on")
+	cmd.Stdout = GinkgoWriter
+	cmd.Stderr = GinkgoWriter
+
+	command := strings.Join(cmd.Args, " ")
+	_, _ = fmt.Fprintf(GinkgoWriter, "running: %q\n", command)
+	var err error
+	if err = cmd.Run(); err != nil {
 		return fmt.Errorf("failed to create kind cluster: %w", err)
 	}
 
