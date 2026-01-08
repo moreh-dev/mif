@@ -1,5 +1,5 @@
-//go:build e2e
-// +build e2e
+//go:build e2e && !printenv
+// +build e2e,!printenv
 
 package e2e
 
@@ -13,41 +13,16 @@ import (
 	"syscall"
 	"testing"
 
+	"github.com/goccy/go-yaml"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	"github.com/moreh-dev/mif/test/utils"
 )
 
-var (
-	skipCertManagerInstall        = os.Getenv("SKIP_CERT_MANAGER") == "true"
-	isCertManagerAlreadyInstalled = false
-	kedaEnabled                   = "true"
-	lwsEnabled                    = "true"
-	odinCRDEnabled                = "true"
-	prometheusStackEnabled        = "true"
-
-	testNamespace   = getEnvOrDefault("NAMESPACE", "mif")
-	mifChartPath    = getEnvOrDefault("MIF_CHART_PATH", "deploy/helm/moai-inference-framework")
-	presetChartPath = getEnvOrDefault("PRESET_CHART_PATH", "deploy/helm/moai-inference-preset")
-	testModel       = getEnvOrDefault("TEST_MODEL", "meta-llama/Llama-3.2-1B-Instruct")
-	gatewayClass    = getEnvOrDefault("GATEWAY_CLASS_NAME", "istio")
-	skipCleanup     = os.Getenv("SKIP_CLEANUP") == "true"
-
-	kindClusterName    = getEnvOrDefault("KIND_CLUSTER_NAME", "mif-e2e")
-	skipKindCreate     = os.Getenv("SKIP_KIND_CREATE") == "true"
-	skipKindDelete     = os.Getenv("SKIP_KIND_DELETE") == "true"
-	skipMIFDeploy      = os.Getenv("SKIP_MIF_DEPLOY") == "true"
-	skipPresetDeploy   = os.Getenv("SKIP_PRESET_DEPLOY") == "true"
-	isUsingKindCluster = false
-)
-
-func getEnvOrDefault(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
-}
+// Config and environment variable documentation are defined in:
+// - config.go: testConfig struct and initialization
+// - env_vars_doc.go: environment variable documentation and validation
 
 func TestE2E(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -68,27 +43,27 @@ func setupInterruptHandler() {
 }
 
 func cleanupKindCluster() {
-	if skipKindDelete {
+	if cfg.skipKindDelete {
 		_, _ = fmt.Fprintf(GinkgoWriter, "Skipping kind cluster deletion (SKIP_KIND_DELETE=true)\n")
 		return
 	}
 
-	if skipKindCreate {
+	if cfg.skipKind {
 		return
 	}
 
-	if !utils.IsKindClusterExists(kindClusterName) {
-		_, _ = fmt.Fprintf(GinkgoWriter, "Kind cluster %s does not exist, skipping deletion\n", kindClusterName)
+	if !utils.IsKindClusterExists(cfg.kindClusterName) {
+		_, _ = fmt.Fprintf(GinkgoWriter, "Kind cluster %s does not exist, skipping deletion\n", cfg.kindClusterName)
 		return
 	}
 
 	By("deleting kind cluster (always cleanup)")
-	_, _ = fmt.Fprintf(GinkgoWriter, "Deleting kind cluster %s...\n", kindClusterName)
+	_, _ = fmt.Fprintf(GinkgoWriter, "Deleting kind cluster %s...\n", cfg.kindClusterName)
 
-	if err := utils.DeleteKindCluster(kindClusterName); err != nil {
-		_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to delete kind cluster %s: %v\n", kindClusterName, err)
+	if err := utils.DeleteKindCluster(cfg.kindClusterName); err != nil {
+		_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to delete kind cluster %s: %v\n", cfg.kindClusterName, err)
 	} else {
-		_, _ = fmt.Fprintf(GinkgoWriter, "Successfully deleted kind cluster %s\n", kindClusterName)
+		_, _ = fmt.Fprintf(GinkgoWriter, "Successfully deleted kind cluster %s\n", cfg.kindClusterName)
 	}
 }
 
@@ -100,47 +75,57 @@ var _ = BeforeSuite(func() {
 	By("checking prerequisites")
 	checkPrerequisites()
 
-	if !skipKindCreate {
+	if !cfg.skipKind {
 		By("creating kind cluster")
-		if utils.IsKindClusterExists(kindClusterName) {
-			_, _ = fmt.Fprintf(GinkgoWriter, "Kind cluster %s already exists. Skipping creation...\n", kindClusterName)
+		if utils.IsKindClusterExists(cfg.kindClusterName) {
+			_, _ = fmt.Fprintf(GinkgoWriter, "Kind cluster %s already exists. Skipping creation...\n", cfg.kindClusterName)
 			By("exporting kubeconfig for existing kind cluster")
-			cmd := exec.Command("kind", "export", "kubeconfig", "--name", kindClusterName)
+			cmd := exec.Command("kind", "export", "kubeconfig", "--name", cfg.kindClusterName)
 			_, err := utils.Run(cmd)
 			Expect(err).NotTo(HaveOccurred(), "Failed to export kubeconfig for existing kind cluster")
-			isUsingKindCluster = true
+			cfg.isUsingKindCluster = true
 		} else {
-			_, _ = fmt.Fprintf(GinkgoWriter, "Creating kind cluster %s...\n", kindClusterName)
-			if err := utils.CreateKindCluster(kindClusterName); err != nil {
+			_, _ = fmt.Fprintf(GinkgoWriter, "Creating kind cluster %s...\n", cfg.kindClusterName)
+			if err := utils.CreateKindCluster(cfg.kindClusterName); err != nil {
 				_, _ = fmt.Fprintf(GinkgoWriter, "Kind cluster creation failed. Attempting to clean up partially created cluster...\n")
-				if utils.IsKindClusterExists(kindClusterName) {
-					_ = utils.DeleteKindCluster(kindClusterName)
+				if utils.IsKindClusterExists(cfg.kindClusterName) {
+					_ = utils.DeleteKindCluster(cfg.kindClusterName)
 				}
 				Expect(err).NotTo(HaveOccurred(), "Failed to create kind cluster")
 			}
-			isUsingKindCluster = true
+			cfg.isUsingKindCluster = true
 
 			By("verifying kubectl access to kind cluster")
-			contextName := fmt.Sprintf("kind-%s", kindClusterName)
+			contextName := fmt.Sprintf("kind-%s", cfg.kindClusterName)
 			cmd := exec.Command("kubectl", "cluster-info", "--context", contextName)
 			_, err := utils.Run(cmd)
 			if err != nil {
 				_, _ = fmt.Fprintf(GinkgoWriter, "Failed to verify kind cluster. Attempting to clean up...\n")
-				if utils.IsKindClusterExists(kindClusterName) {
-					_ = utils.DeleteKindCluster(kindClusterName)
+				if utils.IsKindClusterExists(cfg.kindClusterName) {
+					_ = utils.DeleteKindCluster(cfg.kindClusterName)
 				}
 				Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("Failed to access kind cluster via kubectl context %s", contextName))
 			}
 		}
+
+		By("adding moreh Helm repository")
+		cmd := exec.Command("helm", "repo", "add", "moreh", "https://moreh-dev.github.io/helm-charts")
+		if _, err := utils.Run(cmd); err != nil {
+			if !strings.Contains(err.Error(), "already exists") {
+				_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to add moreh helm repo: %v\n", err)
+			}
+		} else {
+			_, _ = fmt.Fprintf(GinkgoWriter, "Successfully added moreh Helm repository\n")
+		}
 	} else {
-		isUsingKindCluster = false
+		cfg.isUsingKindCluster = false
 		_, _ = fmt.Fprintf(GinkgoWriter, "Using existing cluster (kubeconfig). Resource cleanup will be skipped for safety.\n")
 	}
 
-	if !skipCertManagerInstall {
+	if !cfg.skipCertManagerInstall {
 		By("checking if cert manager is installed already")
-		isCertManagerAlreadyInstalled = utils.IsCertManagerCRDsInstalled()
-		if !isCertManagerAlreadyInstalled {
+		cfg.isCertManagerAlreadyInstalled = utils.IsCertManagerCRDsInstalled()
+		if !cfg.isCertManagerAlreadyInstalled {
 			_, _ = fmt.Fprintf(GinkgoWriter, "Installing CertManager...\n")
 			Expect(utils.InstallCertManager()).To(Succeed(), "Failed to install CertManager")
 		} else {
@@ -148,149 +133,183 @@ var _ = BeforeSuite(func() {
 		}
 	}
 
-	if !skipMIFDeploy {
+	if !cfg.skipMIFDeploy {
 		By("creating test namespace")
-		cmd := exec.Command("kubectl", "create", "ns", testNamespace)
+		cmd := exec.Command("kubectl", "create", "ns", cfg.testNamespace)
 		_, err := utils.Run(cmd)
 		if err != nil && !strings.Contains(err.Error(), "AlreadyExists") {
 			Expect(err).NotTo(HaveOccurred(), "Failed to create namespace")
 		}
 
-		By("deploying MIF infrastructure via Helm")
-
-		awsAccessKeyID := os.Getenv("AWS_ACCESS_KEY_ID")
-		awsSecretAccessKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
-
-		if awsAccessKeyID != "" && awsSecretAccessKey != "" {
-			By("scheduling asynchronous ecrTokenRefresher execution to create moreh-registry secret")
-			go func(ns string) {
-				defer GinkgoRecover()
-				ensureECRTokenRefresherSecret(ns)
-			}(testNamespace)
+		By("checking if MIF is already installed")
+		cfg.isMIFAlreadyInstalled = utils.IsMIFInstalled(cfg.testNamespace)
+		if cfg.isMIFAlreadyInstalled {
+			_, _ = fmt.Fprintf(GinkgoWriter, "MIF is already installed in namespace %s. Skipping installation...\n", cfg.testNamespace)
 		} else {
-			_, _ = fmt.Fprintf(
-				GinkgoWriter,
-				"AWS_ACCESS_KEY_ID or AWS_SECRET_ACCESS_KEY is not set; skipping ecrTokenRefresher configuration for MIF chart.\n",
-			)
+			By("deploying MIF infrastructure via Helm")
+
+			if cfg.awsAccessKeyID != "" && cfg.awsSecretAccessKey != "" {
+				By("scheduling asynchronous ecrTokenRefresher execution to create moreh-registry secret")
+				go func(ns string) {
+					defer GinkgoRecover()
+					ensureECRTokenRefresherSecret(ns)
+				}(cfg.testNamespace)
+			} else {
+				_, _ = fmt.Fprintf(
+					GinkgoWriter,
+					"AWS_ACCESS_KEY_ID or AWS_SECRET_ACCESS_KEY is not set; skipping ecrTokenRefresher configuration for MIF chart.\n",
+				)
+			}
+
+			helmArgs := []string{
+				"upgrade", "--install", "moai-inference-framework",
+				cfg.mifChartPath,
+				"--namespace", cfg.testNamespace,
+				"--wait",
+				"--timeout", "15m",
+				"--set", "odin.enabled=true",
+				"--set", fmt.Sprintf("odin-crd.enabled=%t", cfg.odinCRDEnabled),
+				"--set", fmt.Sprintf("prometheus-stack.enabled=%t", cfg.prometheusStackEnabled),
+				"--set", fmt.Sprintf("keda.enabled=%t", cfg.kedaEnabled),
+				"--set", fmt.Sprintf("lws.enabled=%t", cfg.lwsEnabled),
+				"--set", "replicator.enabled=true",
+			}
+
+			if cfg.awsAccessKeyID != "" && cfg.awsSecretAccessKey != "" {
+				By("creating moai-inference-framework values file for ECR token refresher")
+				mifValuesPath, err := createMIFValuesFile(cfg.awsAccessKeyID, cfg.awsSecretAccessKey)
+				Expect(err).NotTo(HaveOccurred(), "Failed to create moai-inference-framework values file")
+				helmArgs = append(helmArgs, "-f", mifValuesPath)
+			}
+
+			cmd = exec.Command("helm", helmArgs...)
+			_, err = utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred(), "Failed to deploy MIF via Helm")
+
+			By("waiting for MIF components to be ready")
+			waitForMIFComponents()
 		}
-
-		helmArgs := []string{
-			"upgrade", "--install", "moai-inference-framework",
-			mifChartPath,
-			"--namespace", testNamespace,
-			"--wait",
-			"--timeout", "15m",
-			"--set", "odin.enabled=true",
-			"--set", fmt.Sprintf("odin-crd.enabled=%s", odinCRDEnabled),
-			"--set", fmt.Sprintf("prometheus-stack.enabled=%s", prometheusStackEnabled),
-			"--set", fmt.Sprintf("keda.enabled=%s", kedaEnabled),
-			"--set", fmt.Sprintf("lws.enabled=%s", lwsEnabled),
-			"--set", "replicator.enabled=true",
-		}
-
-		if awsAccessKeyID != "" && awsSecretAccessKey != "" {
-			By("creating moai-inference-framework values file for ECR token refresher")
-			mifValuesPath, err := createMIFValuesFile(awsAccessKeyID, awsSecretAccessKey)
-			Expect(err).NotTo(HaveOccurred(), "Failed to create moai-inference-framework values file")
-			helmArgs = append(helmArgs, "-f", mifValuesPath)
-		}
-
-		cmd = exec.Command("helm", helmArgs...)
-		_, err = utils.Run(cmd)
-		Expect(err).NotTo(HaveOccurred(), "Failed to deploy MIF via Helm")
-
-		By("waiting for MIF components to be ready")
-		waitForMIFComponents()
 	}
 
-	if !skipPresetDeploy {
-		By("deploying moai-inference-preset")
-		Expect(utils.DeployMIFPreset(testNamespace, presetChartPath)).To(Succeed(), "Failed to deploy moai-inference-preset")
+	if !cfg.skipPresetDeploy {
+		By("checking if moai-inference-preset is already installed")
+		cfg.isPresetAlreadyInstalled = utils.IsPresetInstalled(cfg.testNamespace)
+		if cfg.isPresetAlreadyInstalled {
+			_, _ = fmt.Fprintf(GinkgoWriter, "moai-inference-preset is already installed in namespace %s. Skipping installation...\n", cfg.testNamespace)
+		} else {
+			By("deploying moai-inference-preset")
+			Expect(utils.DeployMIFPreset(cfg.testNamespace, cfg.presetChartPath)).To(Succeed(), "Failed to deploy moai-inference-preset")
+		}
 	}
 
-	By("installing Gateway API standard CRDs")
-	Expect(utils.InstallGatewayAPI()).To(Succeed(), "Failed to install Gateway API standard CRDs")
-
-	By("installing Gateway API Inference Extension CRDs")
-	Expect(utils.InstallGatewayInferenceExtension()).To(Succeed(), "Failed to install Gateway API Inference Extension CRDs")
-
-	switch gatewayClass {
-	case "istio":
-		By("installing Istio base")
-		Expect(utils.InstallIstioBase()).To(Succeed(), "Failed to install Istio base")
-
-		By("creating istiod values file")
-		istiodValuesPath, err := createIstiodValuesFile()
-		Expect(err).NotTo(HaveOccurred(), "Failed to create istiod values file")
-
-		By("installing Istiod control plane")
-		Expect(utils.InstallIstiod(istiodValuesPath)).To(Succeed(), "Failed to install Istiod control plane")
-	case "kgateway":
-		By("creating Kgateway values file")
-		kgatewayValuesPath, err := createKgatewayValuesFile()
-		Expect(err).NotTo(HaveOccurred(), "Failed to create Kgateway values file")
-
-		By("installing Kgateway CRDs")
-		Expect(utils.InstallKgatewayCRDs()).To(Succeed(), "Failed to install Kgateway CRDs")
-
-		By("installing Kgateway controller")
-		Expect(utils.InstallKgateway(kgatewayValuesPath)).To(Succeed(), "Failed to install Kgateway controller")
-	default:
-		Fail(fmt.Sprintf("Unsupported GATEWAY_CLASS_NAME=%s. Supported values are: istio, kgateway", gatewayClass))
-	}
-
-	if envValue := os.Getenv("KEDA_ENABLED"); envValue != "" {
-		kedaEnabled = envValue
-		_, _ = fmt.Fprintf(GinkgoWriter, "KEDA_ENABLED set to %s via environment variable\n", kedaEnabled)
+	if !cfg.skipGatewayAPI {
+		By("checking if Gateway API is already installed")
+		cfg.isGatewayAPIAlreadyInstalled = utils.IsGatewayAPIInstalled()
+		if cfg.isGatewayAPIAlreadyInstalled {
+			_, _ = fmt.Fprintf(GinkgoWriter, "Gateway API is already installed. Skipping installation...\n")
+		} else {
+			By("installing Gateway API standard CRDs")
+			Expect(utils.InstallGatewayAPI()).To(Succeed(), "Failed to install Gateway API standard CRDs")
+		}
 	} else {
+		_, _ = fmt.Fprintf(GinkgoWriter, "Skipping Gateway API installation (SKIP_GATEWAY_API=true)\n")
+	}
+
+	if !cfg.skipGatewayInferenceExtension {
+		By("checking if Gateway API Inference Extension is already installed")
+		cfg.isGatewayInferenceExtensionInstalled = utils.IsGatewayInferenceExtensionInstalled()
+		if cfg.isGatewayInferenceExtensionInstalled {
+			_, _ = fmt.Fprintf(GinkgoWriter, "Gateway API Inference Extension is already installed. Skipping installation...\n")
+		} else {
+			By("installing Gateway API Inference Extension CRDs")
+			Expect(utils.InstallGatewayInferenceExtension()).To(Succeed(), "Failed to install Gateway API Inference Extension CRDs")
+		}
+	} else {
+		_, _ = fmt.Fprintf(GinkgoWriter, "Skipping Gateway API Inference Extension installation (SKIP_GATEWAY_INFERENCE_EXTENSION=true)\n")
+	}
+
+	if !cfg.skipGatewayController {
+		switch cfg.gatewayClass {
+		case "istio":
+			By("checking if Istio is already installed")
+			cfg.isIstioAlreadyInstalled = utils.IsIstioInstalled()
+			if cfg.isIstioAlreadyInstalled {
+				_, _ = fmt.Fprintf(GinkgoWriter, "Istio is already installed. Skipping installation...\n")
+			} else {
+				By("installing Istio base")
+				Expect(utils.InstallIstioBase()).To(Succeed(), "Failed to install Istio base")
+
+				By("creating istiod values file")
+				istiodValuesPath, err := createIstiodValuesFile()
+				Expect(err).NotTo(HaveOccurred(), "Failed to create istiod values file")
+
+				By("installing Istiod control plane")
+				Expect(utils.InstallIstiod(istiodValuesPath)).To(Succeed(), "Failed to install Istiod control plane")
+			}
+		case "kgateway":
+			By("checking if Kgateway is already installed")
+			cfg.isKgatewayAlreadyInstalled = utils.IsKgatewayInstalled()
+			if cfg.isKgatewayAlreadyInstalled {
+				_, _ = fmt.Fprintf(GinkgoWriter, "Kgateway is already installed. Skipping installation...\n")
+			} else {
+				By("creating Kgateway values file")
+				kgatewayValuesPath, err := createKgatewayValuesFile()
+				Expect(err).NotTo(HaveOccurred(), "Failed to create Kgateway values file")
+
+				By("installing Kgateway CRDs")
+				Expect(utils.InstallKgatewayCRDs()).To(Succeed(), "Failed to install Kgateway CRDs")
+
+				By("installing Kgateway controller")
+				Expect(utils.InstallKgateway(kgatewayValuesPath)).To(Succeed(), "Failed to install Kgateway controller")
+			}
+		default:
+			Fail(fmt.Sprintf("Unsupported GATEWAY_CLASS_NAME=%s. Supported values are: istio, kgateway", cfg.gatewayClass))
+		}
+	} else {
+		_, _ = fmt.Fprintf(GinkgoWriter, "Skipping Gateway controller installation (SKIP_GATEWAY_CONTROLLER=true)\n")
+	}
+
+	By("auto-detecting cluster state and adjusting component enable flags")
+	// If environment variables are not explicitly set, check cluster state and adjust flags accordingly.
+	// This prevents conflicts when components are already installed in the cluster.
+
+	if os.Getenv("KEDA_ENABLED") == "" {
 		By("checking if KEDA is already installed")
-		if utils.IsKEDAInstalled() {
-			kedaEnabled = "false"
-			_, _ = fmt.Fprintf(GinkgoWriter, "KEDA is already installed in the cluster. Disabling KEDA in MIF chart to avoid conflicts.\n")
-		} else {
-			kedaEnabled = "true"
+		cfg.kedaEnabled = !utils.IsKEDAInstalled()
+		if cfg.kedaEnabled {
 			_, _ = fmt.Fprintf(GinkgoWriter, "KEDA is not installed. Enabling KEDA in MIF chart.\n")
+		} else {
+			_, _ = fmt.Fprintf(GinkgoWriter, "KEDA is already installed in the cluster. Disabling KEDA in MIF chart to avoid conflicts.\n")
 		}
 	}
 
-	if envValue := os.Getenv("LWS_ENABLED"); envValue != "" {
-		lwsEnabled = envValue
-		_, _ = fmt.Fprintf(GinkgoWriter, "LWS_ENABLED set to %s via environment variable\n", lwsEnabled)
-	} else {
+	if os.Getenv("LWS_ENABLED") == "" {
 		By("checking if LWS is already installed")
-		if utils.IsLWSInstalled() {
-			lwsEnabled = "false"
-			_, _ = fmt.Fprintf(GinkgoWriter, "LWS is already installed in the cluster. Disabling LWS in MIF chart to avoid conflicts.\n")
-		} else {
-			lwsEnabled = "true"
+		cfg.lwsEnabled = !utils.IsLWSInstalled()
+		if cfg.lwsEnabled {
 			_, _ = fmt.Fprintf(GinkgoWriter, "LWS is not installed. Enabling LWS in MIF chart.\n")
-		}
-	}
-
-	if envValue := os.Getenv("ODIN_CRD_ENABLED"); envValue != "" {
-		odinCRDEnabled = envValue
-		_, _ = fmt.Fprintf(GinkgoWriter, "ODIN_CRD_ENABLED set to %s via environment variable\n", odinCRDEnabled)
-	} else {
-		By("checking if Odin CRD is already installed")
-		if utils.IsOdinCRDInstalled() {
-			odinCRDEnabled = "false"
-			_, _ = fmt.Fprintf(GinkgoWriter, "Odin CRD is already installed in the cluster. Disabling Odin CRD in MIF chart to avoid conflicts.\n")
 		} else {
-			odinCRDEnabled = "true"
-			_, _ = fmt.Fprintf(GinkgoWriter, "Odin CRD is not installed. Enabling Odin CRD in MIF chart.\n")
+			_, _ = fmt.Fprintf(GinkgoWriter, "LWS is already installed in the cluster. Disabling LWS in MIF chart to avoid conflicts.\n")
 		}
 	}
 
-	if envValue := os.Getenv("PROMETHEUS_STACK_ENABLED"); envValue != "" {
-		prometheusStackEnabled = envValue
-		_, _ = fmt.Fprintf(GinkgoWriter, "PROMETHEUS_STACK_ENABLED set to %s via environment variable\n", prometheusStackEnabled)
-	} else {
+	if os.Getenv("ODIN_CRD_ENABLED") == "" {
+		By("checking if Odin CRD is already installed")
+		cfg.odinCRDEnabled = !utils.IsOdinCRDInstalled()
+		if cfg.odinCRDEnabled {
+			_, _ = fmt.Fprintf(GinkgoWriter, "Odin CRD is not installed. Enabling Odin CRD in MIF chart.\n")
+		} else {
+			_, _ = fmt.Fprintf(GinkgoWriter, "Odin CRD is already installed in the cluster. Disabling Odin CRD in MIF chart to avoid conflicts.\n")
+		}
+	}
+
+	if os.Getenv("PROMETHEUS_STACK_ENABLED") == "" {
 		By("checking if Prometheus is already installed")
 		if utils.IsPrometheusInstalled() {
-			prometheusStackEnabled = "false"
+			cfg.prometheusStackEnabled = false
 			_, _ = fmt.Fprintf(GinkgoWriter, "Prometheus is already installed in the cluster. Disabling Prometheus Stack in MIF chart to avoid conflicts.\n")
 		} else {
-			prometheusStackEnabled = "false"
+			cfg.prometheusStackEnabled = false
 			_, _ = fmt.Fprintf(GinkgoWriter, "Prometheus Stack disabled by default in E2E tests to avoid resource issues. Set PROMETHEUS_STACK_ENABLED=true to enable.\n")
 		}
 	}
@@ -300,31 +319,64 @@ var _ = AfterSuite(func() {
 	// Always clean up temporary value/manifest files, regardless of cluster type or SKIP_CLEANUP.
 	cleanupE2ETempFiles()
 
-	if !isUsingKindCluster {
+	if !cfg.isUsingKindCluster {
 		_, _ = fmt.Fprintf(GinkgoWriter, "Using existing cluster (kubeconfig). Skipping resource cleanup for safety.\n")
 		return
 	}
 
-	if skipCleanup {
+	if cfg.skipCleanup {
 		_, _ = fmt.Fprintf(GinkgoWriter, "SKIP_CLEANUP=true: skipping test namespace, resources, and kind cluster deletion.\n")
 		return
 	}
 
-	By("ensuring test namespace is cleaned up")
-	cleanupTestNamespace()
+	By("deleting InferenceService")
+	cmd := exec.Command("kubectl", "delete", "inferenceservice", "pd-disaggregation-test",
+		"-n", cfg.testNamespace, "--ignore-not-found=true")
+	_, _ = utils.Run(cmd)
 
-	if !skipPresetDeploy {
+	if !cfg.skipPresetDeploy && !cfg.isPresetAlreadyInstalled {
 		By("uninstalling moai-inference-preset")
-		utils.UninstallMIFPreset(testNamespace)
+		utils.UninstallMIFPreset(cfg.testNamespace)
 	}
 
-	if !skipMIFDeploy {
+	if !cfg.skipMIFDeploy && !cfg.isMIFAlreadyInstalled {
 		By("uninstalling MIF")
-		cmd := exec.Command("helm", "uninstall", "moai-inference-framework", "-n", testNamespace, "--ignore-not-found=true")
+		cmd := exec.Command("helm", "uninstall", "moai-inference-framework", "-n", cfg.testNamespace, "--ignore-not-found=true")
 		_, _ = utils.Run(cmd)
 	}
 
-	if !skipCertManagerInstall && !isCertManagerAlreadyInstalled {
+	By("deleting test namespace")
+	cleanupTestNamespace()
+
+	if !cfg.skipGatewayController {
+		if cfg.gatewayClass == "istio" && !cfg.isIstioAlreadyInstalled {
+			By("uninstalling Istio")
+			if err := utils.UninstallGatewayController(cfg.gatewayClass); err != nil {
+				_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to uninstall Gateway controller: %v\n", err)
+			}
+		} else if cfg.gatewayClass == "kgateway" && !cfg.isKgatewayAlreadyInstalled {
+			By("uninstalling Kgateway")
+			if err := utils.UninstallGatewayController(cfg.gatewayClass); err != nil {
+				_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to uninstall Gateway controller: %v\n", err)
+			}
+		}
+	}
+
+	if !cfg.skipGatewayInferenceExtension && !cfg.isGatewayInferenceExtensionInstalled {
+		By("uninstalling Gateway API Inference Extension")
+		if err := utils.UninstallGatewayInferenceExtension(); err != nil {
+			_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to uninstall Gateway API Inference Extension: %v\n", err)
+		}
+	}
+
+	if !cfg.skipGatewayAPI && !cfg.isGatewayAPIAlreadyInstalled {
+		By("uninstalling Gateway API")
+		if err := utils.UninstallGatewayAPI(); err != nil {
+			_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to uninstall Gateway API: %v\n", err)
+		}
+	}
+
+	if !cfg.skipCertManagerInstall && !cfg.isCertManagerAlreadyInstalled {
 		_, _ = fmt.Fprintf(GinkgoWriter, "Uninstalling CertManager...\n")
 		utils.UninstallCertManager()
 	}
@@ -333,23 +385,10 @@ var _ = AfterSuite(func() {
 })
 
 func cleanupTestNamespace() {
-	namespace := getEnvOrDefault("NAMESPACE", "mif")
-	inferenceServiceName := "pd-disaggregation-test"
-	helmReleaseName := "moai-inference-framework"
+	namespace := cfg.testNamespace
 
-	By(fmt.Sprintf("cleaning up test resources in namespace %s", namespace))
-
-	By("deleting InferenceService")
-	cmd := exec.Command("kubectl", "delete", "inferenceservice", inferenceServiceName,
-		"-n", namespace, "--ignore-not-found=true")
-	_, _ = utils.Run(cmd)
-
-	By("uninstalling MIF Helm release")
-	cmd = exec.Command("helm", "uninstall", helmReleaseName, "-n", namespace, "--ignore-not-found=true")
-	_, _ = utils.Run(cmd)
-
-	By("deleting test namespace")
-	cmd = exec.Command("kubectl", "delete", "ns", namespace, "--timeout=60s", "--ignore-not-found=true")
+	By(fmt.Sprintf("deleting test namespace %s", namespace))
+	cmd := exec.Command("kubectl", "delete", "ns", namespace, "--timeout=60s", "--ignore-not-found=true")
 	output, err := utils.Run(cmd)
 	if err != nil {
 		By("attempting to force delete namespace by removing finalizers")
@@ -388,11 +427,11 @@ func cleanupE2ETempFiles() {
 
 func checkPrerequisites() {
 	requiredTools := []string{"kubectl", "helm"}
-	if !skipKindCreate {
+	if !cfg.skipKind {
 		requiredTools = append(requiredTools, "kind")
 		cmd := exec.Command("which", "kind")
 		if err := cmd.Run(); err != nil {
-			Fail(fmt.Sprintf("kind is required but not available. Install kind or set SKIP_KIND_CREATE=true to use existing cluster"))
+			Fail(fmt.Sprintf("kind is required but not available. Install kind or set SKIP_KIND=true to use existing cluster"))
 		}
 	}
 	for _, tool := range requiredTools {
@@ -402,7 +441,7 @@ func checkPrerequisites() {
 		}
 	}
 
-	if !skipKindCreate {
+	if !cfg.skipKind {
 		return
 	}
 
@@ -538,7 +577,7 @@ func createHeimdallValuesFile() (string, error) {
 		return "", err
 	}
 
-	valuesContent := fmt.Sprintf(`global:
+	baseYAML := `global:
   imagePullSecrets:
     - name: moreh-registry
 
@@ -557,15 +596,38 @@ config:
 
 gateway:
   name: mif
-  gatewayClassName: %s
+  gatewayClassName: istio
+`
 
-serviceMonitor:
-  labels:
-    release: prometheus-stack
-`, gatewayClass)
+	var values map[string]interface{}
+	if err := yaml.Unmarshal([]byte(baseYAML), &values); err != nil {
+		return "", fmt.Errorf("failed to parse base Heimdall values YAML: %w", err)
+	}
+
+	if gateway, ok := values["gateway"].(map[string]interface{}); ok {
+		gateway["gatewayClassName"] = cfg.gatewayClass
+	}
+
+	if cfg.prometheusStackEnabled {
+		values["serviceMonitor"] = map[string]interface{}{
+			"enabled": true,
+			"labels": map[string]interface{}{
+				"release": "prometheus-stack",
+			},
+		}
+	} else {
+		values["serviceMonitor"] = map[string]interface{}{
+			"enabled": false,
+		}
+	}
+
+	valuesYAML, err := yaml.Marshal(values)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal Heimdall values YAML: %w", err)
+	}
 
 	valuesPath := filepath.Join(projectDir, "test/e2e/heimdall-values.yaml")
-	err = os.WriteFile(valuesPath, []byte(valuesContent), 0644)
+	err = os.WriteFile(valuesPath, valuesYAML, 0644)
 	if err != nil {
 		return "", fmt.Errorf("failed to write Heimdall values file: %w", err)
 	}
@@ -576,20 +638,20 @@ serviceMonitor:
 func waitForMIFComponents() {
 	By("waiting for Odin controller deployment")
 	cmd := exec.Command("kubectl", "get", "deployment",
-		"-n", testNamespace,
+		"-n", cfg.testNamespace,
 		"-l", "app.kubernetes.io/name=odin",
 		"-o", "jsonpath={.items[0].metadata.name}")
 	output, err := utils.Run(cmd)
 	if err != nil || strings.TrimSpace(output) == "" {
 		cmd = exec.Command("kubectl", "get", "deployment",
-			"-n", testNamespace,
+			"-n", cfg.testNamespace,
 			"-o", "jsonpath={.items[?(@.metadata.name=~\"odin.*\")].metadata.name}")
 		output, err = utils.Run(cmd)
 		if err != nil || strings.TrimSpace(output) == "" {
 			_, _ = fmt.Fprintf(GinkgoWriter, "Warning: Could not find Odin deployment by label, trying common name pattern\n")
 			cmd = exec.Command("kubectl", "wait", "--for=condition=Available",
 				"deployment/moai-inference-framework-odin",
-				"-n", testNamespace,
+				"-n", cfg.testNamespace,
 				"--timeout=5m")
 			_, _ = utils.Run(cmd)
 			return
@@ -600,7 +662,7 @@ func waitForMIFComponents() {
 
 	cmd = exec.Command("kubectl", "wait", "--for=condition=Available",
 		fmt.Sprintf("deployment/%s", odinDeploymentName),
-		"-n", testNamespace,
+		"-n", cfg.testNamespace,
 		"--timeout=10m")
 	output, err = utils.Run(cmd)
 	if err != nil {
@@ -614,13 +676,13 @@ func waitForMIFComponents() {
 		"--for=condition=Ready",
 		"--all",
 		"--field-selector=status.phase!=Succeeded",
-		"-n", testNamespace,
+		"-n", cfg.testNamespace,
 		"--timeout=10m")
 	output, err = utils.Run(cmd)
 	if err != nil {
 		_, _ = fmt.Fprintf(GinkgoWriter, "Warning: Some pods may not be ready yet: %v\n", err)
 		cmd = exec.Command("kubectl", "get", "pods",
-			"-n", testNamespace,
+			"-n", cfg.testNamespace,
 			"--field-selector=status.phase!=Succeeded",
 			"-o", "wide")
 		statusOutput, _ := utils.Run(cmd)

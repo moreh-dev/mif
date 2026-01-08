@@ -244,6 +244,60 @@ func IsPrometheusInstalled() bool {
 	return false
 }
 
+func IsMIFInstalled(namespace string) bool {
+	cmd := exec.Command("helm", "list", "-n", namespace, "-q", "-f", "^moai-inference-framework$")
+	output, err := Run(cmd)
+	if err == nil && strings.TrimSpace(output) != "" {
+		return true
+	}
+	return false
+}
+
+func IsPresetInstalled(namespace string) bool {
+	cmd := exec.Command("helm", "list", "-n", namespace, "-q", "-f", "^moai-inference-preset$")
+	output, err := Run(cmd)
+	if err == nil && strings.TrimSpace(output) != "" {
+		return true
+	}
+	return false
+}
+
+func IsGatewayAPIInstalled() bool {
+	cmd := exec.Command("kubectl", "get", "crd", "gateways.gateway.networking.k8s.io", "--ignore-not-found")
+	output, err := Run(cmd)
+	if err == nil && strings.Contains(output, "gateways.gateway.networking.k8s.io") {
+		return true
+	}
+	return false
+}
+
+func IsGatewayInferenceExtensionInstalled() bool {
+	cmd := exec.Command("kubectl", "get", "crd", "inferencepools.inference.networking.k8s.io", "--ignore-not-found")
+	output, err := Run(cmd)
+	if err == nil && strings.Contains(output, "inferencepools.inference.networking.k8s.io") {
+		return true
+	}
+	return false
+}
+
+func IsIstioInstalled() bool {
+	cmd := exec.Command("helm", "list", "-n", "istio-system", "-q", "-f", "^istiod$|^istio-base$")
+	output, err := Run(cmd)
+	if err == nil && strings.TrimSpace(output) != "" {
+		return true
+	}
+	return false
+}
+
+func IsKgatewayInstalled() bool {
+	cmd := exec.Command("helm", "list", "-n", "kgateway-system", "-q", "-f", "^kgateway$|^kgateway-crds$")
+	output, err := Run(cmd)
+	if err == nil && strings.TrimSpace(output) != "" {
+		return true
+	}
+	return false
+}
+
 func GetNonEmptyLines(output string) []string {
 	var res []string
 	elements := strings.Split(output, "\n")
@@ -461,6 +515,47 @@ func InstallInferenceService(namespace, valuesPath string) error {
 	}
 
 	cmd := exec.Command("kubectl", kubectlArgs...)
+	_, err := Run(cmd)
+	return err
+}
+
+func UninstallGatewayController(gatewayClass string) error {
+	switch gatewayClass {
+	case "istio":
+		cmd := exec.Command("helm", "uninstall", "istiod", "-n", "istio-system", "--ignore-not-found=true")
+		if _, err := Run(cmd); err != nil {
+			return err
+		}
+
+		cmd = exec.Command("helm", "uninstall", "istio-base", "-n", "istio-system", "--ignore-not-found=true")
+		_, err := Run(cmd)
+		return err
+	case "kgateway":
+		cmd := exec.Command("helm", "uninstall", "kgateway", "-n", "kgateway-system", "--ignore-not-found=true")
+		if _, err := Run(cmd); err != nil {
+			return err
+		}
+
+		cmd = exec.Command("helm", "uninstall", "kgateway-crds", "-n", "kgateway-system", "--ignore-not-found=true")
+		_, err := Run(cmd)
+		return err
+	default:
+		return fmt.Errorf("unsupported gateway class: %s", gatewayClass)
+	}
+}
+
+func UninstallGatewayInferenceExtension() error {
+	cmd := exec.Command("kubectl", "delete",
+		"-f", "https://github.com/kubernetes-sigs/gateway-api-inference-extension/releases/download/v1.1.0/manifests.yaml",
+		"--ignore-not-found=true")
+	_, err := Run(cmd)
+	return err
+}
+
+func UninstallGatewayAPI() error {
+	cmd := exec.Command("kubectl", "delete",
+		"-f", "https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.3.0/standard-install.yaml",
+		"--ignore-not-found=true")
 	_, err := Run(cmd)
 	return err
 }

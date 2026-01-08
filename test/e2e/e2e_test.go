@@ -26,19 +26,19 @@ const inferenceServiceName = "pd-disaggregation-test"
 
 var _ = Describe("Prefill-Decode Disaggregation", Ordered, func() {
 	cleanupTestResources := func() {
-		if skipKindCreate {
+		if cfg.skipKind {
 			_, _ = fmt.Fprintf(GinkgoWriter, "Using existing cluster (kubeconfig). Skipping resource cleanup for safety.\n")
 			return
 		}
 
-		if skipCleanup {
+		if cfg.skipCleanup {
 			By("skipping cleanup (SKIP_CLEANUP=true)")
 			return
 		}
 
 		By("cleaning up test resources")
 		cmd := exec.Command("kubectl", "delete", "inferenceservice", inferenceServiceName,
-			"-n", testNamespace, "--ignore-not-found=true")
+			"-n", cfg.testNamespace, "--ignore-not-found=true")
 		_, _ = utils.Run(cmd)
 	}
 
@@ -62,13 +62,13 @@ var _ = Describe("Prefill-Decode Disaggregation", Ordered, func() {
 			By("validating that Odin controller is running")
 			verifyOdinController := func(g Gomega) {
 				cmd := exec.Command("kubectl", "get", "deployment",
-					"-n", testNamespace,
+					"-n", cfg.testNamespace,
 					"-l", "app.kubernetes.io/name=odin",
 					"-o", "jsonpath={.items[0].status.conditions[?(@.type=='Available')].status}")
 				output, err := utils.Run(cmd)
 				if err != nil || strings.TrimSpace(output) == "" {
 					cmd = exec.Command("kubectl", "get", "deployment",
-						"-n", testNamespace,
+						"-n", cfg.testNamespace,
 						"-o", "jsonpath={.items[?(@.metadata.name=~\"odin.*\")].status.conditions[?(@.type=='Available')].status}")
 					output, err = utils.Run(cmd)
 				}
@@ -82,7 +82,7 @@ var _ = Describe("Prefill-Decode Disaggregation", Ordered, func() {
 			By("waiting for all pods to be ready")
 			verifyAllPodsReady := func(g Gomega) {
 				cmd := exec.Command("kubectl", "get", "pods",
-					"-n", testNamespace,
+					"-n", cfg.testNamespace,
 					"--field-selector=status.phase!=Succeeded",
 					"-o", "jsonpath={.items[*].status.conditions[?(@.type=='Ready')].status}")
 				output, err := utils.Run(cmd)
@@ -115,11 +115,11 @@ var _ = Describe("Prefill-Decode Disaggregation", Ordered, func() {
 })
 
 func getInferenceImageInfo() (repo, tag string) {
-	repo = os.Getenv("INFERENCE_IMAGE_REPO")
-	tag = os.Getenv("INFERENCE_IMAGE_TAG")
+	repo = cfg.inferenceImageRepo
+	tag = cfg.inferenceImageTag
 
 	if repo == "" {
-		if isUsingKindCluster {
+		if cfg.isUsingKindCluster {
 			repo = "ghcr.io/llm-d/llm-d-inference-sim"
 		} else {
 			repo = "255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/quickstart/moreh-vllm"
@@ -127,7 +127,7 @@ func getInferenceImageInfo() (repo, tag string) {
 	}
 
 	if tag == "" {
-		if isUsingKindCluster {
+		if cfg.isUsingKindCluster {
 			tag = "v0.6.1"
 		} else {
 			tag = "20250915.1"
@@ -138,7 +138,7 @@ func getInferenceImageInfo() (repo, tag string) {
 }
 
 func getGPUResources(requests, limits string) map[string]interface{} {
-	if isUsingKindCluster {
+	if cfg.isUsingKindCluster {
 		return nil
 	}
 	return map[string]interface{}{
@@ -154,13 +154,13 @@ func getGPUResources(requests, limits string) map[string]interface{} {
 func collectDebugInfo() {
 	By("fetching pod logs")
 	cmd := exec.Command("kubectl", "get", "pods",
-		"-n", testNamespace,
+		"-n", cfg.testNamespace,
 		"-o", "jsonpath={.items[*].metadata.name}")
 	output, err := utils.Run(cmd)
 	if err == nil {
 		podNames := strings.Fields(output)
 		for _, podName := range podNames {
-			cmd = exec.Command("kubectl", "logs", podName, "-n", testNamespace, "--all-containers=true")
+			cmd = exec.Command("kubectl", "logs", podName, "-n", cfg.testNamespace, "--all-containers=true")
 			logs, logErr := utils.Run(cmd)
 			if logErr == nil {
 				_, _ = fmt.Fprintf(GinkgoWriter, "Pod %s logs:\n%s\n", podName, logs)
@@ -169,14 +169,14 @@ func collectDebugInfo() {
 	}
 
 	By("fetching Kubernetes events")
-	cmd = exec.Command("kubectl", "get", "events", "-n", testNamespace, "--sort-by=.lastTimestamp")
+	cmd = exec.Command("kubectl", "get", "events", "-n", cfg.testNamespace, "--sort-by=.lastTimestamp")
 	eventsOutput, err := utils.Run(cmd)
 	if err == nil {
 		_, _ = fmt.Fprintf(GinkgoWriter, "Kubernetes events:\n%s\n", eventsOutput)
 	}
 
 	By("fetching resource status")
-	cmd = exec.Command("kubectl", "get", "all", "-n", testNamespace)
+	cmd = exec.Command("kubectl", "get", "all", "-n", cfg.testNamespace)
 	allOutput, err := utils.Run(cmd)
 	if err == nil {
 		_, _ = fmt.Fprintf(GinkgoWriter, "All resources:\n%s\n", allOutput)
@@ -188,7 +188,7 @@ func applyGatewayResource() {
 
 	var baseYAML string
 
-	if gatewayClass == "istio" {
+	if cfg.gatewayClass == "istio" {
 		baseYAML = `apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -233,7 +233,7 @@ spec:
         namespaces:
           from: All
 `
-	} else if gatewayClass == "kgateway" {
+	} else if cfg.gatewayClass == "kgateway" {
 		baseYAML = `apiVersion: gateway.kgateway.dev/v1alpha1
 kind: GatewayParameters
 metadata:
@@ -266,7 +266,7 @@ spec:
           from: All
 `
 	} else {
-		Fail(fmt.Sprintf("Unsupported gatewayClassName: %s", gatewayClass))
+		Fail(fmt.Sprintf("Unsupported gatewayClassName: %s", cfg.gatewayClass))
 	}
 
 	var yamlDocs []map[string]interface{}
@@ -280,7 +280,7 @@ spec:
 			Expect(err).NotTo(HaveOccurred(), "Failed to parse base YAML")
 		}
 		if metadata, ok := doc["metadata"].(map[string]interface{}); ok {
-			metadata["namespace"] = testNamespace
+			metadata["namespace"] = cfg.testNamespace
 		}
 		yamlDocs = append(yamlDocs, doc)
 	}
@@ -303,7 +303,7 @@ spec:
 	By("waiting for Gateway pods to be ready")
 	Eventually(func(g Gomega) {
 		cmd := exec.Command("kubectl", "get", "pods",
-			"-n", testNamespace,
+			"-n", cfg.testNamespace,
 			"-l", "gateway.networking.k8s.io/gateway-name=mif",
 			"-o", "jsonpath={.items[*].status.phase}")
 		output, err := utils.Run(cmd)
@@ -322,12 +322,12 @@ func installHeimdallForTest() {
 	Expect(err).NotTo(HaveOccurred(), "Failed to create Heimdall values file for test")
 
 	By("installing Heimdall for test")
-	Expect(utils.InstallHeimdall(testNamespace, heimdallValuesPath)).To(Succeed(), "Failed to install Heimdall for test")
+	Expect(utils.InstallHeimdall(cfg.testNamespace, heimdallValuesPath)).To(Succeed(), "Failed to install Heimdall for test")
 
 	By("waiting for Heimdall deployment to be ready")
 	Eventually(func(g Gomega) {
 		cmd := exec.Command("kubectl", "get", "deployment",
-			"-n", testNamespace,
+			"-n", cfg.testNamespace,
 			"-l", "app.kubernetes.io/instance=heimdall",
 			"-o", "jsonpath={.items[0].status.conditions[?(@.type=='Available')].status}")
 		output, err := utils.Run(cmd)
@@ -343,8 +343,6 @@ func createInferenceServiceValuesFile() (string, error) {
 	}
 
 	imageRepo, imageTag := getInferenceImageInfo()
-	hfToken := os.Getenv("HF_TOKEN")
-	hfEndpoint := os.Getenv("HF_ENDPOINT")
 
 	baseYAML := `apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceService
@@ -424,7 +422,7 @@ spec:
 
 	if md, ok := manifest["metadata"].(map[string]interface{}); ok {
 		md["name"] = inferenceServiceName
-		md["namespace"] = testNamespace
+		md["namespace"] = cfg.testNamespace
 	}
 
 	spec, ok := manifest["spec"].(map[string]interface{})
@@ -454,13 +452,13 @@ spec:
 
 	mainContainer["image"] = fmt.Sprintf("%s:%s", imageRepo, imageTag)
 
-	if isUsingKindCluster {
+	if cfg.isUsingKindCluster {
 		mainContainer["command"] = []interface{}{
 			"/app/llm-d-inference-sim",
 		}
 		mainContainer["args"] = []interface{}{
 			"--model",
-			testModel,
+			cfg.testModel,
 			"--port",
 			"8000",
 		}
@@ -472,18 +470,18 @@ spec:
 		delete(mainContainer, "resources")
 	}
 
-	if hfToken != "" || hfEndpoint != "" {
+	if cfg.hfToken != "" || cfg.hfEndpoint != "" {
 		var envList []interface{}
-		if hfToken != "" {
+		if cfg.hfToken != "" {
 			envList = append(envList, map[string]interface{}{
 				"name":  "HF_TOKEN",
-				"value": hfToken,
+				"value": cfg.hfToken,
 			})
 		}
-		if hfEndpoint != "" {
+		if cfg.hfEndpoint != "" {
 			envList = append(envList, map[string]interface{}{
 				"name":  "HF_ENDPOINT",
-				"value": hfEndpoint,
+				"value": cfg.hfEndpoint,
 			})
 		}
 		if len(envList) > 0 {
@@ -512,13 +510,13 @@ func installInferenceServiceForTest() {
 	Expect(err).NotTo(HaveOccurred(), "Failed to create Odin InferenceService manifest file for test")
 
 	By("installing Odin InferenceService for test")
-	Expect(utils.InstallInferenceService(testNamespace, manifestPath)).To(Succeed(), "Failed to install Odin InferenceService for test")
+	Expect(utils.InstallInferenceService(cfg.testNamespace, manifestPath)).To(Succeed(), "Failed to install Odin InferenceService for test")
 
 	By("waiting for Odin InferenceService deployment to be ready")
 	Eventually(func(g Gomega) {
 		cmd := exec.Command("kubectl", "get", "deployment",
 			inferenceServiceName,
-			"-n", testNamespace,
+			"-n", cfg.testNamespace,
 			"-o", "jsonpath={.status.conditions[?(@.type=='Available')].status}")
 		output, err := utils.Run(cmd)
 		g.Expect(err).NotTo(HaveOccurred())
@@ -530,21 +528,21 @@ func verifyInferenceEndpoint() {
 	By("verifying Gateway service exists")
 	Eventually(func(g Gomega) {
 		cmd := exec.Command("kubectl", "get", "service",
-			"-n", testNamespace,
+			"-n", cfg.testNamespace,
 			"-l", "gateway.networking.k8s.io/gateway-name=mif",
 			"-o", "jsonpath={.items[0].metadata.name}")
 		output, err := utils.Run(cmd)
 		if err != nil || strings.TrimSpace(output) == "" {
 			cmd = exec.Command("kubectl", "get", "service",
 				"mif",
-				"-n", testNamespace,
+				"-n", cfg.testNamespace,
 				"-o", "jsonpath={.metadata.name}")
 			output, err = utils.Run(cmd)
 		}
 		if err != nil || strings.TrimSpace(output) == "" {
 			cmd = exec.Command("kubectl", "get", "service",
 				"gateway-mif",
-				"-n", testNamespace,
+				"-n", cfg.testNamespace,
 				"-o", "jsonpath={.metadata.name}")
 			output, err = utils.Run(cmd)
 		}
@@ -555,7 +553,7 @@ func verifyInferenceEndpoint() {
 	By("verifying inference-service decode pods are running")
 	Eventually(func(g Gomega) {
 		cmd := exec.Command("kubectl", "get", "pods",
-			"-n", testNamespace,
+			"-n", cfg.testNamespace,
 			"-l", fmt.Sprintf("app.kubernetes.io/name=%s", inferenceServiceName),
 			"--field-selector=status.phase=Running",
 			"--no-headers", "-o", "custom-columns=:metadata.name")
@@ -571,21 +569,21 @@ func testInferenceAPI() {
 	var serviceName string
 	Eventually(func(g Gomega) {
 		cmd := exec.Command("kubectl", "get", "service",
-			"-n", testNamespace,
+			"-n", cfg.testNamespace,
 			"-l", "gateway.networking.k8s.io/gateway-name=mif",
 			"-o", "jsonpath={.items[0].metadata.name}")
 		output, err := utils.Run(cmd)
 		if err != nil || strings.TrimSpace(output) == "" {
 			cmd = exec.Command("kubectl", "get", "service",
 				"mif",
-				"-n", testNamespace,
+				"-n", cfg.testNamespace,
 				"-o", "jsonpath={.metadata.name}")
 			output, err = utils.Run(cmd)
 		}
 		if err != nil || strings.TrimSpace(output) == "" {
 			cmd = exec.Command("kubectl", "get", "service",
 				"gateway-mif",
-				"-n", testNamespace,
+				"-n", cfg.testNamespace,
 				"-o", "jsonpath={.metadata.name}")
 			output, err = utils.Run(cmd)
 		}
@@ -597,7 +595,7 @@ func testInferenceAPI() {
 	By("setting up port-forward to Gateway service")
 	portForwardPort := "8000"
 	cmd := exec.Command("kubectl", "port-forward",
-		"-n", testNamespace,
+		"-n", cfg.testNamespace,
 		fmt.Sprintf("service/%s", serviceName),
 		fmt.Sprintf("%s:80", portForwardPort))
 	cmd.Stdout = GinkgoWriter
@@ -615,7 +613,7 @@ func testInferenceAPI() {
 
 	By("sending chat completion request to inference endpoint")
 	requestBody := map[string]interface{}{
-		"model": testModel,
+		"model": cfg.testModel,
 		"messages": []map[string]interface{}{
 			{
 				"role":    "developer",
