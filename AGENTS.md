@@ -48,7 +48,6 @@ The commit message should be structured as follows:
   - Makefiles
   - Configuration files (YAML, JSON, TOML, INI, etc.)
   - Source code comments
-- Documentation files (`.md`) may use Korean for user-facing documentation, but code comments should always be in English.
 
 #### Comment Guidelines
 
