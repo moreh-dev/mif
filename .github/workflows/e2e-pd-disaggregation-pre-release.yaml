@@ -57,7 +57,7 @@ jobs:
 
     env:
       KUBECONFIG: /tmp/kubeconfig
-      VERSION: ${{ github.event.inputs.version == 'current' && github.ref_name || github.event.inputs.version }}
+      VERSION: ${{ github.event.inputs.version == 'current' && github.ref_name || github.event.inputs.version || github.ref_name }}
       MIF_NAMESPACE: mif
       MIF_CHART_PATH: deploy/helm/moai-inference-framework
       TEST_MODEL: "Qwen/Qwen3-0.6B"
