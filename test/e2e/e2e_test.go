@@ -77,7 +77,7 @@ var _ = Describe("Prefill-Decode Disaggregation", Ordered, func() {
 				return
 			}
 			By("cleaning up test workload namespace")
-			if err := utils.CleanupWorkloadNamespace(cfg.workloadNamespace, testInferenceServiceName, cfg.gatewayClass); err != nil {
+			if err := utils.CleanupWorkloadNamespace(cfg.workloadNamespace, testInferenceServiceName, cfg.gatewayClass, cfg.mifNamespace); err != nil {
 				_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to cleanup workload namespace: %v\n", err)
 			}
 		})

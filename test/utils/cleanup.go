@@ -61,7 +61,8 @@ func DeleteGatewayResources(workloadNamespace, gatewayClass string) error {
 
 // CleanupWorkloadNamespace cleans up test resources in the workload namespace.
 // It deletes Gateway resources, InferenceService, uninstalls Heimdall, and deletes the namespace in order.
-func CleanupWorkloadNamespace(workloadNamespace, inferenceServiceName, gatewayClass string) error {
+// If mifNamespace equals workloadNamespace, the namespace deletion is skipped to avoid deleting MIF infrastructure.
+func CleanupWorkloadNamespace(workloadNamespace, inferenceServiceName, gatewayClass, mifNamespace string) error {
 	if err := DeleteInferenceService(workloadNamespace, inferenceServiceName); err != nil {
 		warnError(fmt.Errorf("failed to delete InferenceService: %w", err))
 	}
@@ -74,8 +75,12 @@ func CleanupWorkloadNamespace(workloadNamespace, inferenceServiceName, gatewayCl
 		warnError(fmt.Errorf("failed to delete Gateway resources: %w", err))
 	}
 
-	if err := DeleteNamespace(workloadNamespace); err != nil {
-		return fmt.Errorf("failed to delete workload namespace: %w", err)
+	if mifNamespace != workloadNamespace {
+		if err := DeleteNamespace(workloadNamespace); err != nil {
+			return fmt.Errorf("failed to delete workload namespace: %w", err)
+		}
+	} else {
+		By(fmt.Sprintf("skipping namespace deletion: workloadNamespace (%s) is the same as mifNamespace", workloadNamespace))
 	}
 
 	return nil
