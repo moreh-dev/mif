@@ -38,8 +38,10 @@ helm-dependency: ## Update Helm chart dependencies.
 
 .PHONY: test-e2e
 test-e2e: ## Run E2E tests using Ginkgo (with automatic cleanup).
+	@mkdir -p test-reports
 	@go test -tags=e2e -v ./test/e2e/... -timeout 30m \
-		-ginkgo.v
+		-ginkgo.v \
+		-ginkgo.junit-report=test-reports/junit.xml
 
 .PHONY: test-e2e-no-cleanup
 test-e2e-no-cleanup: ## Run E2E tests without automatic cleanup (for debugging).

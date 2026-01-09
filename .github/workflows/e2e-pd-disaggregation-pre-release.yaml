@@ -190,19 +190,23 @@ jobs:
             exit 1
           fi
 
-      - name: Collect test reports
-        run: |
-          mkdir -p test-reports
-          if [ -d "./test/e2e" ]; then
-            find ./test/e2e -name "*.log" -o -name "*.xml" | xargs -I {} cp {} test-reports/ || true
-          fi
+      - name: Publish test results
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: test-reports/junit.xml
+          check_name: E2E Test Results
+          comment_mode: off
+          report_individual_runs: false
 
       - name: Upload test reports
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: mif-e2e-test-reports-${{ github.run_id }}
           path: test-reports
           retention-days: 7
+          if-no-files-found: warn
 
   test-summary:
     name: Test Summary
