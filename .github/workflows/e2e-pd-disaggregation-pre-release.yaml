@@ -10,7 +10,10 @@ name: E2E PD-Disaggregation Pre-Release Test
 # - INFERENCE_IMAGE_REPO: Inference image repository (optional)
 # - INFERENCE_IMAGE_TAG: Inference image tag (optional)
 #
-# Note: For Product cluster testing, all components are expected to be pre-installed.
+# Note: For Product cluster testing (SKIP_PREREQUISITE=true), all components are expected to be pre-installed:
+# - Prerequisites: cert-manager, Gateway API, Gateway controller (Istio/KGateway), Gateway Inference Extension
+# - MIF infrastructure: moai-inference-framework (Odin controller, etc.)
+# - Preset: moai-inference-preset
 # The test will only deploy heimdall and InferenceService in the test workload namespace.
 
 on:

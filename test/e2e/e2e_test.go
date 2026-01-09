@@ -40,6 +40,9 @@ var _ = Describe("Prefill-Decode Disaggregation", Ordered, func() {
 
 	Context("MIF Infrastructure", func() {
 		It("should deploy MIF components successfully", func() {
+			if cfg.skipPrerequisite {
+				Skip("MIF infrastructure is expected to be pre-installed when SKIP_PREREQUISITE=true")
+			}
 			By("validating that Odin controller is running")
 			verifyOdinController := func(g Gomega) {
 				cmd := exec.Command("kubectl", "get", "deployment",
@@ -60,6 +63,9 @@ var _ = Describe("Prefill-Decode Disaggregation", Ordered, func() {
 		})
 
 		It("should have all pods ready", func() {
+			if cfg.skipPrerequisite {
+				Skip("MIF infrastructure is expected to be pre-installed when SKIP_PREREQUISITE=true")
+			}
 			By("waiting for all pods to be ready")
 			verifyAllPodsReady := func(g Gomega) {
 				cmd := exec.Command("kubectl", "get", "pods",
