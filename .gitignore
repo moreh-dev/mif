@@ -122,3 +122,6 @@ test/e2e/heimdall-values.yaml
 test/e2e/inference-service-values.yaml
 test/e2e/istiod-values.yaml
 test/e2e/kgateway-values.yaml
+
+# E2E test reports
+test-reports/

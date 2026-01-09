@@ -23,6 +23,7 @@ const (
 	envHFEndpoint          = "HF_ENDPOINT"
 	envInferenceImageRepo  = "INFERENCE_IMAGE_REPO"
 	envInferenceImageTag   = "INFERENCE_IMAGE_TAG"
+	envIstioRev            = "ISTIO_REV"
 	envKEDAEnabled         = "KEDA_ENABLED"
 	envLWSEnabled          = "LWS_ENABLED"
 	envOdinCRDEnabled      = "ODIN_CRD_ENABLED"
@@ -40,7 +41,7 @@ type envVarInfo struct {
 var envVars = []envVarInfo{
 	// Skip
 	{envSkipKind, "Skip kind cluster creation and deletion", "false", "Skip", "bool"},
-	{envSkipPrerequisite, "Skip prerequisite installation (cert-manager, Gateway API, Gateway controller, Gateway Inference Extension)", "false", "Skip", "bool"},
+	{envSkipPrerequisite, "Skip prerequisite installation (cert-manager, Gateway API, Gateway controller, Gateway Inference Extension) and MIF/Preset setup. When enabled, setupPrerequisites() returns early without installing or validating any components", "false", "Skip", "bool"},
 	{envSkipCleanup, "Skip cleanup after tests", "false", "Skip", "bool"},
 
 	// Configuration
@@ -64,6 +65,9 @@ var envVars = []envVarInfo{
 	// Inference Image
 	{envInferenceImageRepo, "Inference image repository", "(optional)", "Inference Image", "optional"},
 	{envInferenceImageTag, "Inference image tag", "(optional)", "Inference Image", "optional"},
+
+	// Istio
+	{envIstioRev, "Istio revision label value for workload namespace", "(optional)", "Istio", "optional"},
 
 	// Component Enable/Disable
 	{envKEDAEnabled, "Enable/disable KEDA", "auto-detect", "Component Enable/Disable", "bool"},

@@ -1,0 +1,12 @@
+{
+  "go.buildTags": "e2e",
+  "go.toolsEnvVars": {
+    "GOFLAGS": "-tags=e2e"
+  },
+  "gopls": {
+    "build.buildFlags": ["-tags=e2e"],
+    "build.directoryFilters": [
+      "-test/e2e/cmd/printenv"
+    ]
+  }
+}

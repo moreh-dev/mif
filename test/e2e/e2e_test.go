@@ -26,41 +26,6 @@ import (
 const inferenceServiceName = testInferenceServiceName
 
 var _ = Describe("Prefill-Decode Disaggregation", Ordered, func() {
-	cleanupTestResources := func() {
-		if cfg.skipKind {
-			_, _ = fmt.Fprintf(GinkgoWriter, "Using existing cluster (kubeconfig). Skipping resource cleanup for safety.\n")
-			return
-		}
-
-		if cfg.skipCleanup {
-			By("skipping cleanup (SKIP_CLEANUP=true)")
-			return
-		}
-
-		By("cleaning up test resources")
-		cmd := exec.Command("kubectl", "delete", "inferenceservice", inferenceServiceName,
-			"-n", cfg.workloadNamespace, "--ignore-not-found=true")
-		_, _ = utils.Run(cmd)
-
-		By(fmt.Sprintf("deleting workload namespace %s", cfg.workloadNamespace))
-		cmd = exec.Command("kubectl", "delete", "ns", cfg.workloadNamespace, "--timeout=60s", "--ignore-not-found=true")
-		output, err := utils.Run(cmd)
-		if err != nil {
-			By("attempting to force delete namespace by removing finalizers")
-			cmd = exec.Command("kubectl", "patch", "namespace", cfg.workloadNamespace,
-				"--type=json", "-p", `[{"op": "replace", "path": "/spec/finalizers", "value": []}]`, "--ignore-not-found=true")
-			_, _ = utils.Run(cmd)
-
-			cmd = exec.Command("kubectl", "delete", "ns", cfg.workloadNamespace, "--timeout=30s", "--ignore-not-found=true")
-			_, _ = utils.Run(cmd)
-		} else if output != "" {
-			_, _ = fmt.Fprintf(GinkgoWriter, "Namespace deletion output: %s\n", output)
-		}
-	}
-
-	AfterAll(func() {
-		cleanupTestResources()
-	})
 
 	AfterEach(func() {
 		specReport := CurrentSpecReport()
@@ -74,51 +39,47 @@ var _ = Describe("Prefill-Decode Disaggregation", Ordered, func() {
 	SetDefaultEventuallyPollingInterval(intervalShort)
 
 	Context("MIF Infrastructure", func() {
+		BeforeEach(func() {
+			if cfg.skipPrerequisite {
+				Skip("MIF infrastructure is expected to be pre-installed when SKIP_PREREQUISITE=true")
+			}
+		})
+
 		It("should deploy MIF components successfully", func() {
 			By("validating that Odin controller is running")
-			verifyOdinController := func(g Gomega) {
-				cmd := exec.Command("kubectl", "get", "deployment",
-					"-n", cfg.mifNamespace,
-					"-l", "app.kubernetes.io/name=odin",
-					"-o", "jsonpath={.items[0].status.conditions[?(@.type=='Available')].status}")
-				output, err := utils.Run(cmd)
-				if err != nil || strings.TrimSpace(output) == "" {
-					cmd = exec.Command("kubectl", "get", "deployment",
-						"-n", cfg.mifNamespace,
-						"-o", "jsonpath={.items[?(@.metadata.name=~\"odin.*\")].status.conditions[?(@.type=='Available')].status}")
-					output, err = utils.Run(cmd)
-				}
-				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(strings.TrimSpace(output)).To(Equal("True"), "Odin controller not available")
-			}
 			Eventually(verifyOdinController).Should(Succeed())
 		})
 
 		It("should have all pods ready", func() {
 			By("waiting for all pods to be ready")
-			verifyAllPodsReady := func(g Gomega) {
-				cmd := exec.Command("kubectl", "get", "pods",
-					"-n", cfg.mifNamespace,
-					"--field-selector=status.phase!=Succeeded",
-					"-o", "jsonpath={.items[*].status.conditions[?(@.type=='Ready')].status}")
-				output, err := utils.Run(cmd)
-				g.Expect(err).NotTo(HaveOccurred())
-				statuses := strings.Fields(output)
-				for _, status := range statuses {
-					g.Expect(status).To(Equal("True"), "Some pods are not ready")
-				}
-			}
 			Eventually(verifyAllPodsReady, timeoutVeryLong).Should(Succeed())
 		})
 	})
 
 	Context("Gateway and InferenceService CR integration", func() {
 		BeforeAll(func() {
+			By("setting up test resources")
 			createWorkloadNamespace()
 			
+			By("applying Gateway resources")
 			applyGatewayResource()
+			By("installing Heimdall")
 			installHeimdallForTest()
+			By("installing InferenceService")
 			installInferenceServiceForTest()
+		})
+
+		AfterAll(func() {
+			if cfg.skipCleanup {
+				return
+			}
+			if !cfg.isUsingKindCluster {
+				return
+			}
+			By("cleaning up test workload namespace")
+			if err := utils.CleanupWorkloadNamespace(cfg.workloadNamespace, testInferenceServiceName, cfg.gatewayClass, cfg.mifNamespace); err != nil {
+				_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to cleanup workload namespace: %v\n", err)
+			}
 		})
 
 		It("should have inference-service decode pods reachable behind Gateway", func() {
@@ -131,6 +92,39 @@ var _ = Describe("Prefill-Decode Disaggregation", Ordered, func() {
 	})
 
 })
+
+func verifyOdinController(g Gomega) {
+	cmd := exec.Command("kubectl", "get", "deployment",
+		"-n", cfg.mifNamespace,
+		"-l", "app.kubernetes.io/name=odin",
+		"-o", "jsonpath={.items[0].status.conditions[?(@.type=='Available')].status}")
+	output, err := utils.Run(cmd)
+	if err != nil || strings.TrimSpace(output) == "" {
+		cmd = exec.Command("kubectl", "get", "deployment",
+			"-n", cfg.mifNamespace,
+			"-o", "jsonpath={.items[?(@.metadata.name=~\"odin.*\")].status.conditions[?(@.type=='Available')].status}")
+		output, err = utils.Run(cmd)
+		if err != nil {
+			g.Expect(err).NotTo(HaveOccurred(), "Failed to verify Odin controller deployment")
+			return
+		}
+	}
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(strings.TrimSpace(output)).To(Equal("True"), "Odin controller not available")
+}
+
+func verifyAllPodsReady(g Gomega) {
+	cmd := exec.Command("kubectl", "get", "pods",
+		"-n", cfg.mifNamespace,
+		"--field-selector=status.phase!=Succeeded",
+		"-o", "jsonpath={.items[*].status.conditions[?(@.type=='Ready')].status}")
+	output, err := utils.Run(cmd)
+	g.Expect(err).NotTo(HaveOccurred())
+	statuses := strings.Fields(output)
+	for _, status := range statuses {
+		g.Expect(status).To(Equal("True"), "Some pods are not ready")
+	}
+}
 
 func getInferenceImageInfo() (repo, tag string) {
 	repo = cfg.inferenceImageRepo
@@ -205,7 +199,7 @@ func collectDebugInfo() {
 
 func createWorkloadNamespace() {
 	By("creating workload namespace")
-	cmd := exec.Command("kubectl", "create", "ns", cfg.workloadNamespace)
+	cmd := exec.Command("kubectl", "create", "ns", cfg.workloadNamespace, "--request-timeout=30s")
 	_, err := utils.Run(cmd)
 	if err != nil && !strings.Contains(err.Error(), "AlreadyExists") {
 		Expect(err).NotTo(HaveOccurred(), "Failed to create workload namespace")
@@ -214,10 +208,20 @@ func createWorkloadNamespace() {
 	if cfg.mifNamespace != cfg.workloadNamespace {
 		By("adding mif=enabled label to workload namespace for automatic secret copying")
 		cmd = exec.Command("kubectl", "label", "namespace", cfg.workloadNamespace,
-			"mif=enabled", "--overwrite")
+			"mif=enabled", "--overwrite", "--request-timeout=30s")
 		_, err = utils.Run(cmd)
 		if err != nil {
 			_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to add mif=enabled label to namespace: %v\n", err)
+		}
+	}
+
+	if cfg.istioRev != "" {
+		By(fmt.Sprintf("adding istio.io/rev=%s label to workload namespace", cfg.istioRev))
+		cmd = exec.Command("kubectl", "label", "namespace", cfg.workloadNamespace,
+			fmt.Sprintf("istio.io/rev=%s", cfg.istioRev), "--overwrite", "--request-timeout=30s")
+		_, err = utils.Run(cmd)
+		if err != nil {
+			_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to add istio.io/rev label to namespace: %v\n", err)
 		}
 	}
 }
@@ -227,7 +231,8 @@ func applyGatewayResource() {
 
 	var baseYAML string
 
-	if cfg.gatewayClass == "istio" {
+	switch cfg.gatewayClass {
+	case "istio":
 		baseYAML = `apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -272,7 +277,7 @@ spec:
         namespaces:
           from: All
 `
-	} else if cfg.gatewayClass == "kgateway" {
+	case "kgateway":
 		baseYAML = `apiVersion: gateway.kgateway.dev/v1alpha1
 kind: GatewayParameters
 metadata:
@@ -304,7 +309,7 @@ spec:
         namespaces:
           from: All
 `
-	} else {
+	default:
 		Fail(fmt.Sprintf("Unsupported gatewayClassName: %s", cfg.gatewayClass))
 	}
 
@@ -335,7 +340,7 @@ spec:
 	}
 	Expect(encoder.Close()).To(Succeed())
 
-	cmd := exec.Command("kubectl", "apply", "-f", "-")
+	cmd := exec.Command("kubectl", "apply", "-f", "-", "--request-timeout=60s")
 	cmd.Stdin = strings.NewReader(yamlContent.String())
 	_, err := utils.Run(cmd)
 	Expect(err).NotTo(HaveOccurred(), "Failed to apply Gateway resources")
@@ -374,6 +379,15 @@ func installHeimdallForTest() {
 		g.Expect(err).NotTo(HaveOccurred())
 		g.Expect(strings.TrimSpace(output)).To(Equal("True"), "Heimdall deployment not available")
 	}, timeoutLong, intervalLong).Should(Succeed())
+}
+
+func findModelArgIndex(args []interface{}) int {
+	for i, arg := range args[:len(args)-1] {
+		if flag, ok := arg.(string); ok && flag == "--model" {
+			return i + 1
+		}
+	}
+	return 0
 }
 
 func createInferenceServiceValuesFile() (string, error) {
@@ -518,6 +532,11 @@ spec:
 		if readinessProbe, ok := mainContainer["readinessProbe"].(map[string]interface{}); ok {
 			readinessProbe["initialDelaySeconds"] = 10
 		}
+	} else {
+		if args, ok := mainContainer["args"].([]interface{}); ok && len(args) > 0 {
+			args[findModelArgIndex(args)] = cfg.testModel
+			mainContainer["args"] = args
+		}
 	}
 
 	if resources := getGPUResources("2", "2"); resources != nil {
@@ -582,8 +601,8 @@ func installInferenceServiceForTest() {
 	manifestPath, err := createInferenceServiceValuesFile()
 	Expect(err).NotTo(HaveOccurred(), "Failed to create Odin InferenceService manifest file for test")
 
-	By("installing Odin InferenceService for test")
-	Expect(utils.InstallInferenceService(cfg.workloadNamespace, manifestPath)).To(Succeed(), "Failed to install Odin InferenceService for test")
+	By("creating Odin InferenceService for test")
+	Expect(utils.CreateInferenceService(cfg.workloadNamespace, manifestPath)).To(Succeed(), "Failed to create Odin InferenceService for test")
 
 	By("waiting for Odin InferenceService deployment to be ready")
 	Eventually(func(g Gomega) {
