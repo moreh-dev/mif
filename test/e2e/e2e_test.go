@@ -521,7 +521,19 @@ spec:
 		}
 	} else {
 		if args, ok := mainContainer["args"].([]interface{}); ok && len(args) > 0 {
-			args[0] = cfg.testModel
+			modelReplaced := false
+			for i := 0; i < len(args)-1; i++ {
+				if flag, ok := args[i].(string); ok && flag == "--model" {
+					if i+1 < len(args) {
+						args[i+1] = cfg.testModel
+						modelReplaced = true
+						break
+					}
+				}
+			}
+			if !modelReplaced {
+				args[0] = cfg.testModel
+			}
 			mainContainer["args"] = args
 		}
 	}

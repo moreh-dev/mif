@@ -41,7 +41,7 @@ type envVarInfo struct {
 var envVars = []envVarInfo{
 	// Skip
 	{envSkipKind, "Skip kind cluster creation and deletion", "false", "Skip", "bool"},
-	{envSkipPrerequisite, "Skip prerequisite and MIF/Preset installation. Assumes all components (cert-manager, Gateway API, Gateway controller, Gateway Inference Extension, MIF infrastructure, moai-inference-preset) are pre-installed in the cluster", "false", "Skip", "bool"},
+	{envSkipPrerequisite, "Skip prerequisite installation (cert-manager, Gateway API, Gateway controller, Gateway Inference Extension) and MIF/Preset setup. When enabled, setupPrerequisites() returns early without installing or validating any components", "false", "Skip", "bool"},
 	{envSkipCleanup, "Skip cleanup after tests", "false", "Skip", "bool"},
 
 	// Configuration
