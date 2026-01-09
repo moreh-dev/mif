@@ -104,6 +104,10 @@ func verifyOdinController(g Gomega) {
 			"-n", cfg.mifNamespace,
 			"-o", "jsonpath={.items[?(@.metadata.name=~\"odin.*\")].status.conditions[?(@.type=='Available')].status}")
 		output, err = utils.Run(cmd)
+		if err != nil {
+			g.Expect(err).NotTo(HaveOccurred(), "Failed to verify Odin controller deployment")
+			return
+		}
 	}
 	g.Expect(err).NotTo(HaveOccurred())
 	g.Expect(strings.TrimSpace(output)).To(Equal("True"), "Odin controller not available")
