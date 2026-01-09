@@ -20,9 +20,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version tag to test (e.g., v1.0.0)"
+        description: "Version tag/branch to test (e.g., v1.0.0). Use 'current' to test the current branch's latest commit."
         required: true
-        default: ""
+        default: "current"
         type: string
       cluster_type:
         description: "Cluster type to use for testing"
@@ -32,11 +32,6 @@ on:
         options:
           - kind
           - kubeconfig
-      wait_for_termination:
-        description: "Wait time (in minutes) before terminating for debugging"
-        required: true
-        default: 0
-        type: number
   push:
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+-rc[0-9]+"
@@ -62,7 +57,7 @@ jobs:
 
     env:
       KUBECONFIG: /tmp/kubeconfig
-      VERSION: ${{ github.event.inputs.version || github.ref_name }}
+      VERSION: ${{ github.event.inputs.version == 'current' && github.ref_name || github.event.inputs.version }}
       MIF_NAMESPACE: mif
       MIF_CHART_PATH: deploy/helm/moai-inference-framework
       TEST_MODEL: "Qwen/Qwen3-0.6B"
@@ -84,12 +79,12 @@ jobs:
       - name: Determine version
         id: version
         run: |
-          if [ -z "$VERSION" ]; then
-            echo "❌ Version is required"
-            exit 1
-          fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Testing version: $VERSION"
+          if [ "$VERSION" == "${{ github.ref_name }}" ]; then
+            echo "Testing current branch: $VERSION (latest commit)"
+          else
+            echo "Testing version: $VERSION"
+          fi
 
       - name: Install kubectl
         run: |
@@ -191,12 +186,6 @@ jobs:
           name: mif-e2e-test-reports-${{ github.run_id }}
           path: test-reports
           retention-days: 7
-
-      - name: Wait for termination (debugging)
-        if: github.event_name == 'workflow_dispatch' && inputs.wait_for_termination > 0
-        run: |
-          echo "Waiting ${{ inputs.wait_for_termination }} minutes before termination for debugging..."
-          sleep $(( ${{ inputs.wait_for_termination }} * 60 ))
 
   test-summary:
     name: Test Summary
