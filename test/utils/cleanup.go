@@ -30,15 +30,48 @@ func DeleteNamespace(namespace string) error {
 	return nil
 }
 
+// DeleteGatewayResources deletes Gateway resources (Gateway, ConfigMap, or GatewayParameters) from the given namespace.
+func DeleteGatewayResources(workloadNamespace, gatewayClass string) error {
+	By("deleting Gateway resource")
+	cmd := exec.Command("kubectl", "delete", "gateway", "mif",
+		"-n", workloadNamespace, "--ignore-not-found=true")
+	if _, err := Run(cmd); err != nil {
+		warnError(fmt.Errorf("failed to delete Gateway: %w", err))
+	}
+
+	switch gatewayClass {
+	case "istio":
+		By("deleting Gateway infrastructure ConfigMap")
+		cmd := exec.Command("kubectl", "delete", "configmap", "mif-gateway-infrastructure",
+			"-n", workloadNamespace, "--ignore-not-found=true")
+		if _, err := Run(cmd); err != nil {
+			warnError(fmt.Errorf("failed to delete Gateway ConfigMap: %w", err))
+		}
+	case "kgateway":
+		By("deleting Gateway infrastructure GatewayParameters")
+		cmd := exec.Command("kubectl", "delete", "gatewayparameters", "mif-gateway-infrastructure",
+			"-n", workloadNamespace, "--ignore-not-found=true")
+		if _, err := Run(cmd); err != nil {
+			warnError(fmt.Errorf("failed to delete Gateway GatewayParameters: %w", err))
+		}
+	}
+
+	return nil
+}
+
 // CleanupWorkloadNamespace cleans up test resources in the workload namespace.
-// It deletes InferenceService, uninstalls Heimdall, and deletes the namespace in order.
-func CleanupWorkloadNamespace(workloadNamespace, inferenceServiceName string) error {
+// It deletes Gateway resources, InferenceService, uninstalls Heimdall, and deletes the namespace in order.
+func CleanupWorkloadNamespace(workloadNamespace, inferenceServiceName, gatewayClass string) error {
 	if err := DeleteInferenceService(workloadNamespace, inferenceServiceName); err != nil {
 		warnError(fmt.Errorf("failed to delete InferenceService: %w", err))
 	}
 
 	if err := UninstallHeimdall(workloadNamespace); err != nil {
 		warnError(fmt.Errorf("failed to uninstall Heimdall: %w", err))
+	}
+
+	if err := DeleteGatewayResources(workloadNamespace, gatewayClass); err != nil {
+		warnError(fmt.Errorf("failed to delete Gateway resources: %w", err))
 	}
 
 	if err := DeleteNamespace(workloadNamespace); err != nil {
