@@ -58,10 +58,14 @@ var _ = Describe("Prefill-Decode Disaggregation", Ordered, func() {
 
 	Context("Gateway and InferenceService CR integration", func() {
 		BeforeAll(func() {
+			By("setting up test resources")
 			createWorkloadNamespace()
 			
+			By("applying Gateway resources")
 			applyGatewayResource()
+			By("installing Heimdall")
 			installHeimdallForTest()
+			By("installing InferenceService")
 			installInferenceServiceForTest()
 		})
 
@@ -191,7 +195,7 @@ func collectDebugInfo() {
 
 func createWorkloadNamespace() {
 	By("creating workload namespace")
-	cmd := exec.Command("kubectl", "create", "ns", cfg.workloadNamespace)
+	cmd := exec.Command("kubectl", "create", "ns", cfg.workloadNamespace, "--request-timeout=30s")
 	_, err := utils.Run(cmd)
 	if err != nil && !strings.Contains(err.Error(), "AlreadyExists") {
 		Expect(err).NotTo(HaveOccurred(), "Failed to create workload namespace")
@@ -200,7 +204,7 @@ func createWorkloadNamespace() {
 	if cfg.mifNamespace != cfg.workloadNamespace {
 		By("adding mif=enabled label to workload namespace for automatic secret copying")
 		cmd = exec.Command("kubectl", "label", "namespace", cfg.workloadNamespace,
-			"mif=enabled", "--overwrite")
+			"mif=enabled", "--overwrite", "--request-timeout=30s")
 		_, err = utils.Run(cmd)
 		if err != nil {
 			_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to add mif=enabled label to namespace: %v\n", err)
@@ -322,7 +326,7 @@ spec:
 	}
 	Expect(encoder.Close()).To(Succeed())
 
-	cmd := exec.Command("kubectl", "apply", "-f", "-")
+	cmd := exec.Command("kubectl", "apply", "-f", "-", "--request-timeout=60s")
 	cmd.Stdin = strings.NewReader(yamlContent.String())
 	_, err := utils.Run(cmd)
 	Expect(err).NotTo(HaveOccurred(), "Failed to apply Gateway resources")

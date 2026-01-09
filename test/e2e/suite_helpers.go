@@ -125,7 +125,8 @@ func checkPrerequisites() {
 		return
 	}
 
-	cmd := exec.Command("kubectl", "cluster-info")
+	By("verifying Kubernetes cluster connectivity")
+	cmd := exec.Command("kubectl", "cluster-info", "--request-timeout=30s")
 	_, err := utils.Run(cmd)
 	Expect(err).NotTo(HaveOccurred(), "Cannot connect to Kubernetes cluster. Please check your kubeconfig.")
 }
