@@ -210,6 +210,16 @@ func createWorkloadNamespace() {
 			_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to add mif=enabled label to namespace: %v\n", err)
 		}
 	}
+
+	if cfg.istioRev != "" {
+		By(fmt.Sprintf("adding istio.io/rev=%s label to workload namespace", cfg.istioRev))
+		cmd = exec.Command("kubectl", "label", "namespace", cfg.workloadNamespace,
+			fmt.Sprintf("istio.io/rev=%s", cfg.istioRev), "--overwrite", "--request-timeout=30s")
+		_, err = utils.Run(cmd)
+		if err != nil {
+			_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to add istio.io/rev label to namespace: %v\n", err)
+		}
+	}
 }
 
 func applyGatewayResource() {

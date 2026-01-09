@@ -23,6 +23,7 @@ const (
 	envHFEndpoint          = "HF_ENDPOINT"
 	envInferenceImageRepo  = "INFERENCE_IMAGE_REPO"
 	envInferenceImageTag   = "INFERENCE_IMAGE_TAG"
+	envIstioRev            = "ISTIO_REV"
 	envKEDAEnabled         = "KEDA_ENABLED"
 	envLWSEnabled          = "LWS_ENABLED"
 	envOdinCRDEnabled      = "ODIN_CRD_ENABLED"
@@ -64,6 +65,9 @@ var envVars = []envVarInfo{
 	// Inference Image
 	{envInferenceImageRepo, "Inference image repository", "(optional)", "Inference Image", "optional"},
 	{envInferenceImageTag, "Inference image tag", "(optional)", "Inference Image", "optional"},
+
+	// Istio
+	{envIstioRev, "Istio revision label value for workload namespace", "(optional)", "Istio", "optional"},
 
 	// Component Enable/Disable
 	{envKEDAEnabled, "Enable/disable KEDA", "auto-detect", "Component Enable/Disable", "bool"},

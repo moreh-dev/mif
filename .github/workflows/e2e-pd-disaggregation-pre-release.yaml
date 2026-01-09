@@ -32,6 +32,11 @@ on:
         options:
           - kind
           - kubeconfig
+      istio_rev:
+        description: "Istio revision label value for workload namespace (optional)"
+        required: false
+        default: ""
+        type: string
   push:
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+-rc[0-9]+"
@@ -68,6 +73,7 @@ jobs:
       HF_ENDPOINT: ${{ secrets.HF_ENDPOINT }}
       INFERENCE_IMAGE_REPO: ${{ secrets.INFERENCE_IMAGE_REPO }}
       INFERENCE_IMAGE_TAG: ${{ secrets.INFERENCE_IMAGE_TAG }}
+      ISTIO_REV: ${{ github.event.inputs.istio_rev != '' && github.event.inputs.istio_rev || secrets.ISTIO_REV }}
 
     steps:
       - name: Checkout
@@ -166,6 +172,7 @@ jobs:
           HF_ENDPOINT: ${{ env.HF_ENDPOINT }}
           INFERENCE_IMAGE_REPO: ${{ env.INFERENCE_IMAGE_REPO }}
           INFERENCE_IMAGE_TAG: ${{ env.INFERENCE_IMAGE_TAG }}
+          ISTIO_REV: ${{ env.ISTIO_REV }}
           SKIP_KIND: ${{ steps.cluster_type.outputs.cluster_type == 'kubeconfig' && 'true' || 'false' }}
           SKIP_PREREQUISITE: ${{ steps.cluster_type.outputs.cluster_type == 'kubeconfig' && 'true' || 'false' }}
           SKIP_CLEANUP: "false"
