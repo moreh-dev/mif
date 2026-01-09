@@ -26,41 +26,6 @@ import (
 const inferenceServiceName = testInferenceServiceName
 
 var _ = Describe("Prefill-Decode Disaggregation", Ordered, func() {
-	cleanupTestResources := func() {
-		if cfg.skipKind {
-			_, _ = fmt.Fprintf(GinkgoWriter, "Using existing cluster (kubeconfig). Skipping resource cleanup for safety.\n")
-			return
-		}
-
-		if cfg.skipCleanup {
-			By("skipping cleanup (SKIP_CLEANUP=true)")
-			return
-		}
-
-		By("cleaning up test resources")
-		cmd := exec.Command("kubectl", "delete", "inferenceservice", inferenceServiceName,
-			"-n", cfg.workloadNamespace, "--ignore-not-found=true")
-		_, _ = utils.Run(cmd)
-
-		By(fmt.Sprintf("deleting workload namespace %s", cfg.workloadNamespace))
-		cmd = exec.Command("kubectl", "delete", "ns", cfg.workloadNamespace, "--timeout=60s", "--ignore-not-found=true")
-		output, err := utils.Run(cmd)
-		if err != nil {
-			By("attempting to force delete namespace by removing finalizers")
-			cmd = exec.Command("kubectl", "patch", "namespace", cfg.workloadNamespace,
-				"--type=json", "-p", `[{"op": "replace", "path": "/spec/finalizers", "value": []}]`, "--ignore-not-found=true")
-			_, _ = utils.Run(cmd)
-
-			cmd = exec.Command("kubectl", "delete", "ns", cfg.workloadNamespace, "--timeout=30s", "--ignore-not-found=true")
-			_, _ = utils.Run(cmd)
-		} else if output != "" {
-			_, _ = fmt.Fprintf(GinkgoWriter, "Namespace deletion output: %s\n", output)
-		}
-	}
-
-	AfterAll(func() {
-		cleanupTestResources()
-	})
 
 	AfterEach(func() {
 		specReport := CurrentSpecReport()
@@ -227,7 +192,8 @@ func applyGatewayResource() {
 
 	var baseYAML string
 
-	if cfg.gatewayClass == "istio" {
+	switch cfg.gatewayClass {
+	case "istio":
 		baseYAML = `apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -272,7 +238,7 @@ spec:
         namespaces:
           from: All
 `
-	} else if cfg.gatewayClass == "kgateway" {
+	case "kgateway":
 		baseYAML = `apiVersion: gateway.kgateway.dev/v1alpha1
 kind: GatewayParameters
 metadata:
@@ -304,7 +270,7 @@ spec:
         namespaces:
           from: All
 `
-	} else {
+	default:
 		Fail(fmt.Sprintf("Unsupported gatewayClassName: %s", cfg.gatewayClass))
 	}
 
@@ -582,8 +548,8 @@ func installInferenceServiceForTest() {
 	manifestPath, err := createInferenceServiceValuesFile()
 	Expect(err).NotTo(HaveOccurred(), "Failed to create Odin InferenceService manifest file for test")
 
-	By("installing Odin InferenceService for test")
-	Expect(utils.InstallInferenceService(cfg.workloadNamespace, manifestPath)).To(Succeed(), "Failed to install Odin InferenceService for test")
+	By("creating Odin InferenceService for test")
+	Expect(utils.CreateInferenceService(cfg.workloadNamespace, manifestPath)).To(Succeed(), "Failed to create Odin InferenceService for test")
 
 	By("waiting for Odin InferenceService deployment to be ready")
 	Eventually(func(g Gomega) {

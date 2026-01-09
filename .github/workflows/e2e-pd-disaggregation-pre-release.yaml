@@ -1,5 +1,18 @@
 name: E2E PD-Disaggregation Pre-Release Test
 
+# Required GitHub Secrets for Product Cluster Testing:
+# - KUBECONFIG_BASE64: Base64-encoded kubeconfig file for the Product cluster
+#   To create: kubectl config view --flatten | base64 -w 0
+# - AWS_ACCESS_KEY_ID: AWS access key for ECR image pull (optional)
+# - AWS_SECRET_ACCESS_KEY: AWS secret key for ECR image pull (optional)
+# - HF_TOKEN: HuggingFace token for model download (optional)
+# - HF_ENDPOINT: HuggingFace endpoint URL (optional)
+# - INFERENCE_IMAGE_REPO: Inference image repository (optional)
+# - INFERENCE_IMAGE_TAG: Inference image tag (optional)
+#
+# Note: For Product cluster testing, all components are expected to be pre-installed.
+# The test will only deploy heimdall and InferenceService in the test workload namespace.
+
 on:
   workflow_dispatch:
     inputs:
@@ -50,6 +63,13 @@ jobs:
       MIF_NAMESPACE: mif
       MIF_CHART_PATH: deploy/helm/moai-inference-framework
       TEST_MODEL: "Qwen/Qwen3-0.6B"
+      WORKLOAD_NAMESPACE: "mif-e2e-test"
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      HF_ENDPOINT: ${{ secrets.HF_ENDPOINT }}
+      INFERENCE_IMAGE_REPO: ${{ secrets.INFERENCE_IMAGE_REPO }}
+      INFERENCE_IMAGE_TAG: ${{ secrets.INFERENCE_IMAGE_TAG }}
 
     steps:
       - name: Checkout
@@ -113,6 +133,10 @@ jobs:
           mkdir -p ~/.kube
           # KUBECONFIG_BASE64 secret must be set in repository secrets
           # It should contain a base64-encoded kubeconfig file for the target cluster
+          # To create this secret:
+          # 1. Get your kubeconfig file: kubectl config view --flatten > kubeconfig.yaml
+          # 2. Encode it: cat kubeconfig.yaml | base64 -w 0
+          # 3. Add it as a repository secret named KUBECONFIG_BASE64
           echo "${{ secrets.KUBECONFIG_BASE64 }}" | base64 --decode > $KUBECONFIG
           chmod 600 $KUBECONFIG
           kubectl cluster-info
@@ -140,7 +164,7 @@ jobs:
           TEST_MODEL: ${{ env.TEST_MODEL }}
           KUBECONFIG: ${{ env.KUBECONFIG }}
           SKIP_KIND: ${{ steps.cluster_type.outputs.cluster_type == 'kubeconfig' && 'true' || 'false' }}
-          SKIP_PREREQUISITE: "false"
+          SKIP_PREREQUISITE: ${{ steps.cluster_type.outputs.cluster_type == 'kubeconfig' && 'true' || 'false' }}
           SKIP_CLEANUP: "false"
         run: |
           go test -tags=e2e -v ./test/e2e/... -timeout 30m
