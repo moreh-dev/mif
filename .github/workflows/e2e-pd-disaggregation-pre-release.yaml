@@ -70,11 +70,6 @@ jobs:
       INFERENCE_IMAGE_TAG: ${{ secrets.INFERENCE_IMAGE_TAG }}
 
     steps:
-      - name: Check Current User
-        run: |
-          whoami
-          id
-
       - name: Checkout
         uses: actions/checkout@v5
         with:
