@@ -56,7 +56,7 @@ jobs:
       test_passed: ${{ steps.validate.outputs.test_passed }}
 
     env:
-      KUBECONFIG: /tmp/kubeconfig
+      KUBECONFIG: ~/.kube/config
       VERSION: ${{ github.event.inputs.version == 'current' && github.ref_name || github.event.inputs.version || github.ref_name }}
       MIF_NAMESPACE: mif
       MIF_CHART_PATH: deploy/helm/moai-inference-framework
@@ -133,11 +133,11 @@ jobs:
           # 1. Get your kubeconfig file: kubectl config view --flatten > kubeconfig.yaml
           # 2. Encode it: cat kubeconfig.yaml | base64 -w 0
           # 3. Add it as a repository secret named KUBECONFIG_BASE64
-          echo "${{ secrets.KUBECONFIG_BASE64 }}" | base64 --decode > $KUBECONFIG
-          chmod 600 $KUBECONFIG
+          echo "${{ secrets.KUBECONFIG_BASE64 }}" | base64 --decode > ~/.kube/config
+          chmod 600 ~/.kube/config
+          echo "Kubeconfig file created at: ~/.kube/config"
+          echo "Kubeconfig file size: $(wc -c < ~/.kube/config) bytes"
           kubectl cluster-info
-        env:
-          KUBECONFIG: ${{ env.KUBECONFIG }}
 
       - name: Cache Go modules
         uses: actions/cache@v4
@@ -170,7 +170,7 @@ jobs:
           SKIP_PREREQUISITE: ${{ steps.cluster_type.outputs.cluster_type == 'kubeconfig' && 'true' || 'false' }}
           SKIP_CLEANUP: "false"
         run: |
-          go test -tags=e2e -v ./test/e2e/... -timeout 30m
+          make test-e2e
           if [ $? -eq 0 ]; then
             echo "test_passed=true" >> "$GITHUB_OUTPUT"
           else
