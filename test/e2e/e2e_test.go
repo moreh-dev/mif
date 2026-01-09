@@ -519,6 +519,11 @@ spec:
 		if readinessProbe, ok := mainContainer["readinessProbe"].(map[string]interface{}); ok {
 			readinessProbe["initialDelaySeconds"] = 10
 		}
+	} else {
+		if args, ok := mainContainer["args"].([]interface{}); ok && len(args) > 0 {
+			args[0] = cfg.testModel
+			mainContainer["args"] = args
+		}
 	}
 
 	if resources := getGPUResources("2", "2"); resources != nil {
