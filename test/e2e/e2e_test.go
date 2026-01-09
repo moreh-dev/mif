@@ -377,6 +377,15 @@ func installHeimdallForTest() {
 	}, timeoutLong, intervalLong).Should(Succeed())
 }
 
+func findModelArgIndex(args []interface{}) int {
+	for i, arg := range args[:len(args)-1] {
+		if flag, ok := arg.(string); ok && flag == "--model" {
+			return i + 1
+		}
+	}
+	return 0
+}
+
 func createInferenceServiceValuesFile() (string, error) {
 	projectDir, err := utils.GetProjectDir()
 	if err != nil {
@@ -521,19 +530,7 @@ spec:
 		}
 	} else {
 		if args, ok := mainContainer["args"].([]interface{}); ok && len(args) > 0 {
-			modelReplaced := false
-			for i := 0; i < len(args)-1; i++ {
-				if flag, ok := args[i].(string); ok && flag == "--model" {
-					if i+1 < len(args) {
-						args[i+1] = cfg.testModel
-						modelReplaced = true
-						break
-					}
-				}
-			}
-			if !modelReplaced {
-				args[0] = cfg.testModel
-			}
+			args[findModelArgIndex(args)] = cfg.testModel
 			mainContainer["args"] = args
 		}
 	}
