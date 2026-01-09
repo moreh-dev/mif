@@ -49,6 +49,7 @@ on:
 permissions:
   packages: read
   contents: read
+  checks: write
 
 jobs:
   e2e-test:
