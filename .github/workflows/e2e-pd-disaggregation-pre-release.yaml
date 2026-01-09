@@ -158,7 +158,14 @@ jobs:
           MIF_NAMESPACE: ${{ env.MIF_NAMESPACE }}
           MIF_CHART_PATH: ${{ env.MIF_CHART_PATH }}
           TEST_MODEL: ${{ env.TEST_MODEL }}
+          WORKLOAD_NAMESPACE: ${{ env.WORKLOAD_NAMESPACE }}
           KUBECONFIG: ${{ env.KUBECONFIG }}
+          AWS_ACCESS_KEY_ID: ${{ env.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          HF_TOKEN: ${{ env.HF_TOKEN }}
+          HF_ENDPOINT: ${{ env.HF_ENDPOINT }}
+          INFERENCE_IMAGE_REPO: ${{ env.INFERENCE_IMAGE_REPO }}
+          INFERENCE_IMAGE_TAG: ${{ env.INFERENCE_IMAGE_TAG }}
           SKIP_KIND: ${{ steps.cluster_type.outputs.cluster_type == 'kubeconfig' && 'true' || 'false' }}
           SKIP_PREREQUISITE: ${{ steps.cluster_type.outputs.cluster_type == 'kubeconfig' && 'true' || 'false' }}
           SKIP_CLEANUP: "false"
