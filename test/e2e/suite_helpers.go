@@ -60,23 +60,9 @@ func cleanupKindCluster() {
 	}
 }
 
-// cleanupMIFNamespace deletes the MIF namespace.
 func cleanupMIFNamespace() {
-	namespace := cfg.mifNamespace
-
-	By(fmt.Sprintf("deleting MIF namespace %s", namespace))
-	cmd := exec.Command("kubectl", "delete", "ns", namespace, "--timeout=60s", "--ignore-not-found=true")
-	output, err := utils.Run(cmd)
-	if err != nil {
-		By("attempting to force delete namespace by removing finalizers")
-		cmd = exec.Command("kubectl", "patch", "namespace", namespace,
-			"--type=json", "-p", `[{"op": "replace", "path": "/spec/finalizers", "value": []}]`, "--ignore-not-found=true")
-		_, _ = utils.Run(cmd)
-
-		cmd = exec.Command("kubectl", "delete", "ns", namespace, "--timeout=30s", "--ignore-not-found=true")
-		_, _ = utils.Run(cmd)
-	} else if output != "" {
-		_, _ = fmt.Fprintf(GinkgoWriter, "Namespace deletion output: %s\n", output)
+	if err := utils.DeleteNamespace(cfg.mifNamespace); err != nil {
+		_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to delete MIF namespace: %v\n", err)
 	}
 }
 

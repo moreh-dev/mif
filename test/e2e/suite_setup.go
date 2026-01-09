@@ -201,10 +201,6 @@ func setupPreset() {
 
 // setupGateway installs Gateway API and controller if needed.
 func setupGateway() {
-	if cfg.skipPrerequisite {
-		return
-	}
-
 	By("checking if Gateway API is already installed")
 	cfg.isGatewayAPIAlreadyInstalled = utils.IsGatewayAPIInstalled()
 	if cfg.isGatewayAPIAlreadyInstalled {
