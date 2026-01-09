@@ -109,7 +109,7 @@ jobs:
         id: cluster_type
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            CLUSTER_TYPE="${{ inputs.cluster_type }}"
+            CLUSTER_TYPE="${{ github.event.inputs.cluster_type }}"
           else
             CLUSTER_TYPE="kubeconfig"
           fi
