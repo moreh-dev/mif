@@ -39,46 +39,19 @@ var _ = Describe("Prefill-Decode Disaggregation", Ordered, func() {
 	SetDefaultEventuallyPollingInterval(intervalShort)
 
 	Context("MIF Infrastructure", func() {
-		It("should deploy MIF components successfully", func() {
+		BeforeEach(func() {
 			if cfg.skipPrerequisite {
 				Skip("MIF infrastructure is expected to be pre-installed when SKIP_PREREQUISITE=true")
 			}
+		})
+
+		It("should deploy MIF components successfully", func() {
 			By("validating that Odin controller is running")
-			verifyOdinController := func(g Gomega) {
-				cmd := exec.Command("kubectl", "get", "deployment",
-					"-n", cfg.mifNamespace,
-					"-l", "app.kubernetes.io/name=odin",
-					"-o", "jsonpath={.items[0].status.conditions[?(@.type=='Available')].status}")
-				output, err := utils.Run(cmd)
-				if err != nil || strings.TrimSpace(output) == "" {
-					cmd = exec.Command("kubectl", "get", "deployment",
-						"-n", cfg.mifNamespace,
-						"-o", "jsonpath={.items[?(@.metadata.name=~\"odin.*\")].status.conditions[?(@.type=='Available')].status}")
-					output, err = utils.Run(cmd)
-				}
-				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(strings.TrimSpace(output)).To(Equal("True"), "Odin controller not available")
-			}
 			Eventually(verifyOdinController).Should(Succeed())
 		})
 
 		It("should have all pods ready", func() {
-			if cfg.skipPrerequisite {
-				Skip("MIF infrastructure is expected to be pre-installed when SKIP_PREREQUISITE=true")
-			}
 			By("waiting for all pods to be ready")
-			verifyAllPodsReady := func(g Gomega) {
-				cmd := exec.Command("kubectl", "get", "pods",
-					"-n", cfg.mifNamespace,
-					"--field-selector=status.phase!=Succeeded",
-					"-o", "jsonpath={.items[*].status.conditions[?(@.type=='Ready')].status}")
-				output, err := utils.Run(cmd)
-				g.Expect(err).NotTo(HaveOccurred())
-				statuses := strings.Fields(output)
-				for _, status := range statuses {
-					g.Expect(status).To(Equal("True"), "Some pods are not ready")
-				}
-			}
 			Eventually(verifyAllPodsReady, timeoutVeryLong).Should(Succeed())
 		})
 	})
@@ -92,6 +65,19 @@ var _ = Describe("Prefill-Decode Disaggregation", Ordered, func() {
 			installInferenceServiceForTest()
 		})
 
+		AfterAll(func() {
+			if cfg.skipCleanup {
+				return
+			}
+			if !cfg.isUsingKindCluster {
+				return
+			}
+			By("cleaning up test workload namespace")
+			if err := utils.CleanupWorkloadNamespace(cfg.workloadNamespace, testInferenceServiceName); err != nil {
+				_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to cleanup workload namespace: %v\n", err)
+			}
+		})
+
 		It("should have inference-service decode pods reachable behind Gateway", func() {
 			verifyInferenceEndpoint()
 		})
@@ -102,6 +88,35 @@ var _ = Describe("Prefill-Decode Disaggregation", Ordered, func() {
 	})
 
 })
+
+func verifyOdinController(g Gomega) {
+	cmd := exec.Command("kubectl", "get", "deployment",
+		"-n", cfg.mifNamespace,
+		"-l", "app.kubernetes.io/name=odin",
+		"-o", "jsonpath={.items[0].status.conditions[?(@.type=='Available')].status}")
+	output, err := utils.Run(cmd)
+	if err != nil || strings.TrimSpace(output) == "" {
+		cmd = exec.Command("kubectl", "get", "deployment",
+			"-n", cfg.mifNamespace,
+			"-o", "jsonpath={.items[?(@.metadata.name=~\"odin.*\")].status.conditions[?(@.type=='Available')].status}")
+		output, err = utils.Run(cmd)
+	}
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(strings.TrimSpace(output)).To(Equal("True"), "Odin controller not available")
+}
+
+func verifyAllPodsReady(g Gomega) {
+	cmd := exec.Command("kubectl", "get", "pods",
+		"-n", cfg.mifNamespace,
+		"--field-selector=status.phase!=Succeeded",
+		"-o", "jsonpath={.items[*].status.conditions[?(@.type=='Ready')].status}")
+	output, err := utils.Run(cmd)
+	g.Expect(err).NotTo(HaveOccurred())
+	statuses := strings.Fields(output)
+	for _, status := range statuses {
+		g.Expect(status).To(Equal("True"), "Some pods are not ready")
+	}
+}
 
 func getInferenceImageInfo() (repo, tag string) {
 	repo = cfg.inferenceImageRepo

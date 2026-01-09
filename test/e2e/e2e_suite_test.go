@@ -9,8 +9,6 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
-	"github.com/moreh-dev/mif/test/utils"
 )
 
 func TestE2E(t *testing.T) {
@@ -43,12 +41,10 @@ var _ = AfterSuite(func() {
 		return
 	}
 
-	By("cleaning up test workload namespace")
-	if err := utils.CleanupWorkloadNamespace(cfg.workloadNamespace, testInferenceServiceName); err != nil {
-		_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to cleanup workload namespace: %v\n", err)
+	if !cfg.isUsingKindCluster {
+		_, _ = fmt.Fprintf(GinkgoWriter, "Using existing cluster (kubeconfig). Skipping resource cleanup for safety.\n")
+		return
 	}
 
-	if cfg.isUsingKindCluster {
-		cleanupKindResources()
-	}
+	cleanupKindResources()
 })

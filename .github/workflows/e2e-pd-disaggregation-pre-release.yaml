@@ -77,9 +77,7 @@ jobs:
           ref: ${{ env.VERSION }}
 
       - name: Determine version
-        id: version
         run: |
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           if [ "$VERSION" == "${{ github.ref_name }}" ]; then
             echo "Testing current branch: $VERSION (latest commit)"
           else
