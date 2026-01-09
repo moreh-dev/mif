@@ -199,6 +199,9 @@ jobs:
           check_name: E2E Test Results
           comment_mode: off
           report_individual_runs: false
+          check_run_annotations: all tests, skipped tests
+          report_suite_logs: any
+          job_summary: true
 
       - name: Upload test reports
         if: always()
