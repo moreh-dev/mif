@@ -8,8 +8,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/goccy/go-yaml"
-
 	"github.com/moreh-dev/mif/test/utils"
 )
 
@@ -66,9 +64,18 @@ func createHeimdallValuesFile() (string, error) {
 		return "", err
 	}
 
-	baseYAML := `global:
+	serviceMonitorSection := "serviceMonitor:\n  enabled: false\n"
+	if cfg.prometheusStackEnabled {
+		serviceMonitorSection = `serviceMonitor:
+  enabled: true
+  labels:
+    release: prometheus-stack
+`
+	}
+
+	baseYAML := fmt.Sprintf(`global:
   imagePullSecrets:
-    - name: moreh-registry
+    - name: %s
 
 config:
   apiVersion: inference.networking.x-k8s.io/v1alpha1
@@ -84,48 +91,13 @@ config:
         - pluginRef: max-score-picker
 
 gateway:
-  name: mif
-  gatewayClassName: istio
-`
+  name: %s
+  gatewayClassName: %s
 
-	var values map[string]interface{}
-	if err := yaml.Unmarshal([]byte(baseYAML), &values); err != nil {
-		return "", fmt.Errorf("failed to parse base Heimdall values YAML: %w", err)
-	}
-
-	if global, ok := values["global"].(map[string]interface{}); ok {
-		if imagePullSecrets, ok := global["imagePullSecrets"].([]interface{}); ok && len(imagePullSecrets) > 0 {
-			if secret, ok := imagePullSecrets[0].(map[string]interface{}); ok {
-				secret["name"] = secretNameMorehRegistry
-			}
-		}
-	}
-
-	if gateway, ok := values["gateway"].(map[string]interface{}); ok {
-		gateway["name"] = gatewayName
-		gateway["gatewayClassName"] = cfg.gatewayClass
-	}
-
-	if cfg.prometheusStackEnabled {
-		values["serviceMonitor"] = map[string]interface{}{
-			"enabled": true,
-			"labels": map[string]interface{}{
-				"release": "prometheus-stack",
-			},
-		}
-	} else {
-		values["serviceMonitor"] = map[string]interface{}{
-			"enabled": false,
-		}
-	}
-
-	valuesYAML, err := yaml.Marshal(values)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal Heimdall values YAML: %w", err)
-	}
+%s`, secretNameMorehRegistry, gatewayName, cfg.gatewayClass, serviceMonitorSection)
 
 	valuesPath := filepath.Join(projectDir, tempFileHeimdallValues)
-	err = os.WriteFile(valuesPath, valuesYAML, 0644)
+	err = os.WriteFile(valuesPath, []byte(baseYAML), 0644)
 	if err != nil {
 		return "", fmt.Errorf("failed to write Heimdall values file: %w", err)
 	}

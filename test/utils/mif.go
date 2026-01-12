@@ -3,7 +3,6 @@ package utils
 import (
 	"fmt"
 	"os/exec"
-	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 )
@@ -39,20 +38,6 @@ func DeleteInferenceService(namespace, inferenceServiceName string) error {
 
 // InstallHeimdall installs Heimdall in the given namespace.
 func InstallHeimdall(namespace string, valuesPath string) error {
-	By("adding moreh Helm repository")
-	cmd := exec.Command("helm", "repo", "add", "moreh", "https://moreh-dev.github.io/helm-charts")
-	if _, err := Run(cmd); err != nil {
-		if !strings.Contains(err.Error(), "already exists") {
-			return fmt.Errorf("failed to add moreh helm repo: %w", err)
-		}
-	}
-
-	By("updating moreh Helm repository")
-	cmd = exec.Command("helm", "repo", "update", "moreh")
-	if _, err := Run(cmd); err != nil {
-		return fmt.Errorf("failed to update moreh helm repo: %w", err)
-	}
-
 	By("installing Heimdall")
 	helmArgs := []string{
 		"upgrade", "--install", "heimdall",
@@ -64,7 +49,7 @@ func InstallHeimdall(namespace string, valuesPath string) error {
 	if valuesPath != "" {
 		helmArgs = append(helmArgs, "-f", valuesPath)
 	}
-	cmd = exec.Command("helm", helmArgs...)
+	cmd := exec.Command("helm", helmArgs...)
 	_, err := Run(cmd)
 	return err
 }
@@ -78,7 +63,6 @@ func UninstallHeimdall(namespace string) error {
 
 // DeployMIFPreset deploys moai-inference-preset in the given namespace.
 func DeployMIFPreset(namespace string, chartPath string) error {
-	By("deploying moai-inference-preset")
 	helmArgs := []string{
 		"upgrade", "--install", "moai-inference-preset",
 		chartPath,

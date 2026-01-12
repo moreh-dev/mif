@@ -14,16 +14,14 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"text/template"
 	"time"
 
-	"github.com/goccy/go-yaml"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	"github.com/moreh-dev/mif/test/utils"
 )
-
-const inferenceServiceName = testInferenceServiceName
 
 var _ = Describe("Prefill-Decode Disaggregation", Ordered, func() {
 
@@ -60,7 +58,7 @@ var _ = Describe("Prefill-Decode Disaggregation", Ordered, func() {
 		BeforeAll(func() {
 			By("setting up test resources")
 			createWorkloadNamespace()
-			
+
 			By("applying Gateway resources")
 			applyGatewayResource()
 			By("installing Heimdall")
@@ -77,7 +75,7 @@ var _ = Describe("Prefill-Decode Disaggregation", Ordered, func() {
 				return
 			}
 			By("cleaning up test workload namespace")
-			if err := utils.CleanupWorkloadNamespace(cfg.workloadNamespace, testInferenceServiceName, cfg.gatewayClass, cfg.mifNamespace); err != nil {
+			if err := utils.CleanupWorkloadNamespace(cfg.workloadNamespace, inferenceServiceName, cfg.gatewayClass, cfg.mifNamespace); err != nil {
 				_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to cleanup workload namespace: %v\n", err)
 			}
 		})
@@ -93,76 +91,59 @@ var _ = Describe("Prefill-Decode Disaggregation", Ordered, func() {
 
 })
 
-func verifyOdinController(g Gomega) {
-	cmd := exec.Command("kubectl", "get", "deployment",
-		"-n", cfg.mifNamespace,
-		"-l", "app.kubernetes.io/name=odin",
-		"-o", "jsonpath={.items[0].status.conditions[?(@.type=='Available')].status}")
-	output, err := utils.Run(cmd)
-	if err != nil || strings.TrimSpace(output) == "" {
-		cmd = exec.Command("kubectl", "get", "deployment",
-			"-n", cfg.mifNamespace,
-			"-o", "jsonpath={.items[?(@.metadata.name=~\"odin.*\")].status.conditions[?(@.type=='Available')].status}")
-		output, err = utils.Run(cmd)
-		if err != nil {
-			g.Expect(err).NotTo(HaveOccurred(), "Failed to verify Odin controller deployment")
-			return
-		}
+func renderTextTemplate(templateText string, data any) (string, error) {
+	t, err := template.New("manifest").Parse(templateText)
+	if err != nil {
+		return "", err
 	}
-	g.Expect(err).NotTo(HaveOccurred())
-	g.Expect(strings.TrimSpace(output)).To(Equal("True"), "Odin controller not available")
+
+	var buf bytes.Buffer
+	if err := t.Execute(&buf, data); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
+
+func verifyOdinController(g Gomega) {
+	cmd := exec.Command("kubectl", "wait", "deployment",
+		"-l", "app.kubernetes.io/name=odin",
+		"--for=condition=Available",
+		"-n", cfg.mifNamespace,
+		fmt.Sprintf("--timeout=%v", timeoutLong))
+	_, err := utils.Run(cmd)
+	g.Expect(err).NotTo(HaveOccurred(), "Odin controller not available")
 }
 
 func verifyAllPodsReady(g Gomega) {
-	cmd := exec.Command("kubectl", "get", "pods",
-		"-n", cfg.mifNamespace,
+	cmd := exec.Command("kubectl", "wait", "pod",
+		"--all",
 		"--field-selector=status.phase!=Succeeded",
-		"-o", "jsonpath={.items[*].status.conditions[?(@.type=='Ready')].status}")
-	output, err := utils.Run(cmd)
-	g.Expect(err).NotTo(HaveOccurred())
-	statuses := strings.Fields(output)
-	for _, status := range statuses {
-		g.Expect(status).To(Equal("True"), "Some pods are not ready")
-	}
+		"--for=condition=Ready",
+		"-n", cfg.mifNamespace,
+		fmt.Sprintf("--timeout=%v", timeoutVeryLong))
+	_, err := utils.Run(cmd)
+	g.Expect(err).NotTo(HaveOccurred(), "Some pods are not ready")
 }
 
 func getInferenceImageInfo() (repo, tag string) {
-	repo = cfg.inferenceImageRepo
-	tag = cfg.inferenceImageTag
-
-	if repo == "" {
-		if cfg.isUsingKindCluster {
-			repo = imageRepoKindDefault
-		} else {
-			// Use default from YAML template
-			repo = ""
-		}
+	repoDefault := imageRepoDefault
+	tagDefault := imageTagDefault
+	if cfg.isUsingKindCluster {
+		repoDefault = imageRepoKindDefault
+		tagDefault = imageTagKindDefault
 	}
 
+	repo = cfg.inferenceImageRepo
+	if repo == "" {
+		repo = repoDefault
+	}
+
+	tag = cfg.inferenceImageTag
 	if tag == "" {
-		if cfg.isUsingKindCluster {
-			tag = imageTagKindDefault
-		} else {
-			// Use default from YAML template
-			tag = ""
-		}
+		tag = tagDefault
 	}
 
 	return repo, tag
-}
-
-func getGPUResources(requests, limits string) map[string]interface{} {
-	if cfg.isUsingKindCluster {
-		return nil
-	}
-	return map[string]interface{}{
-		"requests": map[string]interface{}{
-			"amd.com/gpu": requests,
-		},
-		"limits": map[string]interface{}{
-			"amd.com/gpu": limits,
-		},
-	}
 }
 
 func collectDebugInfo() {
@@ -174,7 +155,7 @@ func collectDebugInfo() {
 	if err == nil {
 		podNames := strings.Fields(output)
 		for _, podName := range podNames {
-			cmd = exec.Command("kubectl", "logs", podName, "-n", cfg.mifNamespace, "--all-containers=true")
+			cmd = exec.Command("kubectl", "logs", podName, "-n", cfg.mifNamespace, "--all-containers=true", "--tail=100")
 			logs, logErr := utils.Run(cmd)
 			if logErr == nil {
 				_, _ = fmt.Fprintf(GinkgoWriter, "Pod %s logs:\n%s\n", podName, logs)
@@ -237,7 +218,6 @@ func applyGatewayResource() {
 kind: ConfigMap
 metadata:
   name: mif-gateway-infrastructure
-  namespace: mif
 data:
   service: |
     spec:
@@ -261,7 +241,6 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
   name: mif
-  namespace: mif
 spec:
   gatewayClassName: istio
   infrastructure:
@@ -282,7 +261,6 @@ spec:
 kind: GatewayParameters
 metadata:
   name: mif-gateway-infrastructure
-  namespace: mif
 spec:
   kube:
     service:
@@ -293,7 +271,6 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
   name: mif
-  namespace: mif
 spec:
   gatewayClassName: kgateway
   infrastructure:
@@ -313,52 +290,36 @@ spec:
 		Fail(fmt.Sprintf("Unsupported gatewayClassName: %s", cfg.gatewayClass))
 	}
 
-	var yamlDocs []map[string]interface{}
-	decoder := yaml.NewDecoder(strings.NewReader(baseYAML))
-	for {
-		var doc map[string]interface{}
-		if err := decoder.Decode(&doc); err != nil {
-			if err == io.EOF {
-				break
-			}
-			Expect(err).NotTo(HaveOccurred(), "Failed to parse base YAML")
-			return
-		}
-		if metadata, ok := doc["metadata"].(map[string]interface{}); ok {
-			metadata["namespace"] = cfg.workloadNamespace
-		}
-		yamlDocs = append(yamlDocs, doc)
-	}
-
-	var yamlContent strings.Builder
-	encoder := yaml.NewEncoder(&yamlContent)
-	for i, doc := range yamlDocs {
-		if i > 0 {
-			yamlContent.WriteString("---\n")
-		}
-		Expect(encoder.Encode(doc)).To(Succeed())
-	}
-	Expect(encoder.Close()).To(Succeed())
-
-	cmd := exec.Command("kubectl", "apply", "-f", "-", "--request-timeout=60s")
-	cmd.Stdin = strings.NewReader(yamlContent.String())
+	cmd := exec.Command("kubectl", "apply", "-f", "-", "-n", cfg.workloadNamespace, "--request-timeout=60s")
+	cmd.Stdin = strings.NewReader(baseYAML)
 	_, err := utils.Run(cmd)
 	Expect(err).NotTo(HaveOccurred(), "Failed to apply Gateway resources")
 
-	By("waiting for Gateway pods to be ready")
-	Eventually(func(g Gomega) {
-		cmd := exec.Command("kubectl", "get", "pods",
-			"-n", cfg.workloadNamespace,
+	By("waiting for Gateway to be accepted")
+	cmd = exec.Command("kubectl", "wait", "gateway", "mif",
+		"--for=condition=Accepted",
+		"-n", cfg.workloadNamespace,
+		fmt.Sprintf("--timeout=%v", timeoutLong))
+	_, err = utils.Run(cmd)
+	Expect(err).NotTo(HaveOccurred(), "Gateway not accepted")
+
+	By("waiting for Gateway pods to be created")
+	Eventually(func() (string, error) {
+		checkCmd := exec.Command("kubectl", "get", "pods",
 			"-l", "gateway.networking.k8s.io/gateway-name=mif",
-			"-o", "jsonpath={.items[*].status.phase}")
-		output, err := utils.Run(cmd)
-		g.Expect(err).NotTo(HaveOccurred())
-		phases := strings.Fields(output)
-		g.Expect(len(phases)).To(BeNumerically(">=", 1), "No Gateway pods found")
-		for _, p := range phases {
-			g.Expect(p).To(Equal("Running"), "Gateway pod is not running")
-		}
-	}, timeoutLong, intervalLong).Should(Succeed())
+			"-n", cfg.workloadNamespace,
+			"-o", "name")
+		return utils.Run(checkCmd)
+	}, timeoutLong, intervalShort).ShouldNot(BeEmpty())
+
+	By("waiting for Gateway pods to be ready")
+	cmd = exec.Command("kubectl", "wait", "pod",
+		"-l", "gateway.networking.k8s.io/gateway-name=mif",
+		"--for=condition=Ready",
+		"-n", cfg.workloadNamespace,
+		fmt.Sprintf("--timeout=%v", timeoutLong))
+	_, err = utils.Run(cmd)
+	Expect(err).NotTo(HaveOccurred(), "Gateway pods not ready")
 }
 
 func installHeimdallForTest() {
@@ -370,24 +331,13 @@ func installHeimdallForTest() {
 	Expect(utils.InstallHeimdall(cfg.workloadNamespace, heimdallValuesPath)).To(Succeed(), "Failed to install Heimdall for test")
 
 	By("waiting for Heimdall deployment to be ready")
-	Eventually(func(g Gomega) {
-		cmd := exec.Command("kubectl", "get", "deployment",
-			"-n", cfg.workloadNamespace,
-			"-l", "app.kubernetes.io/instance=heimdall",
-			"-o", "jsonpath={.items[0].status.conditions[?(@.type=='Available')].status}")
-		output, err := utils.Run(cmd)
-		g.Expect(err).NotTo(HaveOccurred())
-		g.Expect(strings.TrimSpace(output)).To(Equal("True"), "Heimdall deployment not available")
-	}, timeoutLong, intervalLong).Should(Succeed())
-}
-
-func findModelArgIndex(args []interface{}) int {
-	for i, arg := range args[:len(args)-1] {
-		if flag, ok := arg.(string); ok && flag == "--model" {
-			return i + 1
-		}
-	}
-	return 0
+	cmd := exec.Command("kubectl", "wait", "deployment",
+		"-l", "app.kubernetes.io/instance=heimdall",
+		"--for=condition=Available",
+		"-n", cfg.workloadNamespace,
+		fmt.Sprintf("--timeout=%v", timeoutLong))
+	_, err = utils.Run(cmd)
+	Expect(err).NotTo(HaveOccurred(), "Heimdall deployment not available")
 }
 
 func createInferenceServiceValuesFile() (string, error) {
@@ -397,16 +347,24 @@ func createInferenceServiceValuesFile() (string, error) {
 	}
 
 	imageRepo, imageTag := getInferenceImageInfo()
-	var image string
-	if imageRepo != "" && imageTag != "" {
-		image = fmt.Sprintf("%s:%s", imageRepo, imageTag)
+	image := fmt.Sprintf("%s:%s", imageRepo, imageTag)
+
+	type inferenceServiceTemplateData struct {
+		Name            string
+		Namespace       string
+		ImagePullSecret string
+		Image           string
+		Model           string
+		HFToken         string
+		HFEndpoint      string
+		IsKind          bool
 	}
 
-	baseYAML := `apiVersion: odin.moreh.io/v1alpha1
+	const inferenceServiceTemplate = `apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceService
 metadata:
-  name: vllm-llama3-1b-instruct-tp2
-  namespace: quickstart
+  name: {{ .Name }}
+  namespace: {{ .Namespace }}
 spec:
   replicas: 2
   inferencePoolRefs:
@@ -414,19 +372,31 @@ spec:
   template:
     spec:
       imagePullSecrets:
-        - name: moreh-registry
+        - name: {{ .ImagePullSecret }}
       containers:
         - name: main
-          image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/quickstart/moreh-vllm:20250915.1
+          image: {{ .Image }}
+{{- if not .IsKind }}
           securityContext:
             capabilities:
               add:
               - IPC_LOCK
+{{- end }}
           command:
+{{- if .IsKind }}
+            - /app/llm-d-inference-sim
+{{- else }}
             - vllm
             - serve
+{{- end }}
           args:
-            - meta-llama/Llama-3.2-1B-Instruct
+{{- if .IsKind }}
+            - --model
+            - {{ .Model }}
+            - --port
+            - "8000"
+{{- else }}
+            - {{ .Model }}
             - --port
             - "8000"
             - --quantization
@@ -438,14 +408,25 @@ spec:
             - --no-enable-prefix-caching
             - --no-enable-log-requests
             - --disable-uvicorn-access-log
+{{- end }}
+{{- if and (not .IsKind) (or .HFToken .HFEndpoint) }}
           env:
+{{- if .HFToken }}
             - name: HF_TOKEN
-              value: "<huggingfaceToken>"
+              value: {{ .HFToken }}
+{{- end }}
+{{- if .HFEndpoint }}
+            - name: HF_ENDPOINT
+              value: {{ .HFEndpoint }}
+{{- end }}
+{{- end }}
+{{- if not .IsKind }}
           resources:
             requests:
               amd.com/gpu: "2"
             limits:
               amd.com/gpu: "2"
+{{- end }}
           ports:
             - containerPort: 8000
               name: http
@@ -455,7 +436,7 @@ spec:
               path: /health
               port: 8000
               scheme: HTTP
-            initialDelaySeconds: 120
+            initialDelaySeconds: {{ if .IsKind }}10{{ else }}120{{ end }}
             periodSeconds: 10
             successThreshold: 1
             timeoutSeconds: 5
@@ -467,129 +448,30 @@ spec:
           emptyDir:
             medium: Memory
             sizeLimit: "2Gi"
+{{- if not .IsKind }}
       tolerations:
         - key: "amd.com/gpu"
           operator: "Exists"
           effect: "NoSchedule"
+{{- end }}
 `
 
-	var manifest map[string]interface{}
-	if err := yaml.Unmarshal([]byte(baseYAML), &manifest); err != nil {
-		return "", fmt.Errorf("failed to parse base Odin InferenceService YAML: %w", err)
-	}
-
-	if md, ok := manifest["metadata"].(map[string]interface{}); ok {
-		md["name"] = inferenceServiceName
-		md["namespace"] = cfg.workloadNamespace
-	}
-
-	spec, ok := manifest["spec"].(map[string]interface{})
-	if !ok {
-		return "", fmt.Errorf("invalid Odin InferenceService manifest: missing spec")
-	}
-
-	template, ok := spec["template"].(map[string]interface{})
-	if !ok {
-		return "", fmt.Errorf("invalid Odin InferenceService manifest: missing spec.template")
-	}
-
-	podSpec, ok := template["spec"].(map[string]interface{})
-	if !ok {
-		return "", fmt.Errorf("invalid Odin InferenceService manifest: missing spec.template.spec")
-	}
-
-	containers, ok := podSpec["containers"].([]interface{})
-	if !ok || len(containers) == 0 {
-		return "", fmt.Errorf("invalid Odin InferenceService manifest: missing containers")
-	}
-
-	mainContainer, ok := containers[0].(map[string]interface{})
-	if !ok {
-		return "", fmt.Errorf("invalid Odin InferenceService manifest: malformed main container")
-	}
-
-	if imagePullSecrets, ok := podSpec["imagePullSecrets"].([]interface{}); ok && len(imagePullSecrets) > 0 {
-		if secret, ok := imagePullSecrets[0].(map[string]interface{}); ok {
-			secret["name"] = secretNameMorehRegistry
-		}
-	}
-
-	if image != "" {
-		mainContainer["image"] = image
-	}
-
-	if cfg.isUsingKindCluster {
-		mainContainer["command"] = []interface{}{
-			"/app/llm-d-inference-sim",
-		}
-		mainContainer["args"] = []interface{}{
-			"--model",
-			cfg.testModel,
-			"--port",
-			"8000",
-		}
-
-		if readinessProbe, ok := mainContainer["readinessProbe"].(map[string]interface{}); ok {
-			readinessProbe["initialDelaySeconds"] = 10
-		}
-	} else {
-		if args, ok := mainContainer["args"].([]interface{}); ok && len(args) > 0 {
-			args[findModelArgIndex(args)] = cfg.testModel
-			mainContainer["args"] = args
-		}
-	}
-
-	if resources := getGPUResources("2", "2"); resources != nil {
-		mainContainer["resources"] = resources
-	} else {
-		delete(mainContainer, "resources")
-	}
-
-	if env, ok := mainContainer["env"].([]interface{}); ok {
-		var filteredEnv []interface{}
-		for _, envVar := range env {
-			if envMap, ok := envVar.(map[string]interface{}); ok {
-				if value, ok := envMap["value"].(string); ok && value == "<huggingfaceToken>" {
-					continue
-				}
-				filteredEnv = append(filteredEnv, envVar)
-			}
-		}
-		if len(filteredEnv) > 0 {
-			mainContainer["env"] = filteredEnv
-		} else {
-			delete(mainContainer, "env")
-		}
-	}
-
-	if cfg.hfToken != "" || cfg.hfEndpoint != "" {
-		var envList []interface{}
-		if cfg.hfToken != "" {
-			envList = append(envList, map[string]interface{}{
-				"name":  "HF_TOKEN",
-				"value": cfg.hfToken,
-			})
-		}
-		if cfg.hfEndpoint != "" {
-			envList = append(envList, map[string]interface{}{
-				"name":  "HF_ENDPOINT",
-				"value": cfg.hfEndpoint,
-			})
-		}
-		if len(envList) > 0 {
-			mainContainer["env"] = envList
-		}
-	} else if _, exists := mainContainer["env"]; !exists {
-		delete(mainContainer, "env")
-	}
-
-	manifestYAML, err := yaml.Marshal(manifest)
+	rendered, err := renderTextTemplate(inferenceServiceTemplate, inferenceServiceTemplateData{
+		Name:            inferenceServiceName,
+		Namespace:       cfg.workloadNamespace,
+		ImagePullSecret: secretNameMorehRegistry,
+		Image:           image,
+		Model:           cfg.testModel,
+		HFToken:         cfg.hfToken,
+		HFEndpoint:      cfg.hfEndpoint,
+		IsKind:          cfg.isUsingKindCluster,
+	})
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal Odin InferenceService manifest: %w", err)
+		return "", fmt.Errorf("failed to render InferenceService manifest: %w", err)
 	}
 
 	manifestPath := filepath.Join(projectDir, tempFileISValues)
-	if err := os.WriteFile(manifestPath, manifestYAML, 0600); err != nil {
+	if err := os.WriteFile(manifestPath, []byte(rendered), 0600); err != nil {
 		return "", fmt.Errorf("failed to write Odin InferenceService manifest file: %w", err)
 	}
 
@@ -605,15 +487,13 @@ func installInferenceServiceForTest() {
 	Expect(utils.CreateInferenceService(cfg.workloadNamespace, manifestPath)).To(Succeed(), "Failed to create Odin InferenceService for test")
 
 	By("waiting for Odin InferenceService deployment to be ready")
-	Eventually(func(g Gomega) {
-		cmd := exec.Command("kubectl", "get", "deployment",
-			inferenceServiceName,
-			"-n", cfg.workloadNamespace,
-			"-o", "jsonpath={.status.conditions[?(@.type=='Available')].status}")
-		output, err := utils.Run(cmd)
-		g.Expect(err).NotTo(HaveOccurred())
-		g.Expect(strings.TrimSpace(output)).To(Equal("True"), "Odin InferenceService deployment not available")
-	}, timeoutVeryLong, intervalLong).Should(Succeed())
+	cmd := exec.Command("kubectl", "wait", "deployment",
+		inferenceServiceName,
+		"--for=condition=Available",
+		"-n", cfg.workloadNamespace,
+		fmt.Sprintf("--timeout=%v", timeoutVeryLong))
+	_, err = utils.Run(cmd)
+	Expect(err).NotTo(HaveOccurred(), "Odin InferenceService deployment not available")
 }
 
 func verifyInferenceEndpoint() {
@@ -642,18 +522,14 @@ func verifyInferenceEndpoint() {
 		g.Expect(strings.TrimSpace(output)).NotTo(BeEmpty(), "Gateway service not found")
 	}, timeoutLong, intervalLong).Should(Succeed())
 
-	By("verifying inference-service decode pods are running")
-	Eventually(func(g Gomega) {
-		cmd := exec.Command("kubectl", "get", "pods",
-			"-n", cfg.workloadNamespace,
-			"-l", fmt.Sprintf("app.kubernetes.io/name=%s", inferenceServiceName),
-			"--field-selector=status.phase=Running",
-			"--no-headers", "-o", "custom-columns=:metadata.name")
-		output, err := utils.Run(cmd)
-		g.Expect(err).NotTo(HaveOccurred())
-		podNames := utils.GetNonEmptyLines(output)
-		g.Expect(len(podNames)).To(BeNumerically(">=", 1), "No Odin InferenceService pods found")
-	}, timeoutVeryLong, intervalLong).Should(Succeed())
+	By("waiting for inference-service decode pods to be ready")
+	cmd := exec.Command("kubectl", "wait", "pod",
+		"-l", fmt.Sprintf("app.kubernetes.io/name=%s", inferenceServiceName),
+		"--for=condition=Ready",
+		"-n", cfg.workloadNamespace,
+		fmt.Sprintf("--timeout=%v", timeoutVeryLong))
+	_, err := utils.Run(cmd)
+	Expect(err).NotTo(HaveOccurred(), "InferenceService pods not ready")
 }
 
 func testInferenceAPI() {

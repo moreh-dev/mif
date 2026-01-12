@@ -58,6 +58,12 @@ func setupKindCluster() {
 	} else {
 		_, _ = fmt.Fprintf(GinkgoWriter, "Successfully added moreh Helm repository\n")
 	}
+
+	By("updating moreh Helm repository")
+	cmd = exec.Command("helm", "repo", "update", helmRepoName)
+	if _, err := utils.Run(cmd); err != nil {
+		_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to update moreh helm repo: %v\n", err)
+	}
 }
 
 // setupPrerequisites installs prerequisite components if needed.
