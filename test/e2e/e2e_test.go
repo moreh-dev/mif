@@ -413,11 +413,11 @@ spec:
           env:
 {{- if .HFToken }}
             - name: HF_TOKEN
-              value: {{ .HFToken }}
+              value: "{{ .HFToken }}"
 {{- end }}
 {{- if .HFEndpoint }}
             - name: HF_ENDPOINT
-              value: {{ .HFEndpoint }}
+              value: "{{ .HFEndpoint }}"
 {{- end }}
 {{- end }}
 {{- if not .IsKind }}
