@@ -20,11 +20,6 @@ name: E2E PD-Disaggregation Pre-Release Test
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: "Version tag/branch to test (e.g., v1.0.0). Use 'current' to test the current branch's latest commit."
-        required: true
-        default: "current"
-        type: string
       cluster_type:
         description: "Cluster type to use for testing"
         required: true
@@ -69,11 +64,9 @@ jobs:
 
     env:
       KUBECONFIG: /tmp/kubeconfig
-      VERSION: ${{ github.event.inputs.version == 'current' && github.ref_name || github.event.inputs.version || github.ref_name }}
       MIF_NAMESPACE: mif
       MIF_CHART_PATH: deploy/helm/moai-inference-framework
       TEST_MODEL: ${{ github.event.inputs.test_model }}
-      WORKLOAD_NAMESPACE: "mif-e2e-test"
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -87,15 +80,11 @@ jobs:
         uses: actions/checkout@v5
         with:
           persist-credentials: false
-          ref: ${{ env.VERSION }}
 
-      - name: Determine version
+      - name: Set workload namespace
         run: |
-          if [ "$VERSION" == "${{ github.ref_name }}" ]; then
-            echo "Testing current branch: $VERSION (latest commit)"
-          else
-            echo "Testing version: $VERSION"
-          fi
+          COMMIT_HASH_SHORT=$(echo "${{ github.sha }}" | cut -c1-7)
+          echo "WORKLOAD_NAMESPACE=mif-e2e-${COMMIT_HASH_SHORT}" >> "$GITHUB_ENV"
 
       - name: Install kubectl
         run: |
