@@ -1,13 +1,25 @@
 name: E2E PD-Disaggregation Pre-Release Test
 
+# Required GitHub Secrets for Product Cluster Testing:
+# - KUBECONFIG_BASE64: Base64-encoded kubeconfig file for the Product cluster
+#   To create: kubectl config view --flatten | base64 -w 0
+# - AWS_ACCESS_KEY_ID: AWS access key for ECR image pull (optional)
+# - AWS_SECRET_ACCESS_KEY: AWS secret key for ECR image pull (optional)
+# - HF_TOKEN: HuggingFace token for model download (optional)
+# - HF_ENDPOINT: HuggingFace endpoint URL (optional)
+# - INFERENCE_IMAGE_REPO: Inference image repository (optional)
+# - INFERENCE_IMAGE_TAG: Inference image tag (optional)
+#
+# Note: For Product cluster testing (SKIP_PREREQUISITE=true), setupPrerequisites() returns early
+# without installing or validating any components. All required components must be pre-installed:
+# - Prerequisites: cert-manager, Gateway API, Gateway controller (Istio/KGateway), Gateway Inference Extension
+# - MIF infrastructure: moai-inference-framework (Odin controller, etc.)
+# - Preset: moai-inference-preset
+# The test will only deploy heimdall and InferenceService in the test workload namespace.
+
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: "Version tag to test (e.g., v1.0.0)"
-        required: true
-        default: ""
-        type: string
       cluster_type:
         description: "Cluster type to use for testing"
         required: true
@@ -16,11 +28,16 @@ on:
         options:
           - kind
           - kubeconfig
-      wait_for_termination:
-        description: "Wait time (in minutes) before terminating for debugging"
-        required: true
-        default: 0
-        type: number
+      test_model:
+        description: "Test model name (e.g., meta-llama/Llama-3.2-1B-Instruct)"
+        required: false
+        default: "meta-llama/Llama-3.2-1B-Instruct"
+        type: string
+      istio_rev:
+        description: "Istio revision label value for workload namespace (optional)"
+        required: false
+        default: ""
+        type: string
   push:
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+-rc[0-9]+"
@@ -28,6 +45,7 @@ on:
 permissions:
   packages: read
   contents: read
+  checks: write
 
 jobs:
   e2e-test:
@@ -46,27 +64,27 @@ jobs:
 
     env:
       KUBECONFIG: /tmp/kubeconfig
-      VERSION: ${{ github.event.inputs.version || github.ref_name }}
       MIF_NAMESPACE: mif
       MIF_CHART_PATH: deploy/helm/moai-inference-framework
-      TEST_MODEL: "Qwen/Qwen3-0.6B"
+      TEST_MODEL: ${{ github.event.inputs.test_model }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      HF_ENDPOINT: ${{ secrets.HF_ENDPOINT }}
+      INFERENCE_IMAGE_REPO: ${{ secrets.INFERENCE_IMAGE_REPO }}
+      INFERENCE_IMAGE_TAG: ${{ secrets.INFERENCE_IMAGE_TAG }}
+      ISTIO_REV: ${{ github.event.inputs.istio_rev != '' && github.event.inputs.istio_rev || secrets.ISTIO_REV }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v5
         with:
           persist-credentials: false
-          ref: ${{ env.VERSION }}
 
-      - name: Determine version
-        id: version
+      - name: Set workload namespace
         run: |
-          if [ -z "$VERSION" ]; then
-            echo "❌ Version is required"
-            exit 1
-          fi
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Testing version: $VERSION"
+          COMMIT_HASH_SHORT=$(echo "${{ github.sha }}" | cut -c1-7)
+          echo "WORKLOAD_NAMESPACE=mif-e2e-${COMMIT_HASH_SHORT}" >> "$GITHUB_ENV"
 
       - name: Install kubectl
         run: |
@@ -89,7 +107,7 @@ jobs:
         id: cluster_type
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            CLUSTER_TYPE="${{ inputs.cluster_type }}"
+            CLUSTER_TYPE="${{ github.event.inputs.cluster_type }}"
           else
             CLUSTER_TYPE="kubeconfig"
           fi
@@ -113,6 +131,10 @@ jobs:
           mkdir -p ~/.kube
           # KUBECONFIG_BASE64 secret must be set in repository secrets
           # It should contain a base64-encoded kubeconfig file for the target cluster
+          # To create this secret:
+          # 1. Get your kubeconfig file: kubectl config view --flatten > kubeconfig.yaml
+          # 2. Encode it: cat kubeconfig.yaml | base64 -w 0
+          # 3. Add it as a repository secret named KUBECONFIG_BASE64
           echo "${{ secrets.KUBECONFIG_BASE64 }}" | base64 --decode > $KUBECONFIG
           chmod 600 $KUBECONFIG
           kubectl cluster-info
@@ -138,12 +160,20 @@ jobs:
           MIF_NAMESPACE: ${{ env.MIF_NAMESPACE }}
           MIF_CHART_PATH: ${{ env.MIF_CHART_PATH }}
           TEST_MODEL: ${{ env.TEST_MODEL }}
+          WORKLOAD_NAMESPACE: ${{ env.WORKLOAD_NAMESPACE }}
           KUBECONFIG: ${{ env.KUBECONFIG }}
+          AWS_ACCESS_KEY_ID: ${{ env.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          HF_TOKEN: ${{ env.HF_TOKEN }}
+          HF_ENDPOINT: ${{ env.HF_ENDPOINT }}
+          INFERENCE_IMAGE_REPO: ${{ env.INFERENCE_IMAGE_REPO }}
+          INFERENCE_IMAGE_TAG: ${{ env.INFERENCE_IMAGE_TAG }}
+          ISTIO_REV: ${{ env.ISTIO_REV }}
           SKIP_KIND: ${{ steps.cluster_type.outputs.cluster_type == 'kubeconfig' && 'true' || 'false' }}
-          SKIP_PREREQUISITE: "false"
+          SKIP_PREREQUISITE: ${{ steps.cluster_type.outputs.cluster_type == 'kubeconfig' && 'true' || 'false' }}
           SKIP_CLEANUP: "false"
         run: |
-          go test -tags=e2e -v ./test/e2e/... -timeout 30m
+          make test-e2e
           if [ $? -eq 0 ]; then
             echo "test_passed=true" >> "$GITHUB_OUTPUT"
           else
@@ -151,25 +181,26 @@ jobs:
             exit 1
           fi
 
-      - name: Collect test reports
-        run: |
-          mkdir -p test-reports
-          if [ -d "./test/e2e" ]; then
-            find ./test/e2e -name "*.log" -o -name "*.xml" | xargs -I {} cp {} test-reports/ || true
-          fi
+      - name: Publish test results
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: test-reports/junit.xml
+          check_name: E2E Test Results
+          comment_mode: off
+          report_individual_runs: false
+          check_run_annotations: all tests, skipped tests
+          report_suite_logs: any
+          job_summary: true
 
       - name: Upload test reports
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: mif-e2e-test-reports-${{ github.run_id }}
           path: test-reports
           retention-days: 7
-
-      - name: Wait for termination (debugging)
-        if: github.event_name == 'workflow_dispatch' && inputs.wait_for_termination > 0
-        run: |
-          echo "Waiting ${{ inputs.wait_for_termination }} minutes before termination for debugging..."
-          sleep $(( ${{ inputs.wait_for_termination }} * 60 ))
+          if-no-files-found: warn
 
   test-summary:
     name: Test Summary

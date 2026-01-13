@@ -9,14 +9,13 @@ import "time"
 const (
 	// Helm release names
 	helmReleaseMIF      = "moai-inference-framework"
-	helmReleaseHeimdall = "heimdall"
 
 	// Gateway class types
 	gatewayClassIstio    = "istio"
 	gatewayClassKgateway = "kgateway"
 
 	// Test resource names
-	testInferenceServiceName = "pd-disaggregation-test"
+	inferenceServiceName = "pd-disaggregation-test"
 	gatewayName              = "mif"
 
 	// Kubernetes resource names
@@ -29,11 +28,11 @@ const (
 	helmRepoName = "moreh"
 	helmRepoURL  = "https://moreh-dev.github.io/helm-charts"
 
-	// Image repositories (for kind cluster default)
-	imageRepoKindDefault = "ghcr.io/llm-d/llm-d-inference-sim"
-
-	// Image tags (for kind cluster default)
-	imageTagKindDefault = "v0.6.1"
+	// Image repositories (defaults)
+	imageRepoKindDefault   = "ghcr.io/llm-d/llm-d-inference-sim"
+	imageTagKindDefault    = "v0.6.1"
+	imageRepoDefault       = "255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/quickstart/moreh-vllm"
+	imageTagDefault        = "20250915.1"
 )
 
 // Timeout and interval constants for E2E tests

@@ -37,6 +37,7 @@ type testConfig struct {
 
 	inferenceImageRepo string
 	inferenceImageTag  string
+	istioRev           string
 
 	kedaEnabled            bool
 	lwsEnabled             bool
@@ -77,6 +78,7 @@ func init() {
 
 		inferenceImageRepo: getEnv(envInferenceImageRepo, ""),
 		inferenceImageTag:  getEnv(envInferenceImageTag, ""),
+		istioRev:           getEnv(envIstioRev, ""),
 
 		kedaEnabled:            getEnvBool(envKEDAEnabled, true),
 		lwsEnabled:             getEnvBool(envLWSEnabled, true),
