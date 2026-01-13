@@ -1061,10 +1061,10 @@ spec:
 
           cat reports*/*.json
 {{- if .EnvVars}}
-      env:
+        env:
 {{- range .EnvVars}}
-        - name: {{.Name}}
-          value: "{{.Value}}"
+          - name: {{.Name}}
+            value: "{{.Value}}"
 {{- end}}
 {{- end}}
 `
