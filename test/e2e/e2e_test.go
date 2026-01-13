@@ -675,7 +675,7 @@ spec:
               vllm serve ${ISVC_MODEL_NAME} \
                 --port ${ISVC_PORT} \
                 --served-model-name ${ISVC_MODEL_NAME} \
-                --tensor-parallel-size {{ or .Spec.Parallelism.Tensor 1 }} \
+                --tensor-parallel-size 4 \
                 ${ISVC_EXTRA_ARGS}
           env:
             - name: ISVC_EXTRA_ARGS
@@ -1174,7 +1174,7 @@ func extractInferencePerfResults(jobName string) error {
 	}
 
 	cmd := exec.Command("kubectl", "exec", "-n", cfg.workloadNamespace, podName,
-		"--", "cat", "reports*/*.json")
+		"--", "sh", "-c", "cat reports*/*.json")
 	reportData, err := utils.Run(cmd)
 	if err != nil {
 		return fmt.Errorf("failed to read report files: %w", err)
