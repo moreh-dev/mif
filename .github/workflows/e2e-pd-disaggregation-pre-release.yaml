@@ -185,7 +185,9 @@ jobs:
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@v2
         with:
-          files: test-reports/junit.xml
+          files: |
+            test-reports/junit.xml
+            test-reports/report.json
           check_name: E2E Test Results
           comment_mode: off
           report_individual_runs: false

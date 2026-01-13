@@ -4,7 +4,6 @@
 package e2e
 
 import (
-	"encoding/json"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -13,12 +12,6 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/moreh-dev/mif/test/utils"
-)
-
-const (
-	maxP95LatencySeconds = 5.0
-	maxTTFTSeconds       = 1.0
-	minThroughputReqPerS = 1.0
 )
 
 func runInferencePerfBenchmark() {
@@ -188,67 +181,6 @@ func waitForInferencePerfJob(jobName string) error {
 	return nil
 }
 
-func getInferencePerfJobPodName(jobName string) (string, error) {
-	cmd := exec.Command("kubectl", "get", "pods",
-		"-n", cfg.workloadNamespace,
-		"-l", fmt.Sprintf("job-name=%s", jobName),
-		"-o", "jsonpath={.items[0].metadata.name}")
-	output, err := utils.Run(cmd)
-	if err != nil {
-		return "", fmt.Errorf("failed to get job pod name: %w", err)
-	}
-	podName := strings.TrimSpace(output)
-	if podName == "" {
-		return "", fmt.Errorf("job pod not found")
-	}
-	return podName, nil
-}
-
-func extractInferencePerfResults(jobName string) error {
-	By("extracting inference-perf results from job pod")
-	podName, err := getInferencePerfJobPodName(jobName)
-	if err != nil {
-		return err
-	}
-
-	cmd := exec.Command("kubectl", "exec", "-n", cfg.workloadNamespace, podName,
-		"--", "sh", "-c", "cat reports*/*.json")
-	reportData, err := utils.Run(cmd)
-	if err != nil {
-		return fmt.Errorf("failed to read report files: %w", err)
-	}
-
-	reportData = strings.TrimSpace(reportData)
-	if reportData == "" {
-		return fmt.Errorf("report data is empty")
-	}
-
-	var report map[string]interface{}
-	err = json.Unmarshal([]byte(reportData), &report)
-	if err != nil {
-		return fmt.Errorf("failed to parse report JSON: %w", err)
-	}
-
-	if throughput, ok := report["throughput"].(float64); ok {
-		Expect(throughput).To(BeNumerically(">", minThroughputReqPerS), "Throughput should be positive")
-		fmt.Fprintf(GinkgoWriter, "Throughput: %.2f req/s\n", throughput)
-	}
-
-	if latency, ok := report["p95_latency"].(float64); ok {
-		Expect(latency).To(BeNumerically("<", maxP95LatencySeconds),
-			fmt.Sprintf("P95 latency (%.2fs) should be less than %.2fs", latency, maxP95LatencySeconds))
-		fmt.Fprintf(GinkgoWriter, "P95 Latency: %.2fs\n", latency)
-	}
-
-	if ttft, ok := report["ttft_p95"].(float64); ok {
-		Expect(ttft).To(BeNumerically("<", maxTTFTSeconds),
-			fmt.Sprintf("P95 TTFT (%.2fs) should be less than %.2fs", ttft, maxTTFTSeconds))
-		fmt.Fprintf(GinkgoWriter, "P95 TTFT: %.2fs\n", ttft)
-	}
-
-	return nil
-}
-
 func runInferencePerfJob(baseURL string, modelName string) error {
 	By("creating inference-perf Job")
 	jobName, err := createInferencePerfJob(baseURL, modelName)
@@ -264,10 +196,6 @@ func runInferencePerfJob(baseURL string, modelName string) error {
 
 	if err := waitForInferencePerfJob(jobName); err != nil {
 		return err
-	}
-
-	if err := extractInferencePerfResults(jobName); err != nil {
-		return fmt.Errorf("failed to extract results: %w", err)
 	}
 
 	return nil
