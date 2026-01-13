@@ -170,14 +170,14 @@ spec:
 		return "", fmt.Errorf("failed to render job template: %w", err)
 	}
 
-	cmd := exec.Command("kubectl", "create", "-f", "-", "-n", cfg.workloadNamespace)
+	cmd := exec.Command("kubectl", "create", "-f", "-", "-n", cfg.workloadNamespace, "-o", "name")
 	cmd.Stdin = strings.NewReader(jobYAML)
 	output, err := utils.Run(cmd)
 	if err != nil {
 		return "", fmt.Errorf("failed to create job: %w", err)
 	}
 
-	jobName := strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(output, "job.batch/"), " created"))
+	jobName := strings.TrimPrefix(strings.TrimSpace(output), "job.batch/")
 	return jobName, nil
 }
 
