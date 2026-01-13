@@ -174,45 +174,14 @@ spec:
 }
 
 func waitForInferencePerfJob(jobName string) error {
-	By("waiting for inference-perf job pod to be ready")
-	podName, err := getInferencePerfJobPodName(jobName)
-	if err != nil {
-		return fmt.Errorf("failed to get job pod name: %w", err)
-	}
-
-	By("waiting for inference-perf to complete")
-	Eventually(func(g Gomega) {
-		cmd := exec.Command("kubectl", "logs", "-n", cfg.workloadNamespace, podName, "--tail=50")
-		logs, err := utils.Run(cmd)
-		g.Expect(err).NotTo(HaveOccurred())
-
-		logStr := strings.ToLower(logs)
-		hasCompleted := strings.Contains(logStr, "stage 0 - run completed") ||
-			strings.Contains(logStr, "generating reports") ||
-			strings.Contains(logStr, "report saved to")
-
-		if !hasCompleted {
-			g.Expect(false).To(BeTrue(), "inference-perf has not completed yet")
-		}
-	}, timeoutVeryLong, intervalMedium).Should(Succeed(), "inference-perf should complete execution")
-
 	By("waiting for inference-perf job to complete")
-	Eventually(func() bool {
-		cmd := exec.Command("kubectl", "get", "job", jobName,
-			"-n", cfg.workloadNamespace,
-			"-o", "jsonpath={.status.conditions[?(@.type==\"Complete\")].status}")
-		output, err := utils.Run(cmd)
-		return err == nil && strings.TrimSpace(output) == "True"
-	}, timeoutMedium, intervalShort).Should(BeTrue(), "inference-perf job should complete successfully")
-
-	cmd := exec.Command("kubectl", "get", "job", jobName,
+	cmd := exec.Command("kubectl", "wait", "job", jobName,
+		"--for=condition=complete",
 		"-n", cfg.workloadNamespace,
-		"-o", "jsonpath={.status.conditions[?(@.type==\"Failed\")].status}")
-	output, _ := utils.Run(cmd)
-	if strings.TrimSpace(output) == "True" {
-		cmd = exec.Command("kubectl", "logs", "-n", cfg.workloadNamespace, fmt.Sprintf("job/%s", jobName))
-		logs, _ := utils.Run(cmd)
-		return fmt.Errorf("inference-perf job failed. Logs: %s", logs)
+		fmt.Sprintf("--timeout=%v", timeoutVeryLong))
+	_, err := utils.Run(cmd)
+	if err != nil {
+		return fmt.Errorf("inference-perf job did not complete within timeout: %w", err)
 	}
 
 	return nil
