@@ -75,12 +75,6 @@ type CleanupConfig struct {
 // If PrefillName or DecodeName is empty, the corresponding InferenceService deletion is skipped.
 // If TemplateNames is empty, InferenceServiceTemplate deletion is skipped.
 func CleanupWorkloadNamespace(config CleanupConfig) error {
-	for _, templateName := range config.TemplateNames {
-		if err := DeleteInferenceServiceTemplate(config.WorkloadNamespace, templateName); err != nil {
-			warnError(fmt.Errorf("failed to delete InferenceServiceTemplate %s: %w", templateName, err))
-		}
-	}
-	
 	if config.PrefillName != "" {
 		if err := DeleteInferenceService(config.WorkloadNamespace, config.PrefillName); err != nil {
 			warnError(fmt.Errorf("failed to delete prefill InferenceService: %w", err))
@@ -89,6 +83,12 @@ func CleanupWorkloadNamespace(config CleanupConfig) error {
 	if config.DecodeName != "" {
 		if err := DeleteInferenceService(config.WorkloadNamespace, config.DecodeName); err != nil {
 			warnError(fmt.Errorf("failed to delete decode InferenceService: %w", err))
+		}
+	}
+
+	for _, templateName := range config.TemplateNames {
+		if err := DeleteInferenceServiceTemplate(config.WorkloadNamespace, templateName); err != nil {
+			warnError(fmt.Errorf("failed to delete InferenceServiceTemplate %s: %w", templateName, err))
 		}
 	}
 
