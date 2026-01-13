@@ -72,7 +72,7 @@ spec:
     metadata:
       labels:
         app: inference-perf
-				sidecar.istio.io/inject: "false"
+        sidecar.istio.io/inject: "false"
     spec:
       restartPolicy: Never
       containers:
