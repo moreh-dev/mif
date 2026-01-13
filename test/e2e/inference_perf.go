@@ -29,105 +29,23 @@ func getGatewayServiceURL(serviceName string) string {
 }
 
 func createInferencePerfJob(baseURL string, modelName string) (string, error) {
-	jobTemplate := `apiVersion: batch/v1
-kind: Job
-metadata:
-  generateName: inference-perf-
-  labels:
-    app: inference-perf
-  namespace: {{.Namespace}}
-spec:
-  template:
-    metadata:
-      labels:
-        app: inference-perf
-        sidecar.istio.io/inject: "false"
-    spec:
-      restartPolicy: Never
-      containers:
-      - name: inference-perf
-        image: quay.io/inference-perf/inference-perf:d8e4af8
-        command:
-        - /bin/sh
-        - -c
-        args:
-        - |
-          cat <<EOF > /tmp/config.yaml
-              api:
-                type: completion
-                streaming: true
-
-              data:
-                type: random
-                input_distribution:
-                  mean: 1000
-                  std_dev: 0
-                output_distribution:
-                  mean: 1000
-                  std_dev: 0
-
-              load:
-                type: constant
-                interval: 5
-                stages:
-                  - rate: 20
-                    duration: 10
-                num_workers: 20
-                worker_max_concurrency: 1000
-                worker_max_tcp_connections: 2000
-                request_timeout: 300
-
-              server:
-                type: vllm
-                model_name: {{.ModelName}}
-                base_url: {{.BaseURL}}
-
-              report:
-                request_lifecycle:
-                  summary: false
-                  per_stage: true
-                  per_request: false
-
-              storage:
-                local_storage:
-                  path: reports
-          EOF
-
-          /workspace/.venv/bin/inference-perf \
-            -c /tmp/config.yaml \
-            --log-level INFO
-
-          cat reports*/*.json
-{{- if .EnvVars}}
-        env:
-{{- range .EnvVars}}
-          - name: {{.Name}}
-            value: "{{.Value}}"
-{{- end}}
-{{- end}}
-`
-
-	type envVar struct {
-		Name  string
-		Value string
+	type jobTemplateData struct {
+		Namespace string
+		ModelName string
+		BaseURL   string
+		HFToken   string
+		HFEndpoint string
 	}
 
-	var envVars []envVar
-	if cfg.hfToken != "" {
-		envVars = append(envVars, envVar{Name: "HF_TOKEN", Value: cfg.hfToken})
-	}
-	if cfg.hfEndpoint != "" {
-		envVars = append(envVars, envVar{Name: "HF_ENDPOINT", Value: cfg.hfEndpoint})
-	}
-
-	data := map[string]interface{}{
-		"Namespace": cfg.workloadNamespace,
-		"ModelName": modelName,
-		"BaseURL":   baseURL,
-		"EnvVars":   envVars,
+	data := jobTemplateData{
+		Namespace: cfg.workloadNamespace,
+		ModelName: modelName,
+		BaseURL:   baseURL,
+		HFToken:   cfg.hfToken,
+		HFEndpoint: cfg.hfEndpoint,
 	}
 
-	jobYAML, err := renderTextTemplate(jobTemplate, data)
+	jobYAML, err := renderTemplateFile("inference-perf-job.yaml.tmpl", data)
 	if err != nil {
 		return "", fmt.Errorf("failed to render job template: %w", err)
 	}

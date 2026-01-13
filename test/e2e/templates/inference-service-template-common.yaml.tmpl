@@ -1,0 +1,78 @@
+apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceServiceTemplate
+metadata:
+  name: workertemplate-vllm-common
+  namespace: {{ .Namespace }}
+spec:
+  workerTemplate:
+    spec:
+{{- if not .IsKind }}
+      imagePullSecrets:
+        - name: {{ .ImagePullSecret }}
+{{- end }}
+      containers:
+        - name: main
+          image: {{ .Image }}
+{{- if not .IsKind }}
+          securityContext:
+            capabilities:
+              add:
+                - IPC_LOCK
+{{- end }}
+          command:
+            - /bin/bash
+            - -c
+          args:
+            - |
+              set -ex
+{{- if .IsKind }}
+              
+              exec /app/llm-d-inference-sim \
+                --model ${ISVC_MODEL_NAME} \
+                --port ${ISVC_PORT} \
+                ${ISVC_EXTRA_ARGS}
+{{- else }}
+              
+              vllm serve ${ISVC_MODEL_NAME} \
+                --port ${ISVC_PORT} \
+                --served-model-name ${ISVC_MODEL_NAME} \
+                --tensor-parallel-size 4 \
+                ${ISVC_EXTRA_ARGS}
+{{- end }}
+          env:
+{{- if not .IsKind }}
+            - name: ISVC_EXTRA_ARGS
+              value: >-
+                --trust-remote-code
+                --no-enable-log-requests
+                --disable-uvicorn-access-log
+                --quantization None
+                --kv-transfer-config {"kv_connector":"NixlConnector","kv_role":"kv_both"}
+                --no-enable-prefix-caching
+                --max-num-batched-tokens 8192
+            - name: VLLM_NIXL_SIDE_CHANNEL_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: UCX_TLS
+              value: rocm_copy,rocm_ipc,self,sm,rc_x
+{{- end }}
+            - name: ISVC_PORT
+              value: "8000"
+            - name: ISVC_MODEL_NAME
+              value: "{{ .Model }}"
+          ports:
+            - name: http
+              containerPort: 8000
+            - name: http-decode
+              containerPort: 8200
+{{- if not .IsKind }}
+          volumeMounts:
+            - name: shm
+              mountPath: /dev/shm
+      volumes:
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 16Gi
+{{- end }}

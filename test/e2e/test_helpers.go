@@ -6,7 +6,9 @@ package e2e
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"text/template"
 
@@ -27,6 +29,30 @@ func renderTextTemplate(templateText string, data any) (string, error) {
 		return "", err
 	}
 	return buf.String(), nil
+}
+
+func loadTemplateFile(filename string) (string, error) {
+	projectDir, err := utils.GetProjectDir()
+	if err != nil {
+		return "", fmt.Errorf("failed to get project directory: %w", err)
+	}
+
+	templatePath := filepath.Join(projectDir, "test", "e2e", "templates", filename)
+	content, err := os.ReadFile(templatePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read template file %s: %w", templatePath, err)
+	}
+
+	return string(content), nil
+}
+
+func renderTemplateFile(filename string, data any) (string, error) {
+	templateText, err := loadTemplateFile(filename)
+	if err != nil {
+		return "", err
+	}
+
+	return renderTextTemplate(templateText, data)
 }
 
 func verifyOdinController(g Gomega) {

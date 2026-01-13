@@ -1,0 +1,80 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  generateName: inference-perf-
+  labels:
+    app: inference-perf
+  namespace: {{.Namespace}}
+spec:
+  template:
+    metadata:
+      labels:
+        app: inference-perf
+        sidecar.istio.io/inject: "false"
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: inference-perf
+        image: quay.io/inference-perf/inference-perf:d8e4af8
+        command:
+        - /bin/sh
+        - -c
+        args:
+        - |
+          cat <<EOF > /tmp/config.yaml
+              api:
+                type: completion
+                streaming: true
+
+              data:
+                type: random
+                input_distribution:
+                  mean: 1000
+                  std_dev: 0
+                output_distribution:
+                  mean: 1000
+                  std_dev: 0
+
+              load:
+                type: constant
+                interval: 5
+                stages:
+                  - rate: 20
+                    duration: 10
+                num_workers: 20
+                worker_max_concurrency: 1000
+                worker_max_tcp_connections: 2000
+                request_timeout: 300
+
+              server:
+                type: vllm
+                model_name: {{.ModelName}}
+                base_url: {{.BaseURL}}
+
+              report:
+                request_lifecycle:
+                  summary: false
+                  per_stage: true
+                  per_request: false
+
+              storage:
+                local_storage:
+                  path: reports
+          EOF
+
+          /workspace/.venv/bin/inference-perf \
+            -c /tmp/config.yaml \
+            --log-level INFO
+
+          cat reports*/*.json
+{{- if or .HFToken .HFEndpoint }}
+        env:
+{{- if .HFToken }}
+          - name: HF_TOKEN
+            value: "{{ .HFToken }}"
+{{- end }}
+{{- if .HFEndpoint }}
+          - name: HF_ENDPOINT
+            value: "{{ .HFEndpoint }}"
+{{- end }}
+{{- end }}

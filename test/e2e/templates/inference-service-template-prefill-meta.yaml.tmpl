@@ -1,0 +1,10 @@
+apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceServiceTemplate
+metadata:
+  name: workertemplate-pd-prefill-meta
+  namespace: {{ .Namespace }}
+spec:
+  workerTemplate:
+    metadata:
+      labels:
+        heimdall.moreh.io/role: prefill
