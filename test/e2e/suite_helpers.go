@@ -27,6 +27,7 @@ func setupInterruptHandler() func() {
 		select {
 		case sig := <-sigChan:
 			_, _ = fmt.Fprintf(GinkgoWriter, "\nReceived signal: %v. Initiating immediate cleanup...\n", sig)
+			cleanupE2ETempFiles()
 			cleanupKindCluster()
 		case <-done:
 			return
@@ -80,6 +81,12 @@ func cleanupE2ETempFiles() {
 		tempFileISValues,
 		tempFileIstiodValues,
 		tempFileKgatewayValues,
+		tempFileInferenceServicePrefill,
+		tempFileInferenceServiceDecode,
+		tempFileInferenceServiceTemplateCommon,
+		tempFileInferenceServiceTemplatePrefillMeta,
+		tempFileInferenceServiceTemplateDecodeMeta,
+		tempFileInferenceServiceTemplateDecodeProxy,
 	}
 
 	for _, rel := range tempFiles {

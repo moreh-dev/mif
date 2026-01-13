@@ -27,10 +27,39 @@ func CreateInferenceService(namespace, valuesPath string) error {
 	return err
 }
 
+// CreateInferenceServiceTemplate creates an InferenceServiceTemplate CR in the given namespace.
+func CreateInferenceServiceTemplate(namespace, manifestPath string) error {
+	if manifestPath == "" {
+		return fmt.Errorf("inference service template manifest path is required (e.g., path/to/template.yaml)")
+	}
+
+	kubectlArgs := []string{
+		"apply",
+		"-f", manifestPath,
+	}
+
+	if namespace != "" {
+		kubectlArgs = append(kubectlArgs, "-n", namespace)
+	}
+
+	cmd := exec.Command("kubectl", kubectlArgs...)
+	_, err := Run(cmd)
+	return err
+}
+
 // DeleteInferenceService deletes an InferenceService from the given namespace.
 func DeleteInferenceService(namespace, inferenceServiceName string) error {
 	By("deleting InferenceService")
 	cmd := exec.Command("kubectl", "delete", "inferenceservice", inferenceServiceName,
+		"-n", namespace, "--ignore-not-found=true")
+	_, err := Run(cmd)
+	return err
+}
+
+// DeleteInferenceServiceTemplate deletes an InferenceServiceTemplate from the given namespace.
+func DeleteInferenceServiceTemplate(namespace, templateName string) error {
+	By(fmt.Sprintf("deleting InferenceServiceTemplate %s", templateName))
+	cmd := exec.Command("kubectl", "delete", "inferenceservicetemplate", templateName,
 		"-n", namespace, "--ignore-not-found=true")
 	_, err := Run(cmd)
 	return err

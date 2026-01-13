@@ -61,7 +61,7 @@ func init() {
 		workloadNamespace: getEnv(envWorkloadNamespace, "quickstart"),
 		mifChartPath:      getEnv(envMIFChartPath, "deploy/helm/moai-inference-framework"),
 		presetChartPath:   getEnv(envPresetChartPath, "deploy/helm/moai-inference-preset"),
-		testModel:         getEnv(envTestModel, "meta-llama/Llama-3.2-1B-Instruct"),
+		testModel:         getEnv(envTestModel, "Qwen/Qwen3-0.6B"),
 		gatewayClass:      getEnv(envGatewayClassName, "istio"),
 
 		kindClusterName:    getEnv(envKindClusterName, "mif-e2e"),

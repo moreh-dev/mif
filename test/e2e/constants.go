@@ -16,7 +16,7 @@ const (
 
 	// Test resource names
 	inferenceServiceName = "pd-disaggregation-test"
-	gatewayName              = "mif"
+	gatewayName          = "mif"
 
 	// Kubernetes resource names
 	secretNameMorehRegistry = "moreh-registry"
@@ -49,9 +49,15 @@ const (
 
 // File paths for temporary test files
 const (
-	tempFileMIFValues      = "test/e2e/moai-inference-framework-values.yaml"
-	tempFileHeimdallValues = "test/e2e/heimdall-values.yaml"
-	tempFileISValues       = "test/e2e/inference-service-values.yaml"
-	tempFileIstiodValues   = "test/e2e/istiod-values.yaml"
-	tempFileKgatewayValues = "test/e2e/kgateway-values.yaml"
+	tempFileMIFValues                    = "test/e2e/moai-inference-framework-values.yaml"
+	tempFileHeimdallValues               = "test/e2e/heimdall-values.yaml"
+	tempFileISValues                     = "test/e2e/inference-service-values.yaml"
+	tempFileIstiodValues                 = "test/e2e/istiod-values.yaml"
+	tempFileKgatewayValues               = "test/e2e/kgateway-values.yaml"
+	tempFileInferenceServicePrefill      = "test/e2e/inference-service-prefill.yaml"
+	tempFileInferenceServiceDecode      = "test/e2e/inference-service-decode.yaml"
+	tempFileInferenceServiceTemplateCommon      = "test/e2e/inference-service-template-common.yaml"
+	tempFileInferenceServiceTemplatePrefillMeta = "test/e2e/inference-service-template-prefill-meta.yaml"
+	tempFileInferenceServiceTemplateDecodeMeta  = "test/e2e/inference-service-template-decode-meta.yaml"
+	tempFileInferenceServiceTemplateDecodeProxy = "test/e2e/inference-service-template-decode-proxy.yaml"
 )
