@@ -33,9 +33,6 @@ func createPrefillInferenceServiceManifest() (string, error) {
 		return "", err
 	}
 
-	imageRepo, imageTag := getInferenceImageInfo()
-	image := fmt.Sprintf("%s:%s", imageRepo, imageTag)
-
 	const prefillTemplate = `apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceService
 metadata:
@@ -53,49 +50,11 @@ spec:
     data: 1
   workerTemplate:
     spec:
-      imagePullSecrets:
-        - name: {{ .ImagePullSecret }}
       containers:
         - name: main
-          image: {{ .Image }}
-{{- if not .IsKind }}
-          securityContext:
-            capabilities:
-              add:
-              - IPC_LOCK
-{{- end }}
-          command:
-{{- if .IsKind }}
-            - /app/llm-d-inference-sim
-{{- else }}
-            - vllm
-            - serve
-{{- end }}
-          args:
-{{- if .IsKind }}
-            - --model
-            - {{ .Model }}
-            - --port
-            - "8000"
-{{- else }}
-            - {{ .Model }}
-            - --port
-            - "8000"
-            - --quantization
-            - "None"
-            - --tensor-parallel-size
-            - "4"
-            - --max-num-batched-tokens
-            - "8192"
-            - --no-enable-prefix-caching
-            - --no-enable-log-requests
-            - --disable-uvicorn-access-log
-            - --trust-remote-code
-            - --kv-transfer-config
-            - {"kv_connector":"NixlConnector","kv_role":"kv_both"}
-{{- end }}
-{{- if and (not .IsKind) (or .HFToken .HFEndpoint) }}
           env:
+            - name: ISVC_MODEL_NAME
+              value: "{{ .Model }}"
 {{- if .HFToken }}
             - name: HF_TOKEN
               value: "{{ .HFToken }}"
@@ -104,50 +63,34 @@ spec:
             - name: HF_ENDPOINT
               value: "{{ .HFEndpoint }}"
 {{- end }}
-            - name: ISVC_MODEL_NAME
-              value: "{{ .Model }}"
-{{- end }}
-{{- if not .IsKind }}
-          resources:
-            requests:
-              amd.com/gpu: "4"
-            limits:
-              amd.com/gpu: "4"
-{{- end }}
-          ports:
-            - containerPort: 8000
-              name: http
-              protocol: TCP
           readinessProbe:
             httpGet:
               path: /health
               port: 8000
               scheme: HTTP
-            initialDelaySeconds: {{ if .IsKind }}10{{ else }}120{{ end }}
+            initialDelaySeconds: 10
             periodSeconds: 10
-            successThreshold: 1
             timeoutSeconds: 5
-          volumeMounts:
-            - mountPath: /dev/shm
-              name: shm
-      volumes:
-        - name: shm
-          emptyDir:
-            medium: Memory
-            sizeLimit: "16Gi"
-{{- if not .IsKind }}
+            successThreshold: 1
+            failureThreshold: 3
+          resources:
+            requests:
+              amd.com/gpu: "4"
+              mellanox/hca: "1"
+            limits:
+              amd.com/gpu: "4"
+              mellanox/hca: "1"
       tolerations:
-        - key: "amd.com/gpu"
-          operator: "Exists"
-          effect: "NoSchedule"
-{{- end }}
+        - key: amd.com/gpu
+          operator: Exists
+          effect: NoSchedule
 `
 
 	data := inferenceServiceTemplateData{
 		Name:            inferenceServiceName,
 		Namespace:       cfg.workloadNamespace,
 		ImagePullSecret: secretNameMorehRegistry,
-		Image:           image,
+		Image:           "",
 		Model:           cfg.testModel,
 		HFToken:         cfg.hfToken,
 		HFEndpoint:      cfg.hfEndpoint,
@@ -173,9 +116,6 @@ func createDecodeInferenceServiceManifest() (string, error) {
 		return "", err
 	}
 
-	imageRepo, imageTag := getInferenceImageInfo()
-	image := fmt.Sprintf("%s:%s", imageRepo, imageTag)
-
 	const decodeTemplate = `apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceService
 metadata:
@@ -194,49 +134,11 @@ spec:
     data: 1
   workerTemplate:
     spec:
-      imagePullSecrets:
-        - name: {{ .ImagePullSecret }}
       containers:
         - name: main
-          image: {{ .Image }}
-{{- if not .IsKind }}
-          securityContext:
-            capabilities:
-              add:
-              - IPC_LOCK
-{{- end }}
-          command:
-{{- if .IsKind }}
-            - /app/llm-d-inference-sim
-{{- else }}
-            - vllm
-            - serve
-{{- end }}
-          args:
-{{- if .IsKind }}
-            - --model
-            - {{ .Model }}
-            - --port
-            - "8200"
-{{- else }}
-            - {{ .Model }}
-            - --port
-            - "8200"
-            - --quantization
-            - "None"
-            - --tensor-parallel-size
-            - "4"
-            - --max-num-batched-tokens
-            - "8192"
-            - --no-enable-prefix-caching
-            - --no-enable-log-requests
-            - --disable-uvicorn-access-log
-            - --trust-remote-code
-            - --kv-transfer-config
-            - {"kv_connector":"NixlConnector","kv_role":"kv_both"}
-{{- end }}
-{{- if and (not .IsKind) (or .HFToken .HFEndpoint) }}
           env:
+            - name: ISVC_MODEL_NAME
+              value: "{{ .Model }}"
 {{- if .HFToken }}
             - name: HF_TOKEN
               value: "{{ .HFToken }}"
@@ -245,52 +147,34 @@ spec:
             - name: HF_ENDPOINT
               value: "{{ .HFEndpoint }}"
 {{- end }}
-            - name: ISVC_MODEL_NAME
-              value: "{{ .Model }}"
-            - name: ISVC_PORT
-              value: "8200"
-{{- end }}
-{{- if not .IsKind }}
-          resources:
-            requests:
-              amd.com/gpu: "4"
-            limits:
-              amd.com/gpu: "4"
-{{- end }}
-          ports:
-            - containerPort: 8200
-              name: http-decode
-              protocol: TCP
           readinessProbe:
             httpGet:
               path: /health
               port: 8200
               scheme: HTTP
-            initialDelaySeconds: {{ if .IsKind }}10{{ else }}120{{ end }}
+            initialDelaySeconds: 10
             periodSeconds: 10
-            successThreshold: 1
             timeoutSeconds: 5
-          volumeMounts:
-            - mountPath: /dev/shm
-              name: shm
-      volumes:
-        - name: shm
-          emptyDir:
-            medium: Memory
-            sizeLimit: "16Gi"
-{{- if not .IsKind }}
+            successThreshold: 1
+            failureThreshold: 3
+          resources:
+            requests:
+              amd.com/gpu: "4"
+              mellanox/hca: "1"
+            limits:
+              amd.com/gpu: "4"
+              mellanox/hca: "1"
       tolerations:
-        - key: "amd.com/gpu"
-          operator: "Exists"
-          effect: "NoSchedule"
-{{- end }}
+        - key: amd.com/gpu
+          operator: Exists
+          effect: NoSchedule
 `
 
 	data := inferenceServiceTemplateData{
 		Name:            inferenceServiceName,
 		Namespace:       cfg.workloadNamespace,
 		ImagePullSecret: secretNameMorehRegistry,
-		Image:           image,
+		Image:           "",
 		Model:           cfg.testModel,
 		HFToken:         cfg.hfToken,
 		HFEndpoint:      cfg.hfEndpoint,
