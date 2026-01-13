@@ -51,16 +51,8 @@ func runInferencePerfBenchmark() {
 
 	By("running inference-perf performance benchmark as Kubernetes Job")
 	gatewayServiceURL := getGatewayServiceURL(serviceName)
-	if gatewayServiceURL == "" {
-		_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to get Gateway service URL. Skipping benchmark.\n")
-		return
-	}
-
 	err := runInferencePerfJob(gatewayServiceURL, cfg.testModel)
-	if err != nil {
-		_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to run inference-perf job: %v. Skipping benchmark.\n", err)
-		return
-	}
+	Expect(err).NotTo(HaveOccurred(), "inference-perf job should complete successfully")
 }
 
 func getGatewayServiceURL(serviceName string) string {
