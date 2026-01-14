@@ -1,5 +1,5 @@
 {{- $ps := index .Values "prometheus-stack" }}
-{{- if and $ps.enabled $ps.grafana.defaultDashboardsEnabled }}
+{{- if and $ps.enabled $ps.grafana.enabled $ps.grafana.sidecar.dashboards.enabled }}
 {{- $files := .Files.Glob "files/dashboards/*.json" }}
 {{- if $files }}
 {{- range $path, $_ := $files }}
