@@ -1,0 +1,58 @@
+apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceService
+metadata:
+  name: {{ .Name }}-decode
+  namespace: {{ .Namespace }}
+spec:
+  replicas: 1
+  inferencePoolRefs:
+    - name: heimdall
+  templateRefs:
+    - name: workertemplate-vllm-common
+    - name: workertemplate-pd-decode-meta
+    - name: workertemplate-decode-proxy
+  parallelism:
+    tensor: 4
+    data: 1
+  workerTemplate:
+    spec:
+      containers:
+        - name: main
+{{- if or (not .IsKind) .HFToken .HFEndpoint }}
+          env:
+{{- if not .IsKind }}
+            - name: ISVC_MODEL_NAME
+              value: "{{ .Model }}"
+{{- end }}
+{{- if .HFToken }}
+            - name: HF_TOKEN
+              value: "{{ .HFToken }}"
+{{- end }}
+{{- if .HFEndpoint }}
+            - name: HF_ENDPOINT
+              value: "{{ .HFEndpoint }}"
+{{- end }}
+{{- end }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8200
+              scheme: HTTP
+            initialDelaySeconds: {{ if .IsKind }}10{{ else }}120{{ end }}
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+{{- if not .IsKind }}
+          resources:
+            requests:
+              amd.com/gpu: "4"
+              mellanox/hca: "1"
+            limits:
+              amd.com/gpu: "4"
+              mellanox/hca: "1"
+      tolerations:
+        - key: amd.com/gpu
+          operator: Exists
+          effect: NoSchedule
+{{- end }}

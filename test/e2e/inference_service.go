@@ -16,7 +16,7 @@ import (
 	"github.com/moreh-dev/mif/test/utils"
 )
 
-type inferenceServiceTemplateData struct {
+type InferenceServiceData struct {
 	Name            string
 	Namespace       string
 	ImagePullSecret string
@@ -27,77 +27,29 @@ type inferenceServiceTemplateData struct {
 	IsKind          bool
 }
 
+func getInferenceServiceData() InferenceServiceData {
+	imageRepo, imageTag := getInferenceImageInfo()
+	image := fmt.Sprintf("%s:%s", imageRepo, imageTag)
+
+	return InferenceServiceData{
+		Name:            inferenceServiceName,
+		Namespace:       cfg.workloadNamespace,
+		ImagePullSecret: secretNameMorehRegistry,
+		Image:           image,
+		Model:           cfg.testModel,
+		HFToken:         cfg.hfToken,
+		HFEndpoint:      cfg.hfEndpoint,
+		IsKind:          cfg.isUsingKindCluster,
+	}
+}
+
 func createPrefillInferenceServiceManifest() (string, error) {
 	projectDir, err := utils.GetProjectDir()
 	if err != nil {
 		return "", err
 	}
 
-	const prefillTemplate = `apiVersion: odin.moreh.io/v1alpha1
-kind: InferenceService
-metadata:
-  name: {{ .Name }}-prefill
-  namespace: {{ .Namespace }}
-spec:
-  replicas: 1
-  inferencePoolRefs:
-    - name: heimdall
-  templateRefs:
-    - name: workertemplate-vllm-common
-    - name: workertemplate-pd-prefill-meta
-  parallelism:
-    tensor: 4
-    data: 1
-  workerTemplate:
-    spec:
-      containers:
-        - name: main
-          env:
-            - name: ISVC_MODEL_NAME
-              value: "{{ .Model }}"
-{{- if .HFToken }}
-            - name: HF_TOKEN
-              value: "{{ .HFToken }}"
-{{- end }}
-{{- if .HFEndpoint }}
-            - name: HF_ENDPOINT
-              value: "{{ .HFEndpoint }}"
-{{- end }}
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: 8000
-              scheme: HTTP
-            initialDelaySeconds: 10
-            periodSeconds: 10
-            timeoutSeconds: 5
-            successThreshold: 1
-            failureThreshold: 3
-          resources:
-            requests:
-              amd.com/gpu: "4"
-              mellanox/hca: "1"
-            limits:
-              amd.com/gpu: "4"
-              mellanox/hca: "1"
-      tolerations:
-        - key: amd.com/gpu
-          operator: Exists
-          effect: NoSchedule
-`
-
-	data := inferenceServiceTemplateData{
-		Name:            inferenceServiceName,
-		Namespace:       cfg.workloadNamespace,
-		ImagePullSecret: secretNameMorehRegistry,
-		Image:           "",
-		Model:           cfg.testModel,
-		HFToken:         cfg.hfToken,
-		HFEndpoint:      cfg.hfEndpoint,
-		IsKind:          cfg.isUsingKindCluster,
-	}
-
-	rendered, err := renderTextTemplate(prefillTemplate, data)
+	rendered, err := renderTemplateFile("inference-service-prefill.yaml.tmpl", getInferenceServiceData())
 	if err != nil {
 		return "", fmt.Errorf("failed to render prefill InferenceService manifest: %w", err)
 	}
@@ -116,72 +68,7 @@ func createDecodeInferenceServiceManifest() (string, error) {
 		return "", err
 	}
 
-	const decodeTemplate = `apiVersion: odin.moreh.io/v1alpha1
-kind: InferenceService
-metadata:
-  name: {{ .Name }}-decode
-  namespace: {{ .Namespace }}
-spec:
-  replicas: 1
-  inferencePoolRefs:
-    - name: heimdall
-  templateRefs:
-    - name: workertemplate-vllm-common
-    - name: workertemplate-pd-decode-meta
-    - name: workertemplate-decode-proxy
-  parallelism:
-    tensor: 4
-    data: 1
-  workerTemplate:
-    spec:
-      containers:
-        - name: main
-          env:
-            - name: ISVC_MODEL_NAME
-              value: "{{ .Model }}"
-{{- if .HFToken }}
-            - name: HF_TOKEN
-              value: "{{ .HFToken }}"
-{{- end }}
-{{- if .HFEndpoint }}
-            - name: HF_ENDPOINT
-              value: "{{ .HFEndpoint }}"
-{{- end }}
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: 8200
-              scheme: HTTP
-            initialDelaySeconds: 10
-            periodSeconds: 10
-            timeoutSeconds: 5
-            successThreshold: 1
-            failureThreshold: 3
-          resources:
-            requests:
-              amd.com/gpu: "4"
-              mellanox/hca: "1"
-            limits:
-              amd.com/gpu: "4"
-              mellanox/hca: "1"
-      tolerations:
-        - key: amd.com/gpu
-          operator: Exists
-          effect: NoSchedule
-`
-
-	data := inferenceServiceTemplateData{
-		Name:            inferenceServiceName,
-		Namespace:       cfg.workloadNamespace,
-		ImagePullSecret: secretNameMorehRegistry,
-		Image:           "",
-		Model:           cfg.testModel,
-		HFToken:         cfg.hfToken,
-		HFEndpoint:      cfg.hfEndpoint,
-		IsKind:          cfg.isUsingKindCluster,
-	}
-
-	rendered, err := renderTextTemplate(decodeTemplate, data)
+	rendered, err := renderTemplateFile("inference-service-decode.yaml.tmpl", getInferenceServiceData())
 	if err != nil {
 		return "", fmt.Errorf("failed to render decode InferenceService manifest: %w", err)
 	}
