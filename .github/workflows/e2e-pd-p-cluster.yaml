@@ -59,12 +59,12 @@ jobs:
         uses: asdf-vm/actions/setup@v4
 
       - name: Install asdf plugins
-        run: |
-          asdf plugin add kubectl || true
-          asdf plugin add helm || true
+        uses: asdf-vm/actions/plugins-add@v4
 
       - name: Install tools via asdf
-        run: asdf install
+        run: |
+          asdf install kubectl
+          asdf install helm
 
       - name: Set environment variables
         run: |
