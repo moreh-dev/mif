@@ -122,6 +122,12 @@ test/e2e/heimdall-values.yaml
 test/e2e/inference-service-values.yaml
 test/e2e/istiod-values.yaml
 test/e2e/kgateway-values.yaml
+test/e2e/inference-service-prefill.yaml
+test/e2e/inference-service-decode.yaml
+test/e2e/inference-service-template-common.yaml
+test/e2e/inference-service-template-prefill-meta.yaml
+test/e2e/inference-service-template-decode-meta.yaml
+test/e2e/inference-service-template-decode-proxy.yaml
 
 # E2E test reports
 test-reports/

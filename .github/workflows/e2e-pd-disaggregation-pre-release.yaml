@@ -29,9 +29,9 @@ on:
           - kind
           - kubeconfig
       test_model:
-        description: "Test model name (e.g., meta-llama/Llama-3.2-1B-Instruct)"
+        description: "Test model name. If empty, uses the test code's default model (Qwen/Qwen3-0.6B)"
         required: false
-        default: "meta-llama/Llama-3.2-1B-Instruct"
+        default: ""
         type: string
       istio_rev:
         description: "Istio revision label value for workload namespace (optional)"
@@ -185,7 +185,9 @@ jobs:
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@v2
         with:
-          files: test-reports/junit.xml
+          files: |
+            test-reports/junit.xml
+            test-reports/report.json
           check_name: E2E Test Results
           comment_mode: off
           report_individual_runs: false
