@@ -31,7 +31,7 @@ func getInferenceServiceData() InferenceServiceData {
 	imageRepo, imageTag := getInferenceImageInfo()
 	image := fmt.Sprintf("%s:%s", imageRepo, imageTag)
 
-	return InferenceServiceData{	
+	return InferenceServiceData{
 		Name:            inferenceServiceName,
 		Namespace:       cfg.workloadNamespace,
 		ImagePullSecret: secretNameMorehRegistry,
