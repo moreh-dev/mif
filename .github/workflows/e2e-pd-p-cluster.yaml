@@ -1,4 +1,4 @@
-name: E2E PD-Disaggregation Pre-Release Test
+name: E2E PD-Disaggregation Test on Product Cluster
 
 # Required GitHub Secrets for Product Cluster Testing:
 # - KUBECONFIG_BASE64: Base64-encoded kubeconfig file for the Product cluster
@@ -12,32 +12,13 @@ name: E2E PD-Disaggregation Pre-Release Test
 #
 # Note: For Product cluster testing (SKIP_PREREQUISITE=true), setupPrerequisites() returns early
 # without installing or validating any components. All required components must be pre-installed:
-# - Prerequisites: cert-manager, Gateway API, Gateway controller (Istio/KGateway), Gateway Inference Extension
+# - Prerequisites: cert-manager, Gateway API, Gateway controller (Istio), Gateway Inference Extension
 # - MIF infrastructure: moai-inference-framework (Odin controller, etc.)
 # - Preset: moai-inference-preset
 # The test will only deploy heimdall and InferenceService in the test workload namespace.
 
 on:
   workflow_dispatch:
-    inputs:
-      cluster_type:
-        description: "Cluster type to use for testing"
-        required: true
-        default: "kubeconfig"
-        type: choice
-        options:
-          - kind
-          - kubeconfig
-      test_model:
-        description: "Test model name. If empty, uses the test code's default model (Qwen/Qwen3-0.6B)"
-        required: false
-        default: ""
-        type: string
-      istio_rev:
-        description: "Istio revision label value for workload namespace (optional)"
-        required: false
-        default: ""
-        type: string
   push:
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+-rc[0-9]+"
@@ -57,7 +38,6 @@ jobs:
 
     container:
       image: golang:1.24
-      options: --user root --privileged -v /var/run/docker.sock:/var/run/docker.sock
 
     outputs:
       test_passed: ${{ steps.validate.outputs.test_passed }}
@@ -66,14 +46,8 @@ jobs:
       KUBECONFIG: /tmp/kubeconfig
       MIF_NAMESPACE: mif
       MIF_CHART_PATH: deploy/helm/moai-inference-framework
-      TEST_MODEL: ${{ github.event.inputs.test_model }}
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      HF_TOKEN: ${{ secrets.HF_TOKEN }}
-      HF_ENDPOINT: ${{ secrets.HF_ENDPOINT }}
-      INFERENCE_IMAGE_REPO: ${{ secrets.INFERENCE_IMAGE_REPO }}
-      INFERENCE_IMAGE_TAG: ${{ secrets.INFERENCE_IMAGE_TAG }}
-      ISTIO_REV: ${{ github.event.inputs.istio_rev != '' && github.event.inputs.istio_rev || secrets.ISTIO_REV }}
+      TEST_MODEL: "" # The default model in the test code (Qwen/Qwen3-0.6B)
+      ISTIO_REV: "istio"
 
     steps:
       - name: Checkout
@@ -81,52 +55,24 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set workload namespace
-        run: |
-          COMMIT_HASH_SHORT=$(echo "${{ github.sha }}" | cut -c1-7)
-          echo "WORKLOAD_NAMESPACE=mif-e2e-${COMMIT_HASH_SHORT}" >> "$GITHUB_ENV"
+      - name: Set up asdf
+        uses: asdf-vm/actions/setup@v4
 
-      - name: Install kubectl
-        run: |
-          apt-get update
-          apt-get install -y apt-transport-https ca-certificates curl gpg
-          curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-          echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /' | tee /etc/apt/sources.list.d/kubernetes.list
-          apt-get update
-          apt-get install -y kubectl
-          kubectl version --client
+      - name: Install asdf plugins
+        uses: asdf-vm/actions/plugins-add@v4
 
-      - name: Install Helm
+      - name: Install tools via asdf
         run: |
-          apt-get update
-          apt-get install -y curl
-          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-          helm version
+          asdf install kubectl
+          asdf install helm
 
-      - name: Determine cluster type
-        id: cluster_type
+      - name: Set environment variables
         run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            CLUSTER_TYPE="${{ github.event.inputs.cluster_type }}"
-          else
-            CLUSTER_TYPE="kubeconfig"
-          fi
-          echo "cluster_type=$CLUSTER_TYPE" >> "$GITHUB_OUTPUT"
-          echo "Using cluster type: $CLUSTER_TYPE"
+          echo "WORKLOAD_NAMESPACE=mif-e2e-${GITHUB_SHA:0:7}" >> "$GITHUB_ENV"
+          echo "SKIP_KIND=true" >> "$GITHUB_ENV"
+          echo "SKIP_PREREQUISITE=true" >> "$GITHUB_ENV"
 
-      - name: Install Docker and kind (for kind cluster)
-        if: steps.cluster_type.outputs.cluster_type == 'kind'
-        run: |
-          apt-get update
-          apt-get install -y docker.io
-          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
-          chmod +x ./kind
-          mv ./kind /usr/local/bin/kind
-          kind version
-          docker --version || echo "Docker may not be accessible in container. Ensure Docker socket is mounted or use Docker-in-Docker."
-
-      - name: Set up kubeconfig (for kubeconfig cluster)
-        if: steps.cluster_type.outputs.cluster_type == 'kubeconfig'
+      - name: Set up kubeconfig
         run: |
           mkdir -p ~/.kube
           # KUBECONFIG_BASE64 secret must be set in repository secrets
@@ -135,11 +81,9 @@ jobs:
           # 1. Get your kubeconfig file: kubectl config view --flatten > kubeconfig.yaml
           # 2. Encode it: cat kubeconfig.yaml | base64 -w 0
           # 3. Add it as a repository secret named KUBECONFIG_BASE64
-          echo "${{ secrets.KUBECONFIG_BASE64 }}" | base64 --decode > $KUBECONFIG
-          chmod 600 $KUBECONFIG
+          echo "${{ secrets.KUBECONFIG_BASE64 }}" | base64 --decode > ${{ env.KUBECONFIG }}
+          chmod 600 ${{ env.KUBECONFIG }}
           kubectl cluster-info
-        env:
-          KUBECONFIG: ${{ env.KUBECONFIG }}
 
       - name: Cache Go modules
         uses: actions/cache@v4
@@ -162,19 +106,18 @@ jobs:
           TEST_MODEL: ${{ env.TEST_MODEL }}
           WORKLOAD_NAMESPACE: ${{ env.WORKLOAD_NAMESPACE }}
           KUBECONFIG: ${{ env.KUBECONFIG }}
-          AWS_ACCESS_KEY_ID: ${{ env.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ env.AWS_SECRET_ACCESS_KEY }}
-          HF_TOKEN: ${{ env.HF_TOKEN }}
-          HF_ENDPOINT: ${{ env.HF_ENDPOINT }}
-          INFERENCE_IMAGE_REPO: ${{ env.INFERENCE_IMAGE_REPO }}
-          INFERENCE_IMAGE_TAG: ${{ env.INFERENCE_IMAGE_TAG }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_ENDPOINT: ${{ secrets.HF_ENDPOINT }}
+          INFERENCE_IMAGE_REPO: ${{ secrets.INFERENCE_IMAGE_REPO }}
+          INFERENCE_IMAGE_TAG: ${{ secrets.INFERENCE_IMAGE_TAG }}
           ISTIO_REV: ${{ env.ISTIO_REV }}
-          SKIP_KIND: ${{ steps.cluster_type.outputs.cluster_type == 'kubeconfig' && 'true' || 'false' }}
-          SKIP_PREREQUISITE: ${{ steps.cluster_type.outputs.cluster_type == 'kubeconfig' && 'true' || 'false' }}
+          SKIP_KIND: "true"
+          SKIP_PREREQUISITE: "true"
           SKIP_CLEANUP: "false"
         run: |
-          make test-e2e
-          if [ $? -eq 0 ]; then
+          if make test-e2e; then
             echo "test_passed=true" >> "$GITHUB_OUTPUT"
           else
             echo "test_passed=false" >> "$GITHUB_OUTPUT"
@@ -185,9 +128,7 @@ jobs:
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@v2
         with:
-          files: |
-            test-reports/junit.xml
-            test-reports/report.json
+          files: test-reports/*.{xml,json}
           check_name: E2E Test Results
           comment_mode: off
           report_individual_runs: false
