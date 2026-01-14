@@ -27,6 +27,9 @@ prometheus-stack:
     enabled: false
   grafana:
     enabled: true
+    sidecar:
+      dashboards:
+        enabled: true
   kubernetesServiceMonitors:
     enabled: true
   kubeApiServer:
