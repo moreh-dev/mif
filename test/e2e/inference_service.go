@@ -231,6 +231,15 @@ func installPrefillDecodeInferenceServicesForTest() {
 	By("creating decode InferenceService")
 	Expect(utils.CreateInferenceService(cfg.workloadNamespace, decodeManifestPath)).To(Succeed(), "Failed to create decode InferenceService")
 
+	By("waiting for prefill InferenceService pods to be created")
+	Eventually(func() (string, error) {
+		checkCmd := exec.Command("kubectl", "get", "pods",
+			"-l", fmt.Sprintf("app.kubernetes.io/name=%s-prefill", inferenceServiceName),
+			"-n", cfg.workloadNamespace,
+			"-o", "name")
+		return utils.Run(checkCmd)
+	}, timeoutLong, intervalShort).ShouldNot(BeEmpty())
+
 	By("waiting for prefill InferenceService pods to be ready")
 	cmd := exec.Command("kubectl", "wait", "pod",
 		"-l", fmt.Sprintf("app.kubernetes.io/name=%s-prefill", inferenceServiceName),
@@ -239,6 +248,15 @@ func installPrefillDecodeInferenceServicesForTest() {
 		fmt.Sprintf("--timeout=%v", timeoutVeryLong))
 	_, err = utils.Run(cmd)
 	Expect(err).NotTo(HaveOccurred(), "Prefill InferenceService pods not ready")
+
+	By("waiting for decode InferenceService pods to be created")
+	Eventually(func() (string, error) {
+		checkCmd := exec.Command("kubectl", "get", "pods",
+			"-l", fmt.Sprintf("app.kubernetes.io/name=%s-decode", inferenceServiceName),
+			"-n", cfg.workloadNamespace,
+			"-o", "name")
+		return utils.Run(checkCmd)
+	}, timeoutLong, intervalShort).ShouldNot(BeEmpty())
 
 	By("waiting for decode InferenceService pods to be ready")
 	cmd = exec.Command("kubectl", "wait", "pod",
@@ -250,31 +268,24 @@ func installPrefillDecodeInferenceServicesForTest() {
 	Expect(err).NotTo(HaveOccurred(), "Decode InferenceService pods not ready")
 }
 
-func verifyInferenceEndpoint() {
-	By("verifying Gateway service exists")
+func getGatewayServiceName(timeout, interval interface{}) string {
+	var serviceName string
 	Eventually(func(g Gomega) {
 		cmd := exec.Command("kubectl", "get", "service",
 			"-n", cfg.workloadNamespace,
 			"-l", "gateway.networking.k8s.io/gateway-name=mif",
 			"-o", "jsonpath={.items[0].metadata.name}")
 		output, err := utils.Run(cmd)
-		if err != nil || strings.TrimSpace(output) == "" {
-			cmd = exec.Command("kubectl", "get", "service",
-				"mif",
-				"-n", cfg.workloadNamespace,
-				"-o", "jsonpath={.metadata.name}")
-			output, err = utils.Run(cmd)
-		}
-		if err != nil || strings.TrimSpace(output) == "" {
-			cmd = exec.Command("kubectl", "get", "service",
-				"gateway-mif",
-				"-n", cfg.workloadNamespace,
-				"-o", "jsonpath={.metadata.name}")
-			output, err = utils.Run(cmd)
-		}
 		g.Expect(err).NotTo(HaveOccurred())
-		g.Expect(strings.TrimSpace(output)).NotTo(BeEmpty(), "Gateway service not found")
-	}, timeoutLong, intervalLong).Should(Succeed())
+		serviceName = strings.TrimSpace(output)
+		g.Expect(serviceName).NotTo(BeEmpty(), "Gateway service not found")
+	}, timeout, interval).Should(Succeed())
+	return serviceName
+}
+
+func verifyInferenceEndpoint() {
+	By("verifying Gateway service exists")
+	getGatewayServiceName(timeoutLong, intervalLong)
 
 	By("waiting for inference-service decode pods to be ready")
 	cmd := exec.Command("kubectl", "wait", "pod",

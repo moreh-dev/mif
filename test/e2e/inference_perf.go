@@ -16,31 +16,7 @@ import (
 
 func runInferencePerfBenchmark() {
 	By("getting Gateway service name")
-	var serviceName string
-	Eventually(func(g Gomega) {
-		cmd := exec.Command("kubectl", "get", "service",
-			"-n", cfg.workloadNamespace,
-			"-l", "gateway.networking.k8s.io/gateway-name=mif",
-			"-o", "jsonpath={.items[0].metadata.name}")
-		output, err := utils.Run(cmd)
-		if err != nil || strings.TrimSpace(output) == "" {
-			cmd = exec.Command("kubectl", "get", "service",
-				"mif",
-				"-n", cfg.workloadNamespace,
-				"-o", "jsonpath={.metadata.name}")
-			output, err = utils.Run(cmd)
-		}
-		if err != nil || strings.TrimSpace(output) == "" {
-			cmd = exec.Command("kubectl", "get", "service",
-				"gateway-mif",
-				"-n", cfg.workloadNamespace,
-				"-o", "jsonpath={.metadata.name}")
-			output, err = utils.Run(cmd)
-		}
-		g.Expect(err).NotTo(HaveOccurred())
-		serviceName = strings.TrimSpace(output)
-		g.Expect(serviceName).NotTo(BeEmpty(), "Gateway service not found")
-	}, timeoutMedium, intervalMedium).Should(Succeed())
+	serviceName := getGatewayServiceName(timeoutMedium, intervalMedium)
 
 	By("running inference-perf performance benchmark as Kubernetes Job")
 	gatewayServiceURL := getGatewayServiceURL(serviceName)
