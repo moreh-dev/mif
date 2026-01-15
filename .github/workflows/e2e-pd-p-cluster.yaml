@@ -3,12 +3,8 @@ name: E2E PD-Disaggregation Test on Product Cluster
 # Required GitHub Secrets for Product Cluster Testing:
 # - KUBECONFIG_BASE64: Base64-encoded kubeconfig file for the Product cluster
 #   To create: kubectl config view --flatten | base64 -w 0
-# - AWS_ACCESS_KEY_ID: AWS access key for ECR image pull (optional)
-# - AWS_SECRET_ACCESS_KEY: AWS secret key for ECR image pull (optional)
 # - HF_TOKEN: HuggingFace token for model download (optional)
 # - HF_ENDPOINT: HuggingFace endpoint URL (optional)
-# - INFERENCE_IMAGE_REPO: Inference image repository (optional)
-# - INFERENCE_IMAGE_TAG: Inference image tag (optional)
 #
 # Note: For Product cluster testing (SKIP_PREREQUISITE=true), setupPrerequisites() returns early
 # without installing or validating any components. All required components must be pre-installed:
@@ -45,15 +41,10 @@ jobs:
     env:
       KUBECONFIG: "/tmp/kubeconfig"
       MIF_NAMESPACE: "mif"
-      # WORKLOAD_NAMESPACE is set in the steps below.
+      ISTIO_REV: "1-28-1"
       TEST_MODEL: "Qwen/Qwen3-0.6B"
-      ISTIO_REV: "istio"
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
       HF_ENDPOINT: ${{ secrets.HF_ENDPOINT }}
-      INFERENCE_IMAGE_REPO: ${{ secrets.INFERENCE_IMAGE_REPO }}
-      INFERENCE_IMAGE_TAG: ${{ secrets.INFERENCE_IMAGE_TAG }}
       SKIP_KIND: "true"
       SKIP_PREREQUISITE: "true"
 
