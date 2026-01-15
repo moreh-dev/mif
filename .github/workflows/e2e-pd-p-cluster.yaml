@@ -3,12 +3,8 @@ name: E2E PD-Disaggregation Test on Product Cluster
 # Required GitHub Secrets for Product Cluster Testing:
 # - KUBECONFIG_BASE64: Base64-encoded kubeconfig file for the Product cluster
 #   To create: kubectl config view --flatten | base64 -w 0
-# - AWS_ACCESS_KEY_ID: AWS access key for ECR image pull (optional)
-# - AWS_SECRET_ACCESS_KEY: AWS secret key for ECR image pull (optional)
 # - HF_TOKEN: HuggingFace token for model download (optional)
 # - HF_ENDPOINT: HuggingFace endpoint URL (optional)
-# - INFERENCE_IMAGE_REPO: Inference image repository (optional)
-# - INFERENCE_IMAGE_TAG: Inference image tag (optional)
 #
 # Note: For Product cluster testing (SKIP_PREREQUISITE=true), setupPrerequisites() returns early
 # without installing or validating any components. All required components must be pre-installed:
@@ -43,11 +39,14 @@ jobs:
       test_passed: ${{ steps.validate.outputs.test_passed }}
 
     env:
-      KUBECONFIG: /tmp/kubeconfig
-      MIF_NAMESPACE: mif
-      MIF_CHART_PATH: deploy/helm/moai-inference-framework
-      TEST_MODEL: "" # The default model in the test code (Qwen/Qwen3-0.6B)
-      ISTIO_REV: "istio"
+      KUBECONFIG: "/tmp/kubeconfig"
+      MIF_NAMESPACE: "mif"
+      ISTIO_REV: "1-28-1"
+      TEST_MODEL: "Qwen/Qwen3-0.6B"
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      HF_ENDPOINT: ${{ secrets.HF_ENDPOINT }}
+      SKIP_KIND: "true"
+      SKIP_PREREQUISITE: "true"
 
     steps:
       - name: Checkout
@@ -66,11 +65,10 @@ jobs:
           asdf install kubectl
           asdf install helm
 
-      - name: Set environment variables
+      - name: Set workload namespace
         run: |
-          echo "WORKLOAD_NAMESPACE=mif-e2e-${GITHUB_SHA:0:7}" >> "$GITHUB_ENV"
-          echo "SKIP_KIND=true" >> "$GITHUB_ENV"
-          echo "SKIP_PREREQUISITE=true" >> "$GITHUB_ENV"
+          COMMIT_HASH_SHORT=$(echo "${{ github.sha }}" | cut -c1-7)
+          echo "WORKLOAD_NAMESPACE=mif-e2e-${COMMIT_HASH_SHORT}" >> "$GITHUB_ENV"
 
       - name: Set up kubeconfig
         run: |
@@ -100,22 +98,6 @@ jobs:
 
       - name: Run E2E PD-Disaggregation test
         id: validate
-        env:
-          MIF_NAMESPACE: ${{ env.MIF_NAMESPACE }}
-          MIF_CHART_PATH: ${{ env.MIF_CHART_PATH }}
-          TEST_MODEL: ${{ env.TEST_MODEL }}
-          WORKLOAD_NAMESPACE: ${{ env.WORKLOAD_NAMESPACE }}
-          KUBECONFIG: ${{ env.KUBECONFIG }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          HF_ENDPOINT: ${{ secrets.HF_ENDPOINT }}
-          INFERENCE_IMAGE_REPO: ${{ secrets.INFERENCE_IMAGE_REPO }}
-          INFERENCE_IMAGE_TAG: ${{ secrets.INFERENCE_IMAGE_TAG }}
-          ISTIO_REV: ${{ env.ISTIO_REV }}
-          SKIP_KIND: "true"
-          SKIP_PREREQUISITE: "true"
-          SKIP_CLEANUP: "false"
         run: |
           if make test-e2e; then
             echo "test_passed=true" >> "$GITHUB_OUTPUT"
@@ -124,11 +106,23 @@ jobs:
             exit 1
           fi
 
+      - name: Debug test report files
+        if: always()
+        run: |
+          echo "Workspace: $(pwd)"
+          echo "Root listing:"
+          ls -la
+          echo "test-reports listing:"
+          ls -la test-reports || true
+          echo "test/e2e/test-reports listing:"
+          ls -la test/e2e/test-reports || true
+
       - name: Publish test results
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@v2
         with:
-          files: test-reports/*.{xml,json}
+          files: |
+            test-reports/*.xml
           check_name: E2E Test Results
           comment_mode: off
           report_individual_runs: false
