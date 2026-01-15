@@ -106,6 +106,17 @@ jobs:
             exit 1
           fi
 
+      - name: Debug test report files
+        if: always()
+        run: |
+          echo "Workspace: $(pwd)"
+          echo "Root listing:"
+          ls -la
+          echo "test-reports listing:"
+          ls -la test-reports || true
+          echo "test/e2e/test-reports listing:"
+          ls -la test/e2e/test-reports || true
+
       - name: Publish test results
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@v2
