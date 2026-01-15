@@ -41,8 +41,9 @@ test-e2e: ## Run E2E tests using Ginkgo (with automatic cleanup).
 	@mkdir -p test-reports
 	@go test -tags=e2e -v ./test/e2e/... -timeout 30m \
 		-ginkgo.v \
-		-ginkgo.junit-report="$(CURDIR)/test-reports/junit.xml" \
-		-ginkgo.json-report="$(CURDIR)/test-reports/report.json"
+		-ginkgo.junit-report=junit.xml \
+		-ginkgo.json-report=report.json \
+		-ginkgo.output-dir="$(CURDIR)/test-reports"
 
 .PHONY: test-e2e-no-cleanup
 test-e2e-no-cleanup: ## Run E2E tests without automatic cleanup (for debugging).
