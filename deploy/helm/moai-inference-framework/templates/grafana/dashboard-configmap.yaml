@@ -15,11 +15,7 @@ metadata:
     {{- toYaml . | nindent 4 }}
     {{- end }}
   labels:
-    {{- if $ps.grafana.sidecar.dashboards.label }}
     {{ tpl $ps.grafana.sidecar.dashboards.label $ }}: {{ ((tpl $ps.grafana.sidecar.dashboards.labelValue $) | default 1) | quote }}
-    {{- else }}
-    grafana_dashboard: "1"
-    {{- end }}
     {{- include "mif.labels" $ | nindent 4 }}
 data:
   {{ base $path }}: |-
