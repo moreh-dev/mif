@@ -27,12 +27,12 @@ jobs:
         with:
           script: |
             const title = context.payload.pull_request?.title ?? '';
-            const pattern = /^([A-Z]+-[0-9]+: )?(feat|fix|refactor|style|test|docs|chore)(\([a-z0-9_\/-]+\))?(!)?: .+/;
+            const pattern = /^(([A-Z]+-[0-9]+|NO-ISSUE): )?(feat|fix|refactor|style|test|docs|chore)(\([a-z0-9_\/-]+\))?(!)?: .+/;
             if (!pattern.test(title)) {
               core.setFailed(
                 [
                   `PR title "${title}" does not match the expected pattern.`,
-                  'Use Conventional Commits, optionally prefixed with a JIRA ID (e.g. "MAF-1234: feat(filter): add new filter").',
+                  'Use Conventional Commits, optionally prefixed with a JIRA ID or "NO-ISSUE" (e.g. "MAF-1234: feat(filter): add new filter" or "NO-ISSUE: chore: cleanup").',
                   'Allowed types: feat, fix, refactor, style, test, docs, chore.',
                   'Optional scope may include lowercase letters, digits, "/", or "-".',
                   'Add "!" before the colon for breaking changes.'
