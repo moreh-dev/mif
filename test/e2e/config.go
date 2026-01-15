@@ -32,6 +32,10 @@ type testConfig struct {
 
 	awsAccessKeyID     string
 	awsSecretAccessKey string
+	s3AccessKeyID      string
+	s3SecretAccessKey  string
+	s3Region           string
+	s3Bucket           string
 	hfToken            string
 	hfEndpoint         string
 
@@ -73,6 +77,10 @@ func init() {
 
 		awsAccessKeyID:     getEnv(envAWSAccessKeyID, ""),
 		awsSecretAccessKey: getEnv(envAWSSecretAccessKey, ""),
+		s3AccessKeyID:      getEnv(envS3AccessKeyID, ""),
+		s3SecretAccessKey:  getEnv(envS3SecretAccessKey, ""),
+		s3Region:           getEnv(envS3Region, "ap-northeast-2"),
+		s3Bucket:           getEnv(envS3Bucket, "moreh-benchmark"),
 		hfToken:            getEnv(envHFToken, ""),
 		hfEndpoint:         getEnv(envHFEndpoint, ""),
 

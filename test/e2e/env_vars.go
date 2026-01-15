@@ -6,27 +6,31 @@ package e2e
 import "fmt"
 
 const (
-	envSkipKind            = "SKIP_KIND"
-	envSkipPrerequisite    = "SKIP_PREREQUISITE"
-	envSkipCleanup         = "SKIP_CLEANUP"
-	envMIFNamespace        = "MIF_NAMESPACE"
-	envWorkloadNamespace   = "WORKLOAD_NAMESPACE"
-	envMIFChartPath        = "MIF_CHART_PATH"
-	envPresetChartPath     = "PRESET_CHART_PATH"
-	envTestModel           = "TEST_MODEL"
-	envGatewayClassName    = "GATEWAY_CLASS_NAME"
-	envKindClusterName     = "KIND_CLUSTER_NAME"
-	envKindK8sVersion      = "KIND_K8S_VERSION"
-	envAWSAccessKeyID      = "AWS_ACCESS_KEY_ID"
-	envAWSSecretAccessKey  = "AWS_SECRET_ACCESS_KEY"
-	envHFToken             = "HF_TOKEN"
-	envHFEndpoint          = "HF_ENDPOINT"
-	envInferenceImageRepo  = "INFERENCE_IMAGE_REPO"
-	envInferenceImageTag   = "INFERENCE_IMAGE_TAG"
-	envIstioRev            = "ISTIO_REV"
-	envKEDAEnabled         = "KEDA_ENABLED"
-	envLWSEnabled          = "LWS_ENABLED"
-	envOdinCRDEnabled      = "ODIN_CRD_ENABLED"
+	envSkipKind               = "SKIP_KIND"
+	envSkipPrerequisite       = "SKIP_PREREQUISITE"
+	envSkipCleanup            = "SKIP_CLEANUP"
+	envMIFNamespace           = "MIF_NAMESPACE"
+	envWorkloadNamespace      = "WORKLOAD_NAMESPACE"
+	envMIFChartPath           = "MIF_CHART_PATH"
+	envPresetChartPath        = "PRESET_CHART_PATH"
+	envTestModel              = "TEST_MODEL"
+	envGatewayClassName       = "GATEWAY_CLASS_NAME"
+	envKindClusterName        = "KIND_CLUSTER_NAME"
+	envKindK8sVersion         = "KIND_K8S_VERSION"
+	envAWSAccessKeyID         = "AWS_ACCESS_KEY_ID"
+	envAWSSecretAccessKey     = "AWS_SECRET_ACCESS_KEY"
+	envS3AccessKeyID          = "S3_ACCESS_KEY_ID"
+	envS3SecretAccessKey      = "S3_SECRET_ACCESS_KEY"
+	envS3Region               = "S3_REGION"
+	envS3Bucket               = "S3_BUCKET"
+	envHFToken                = "HF_TOKEN"
+	envHFEndpoint             = "HF_ENDPOINT"
+	envInferenceImageRepo     = "INFERENCE_IMAGE_REPO"
+	envInferenceImageTag      = "INFERENCE_IMAGE_TAG"
+	envIstioRev               = "ISTIO_REV"
+	envKEDAEnabled            = "KEDA_ENABLED"
+	envLWSEnabled             = "LWS_ENABLED"
+	envOdinCRDEnabled         = "ODIN_CRD_ENABLED"
 	envPrometheusStackEnabled = "PROMETHEUS_STACK_ENABLED"
 )
 
@@ -57,6 +61,12 @@ var envVars = []envVarInfo{
 	// AWS Credentials
 	{envAWSAccessKeyID, "AWS access key ID", "", "AWS Credentials (for ECR)", "string"},
 	{envAWSSecretAccessKey, "AWS secret access key", "", "AWS Credentials (for ECR)", "string"},
+
+	// S3 Credentials
+	{envS3AccessKeyID, "AWS access key ID for S3 results upload", "", "AWS Credentials (for S3)", "string"},
+	{envS3SecretAccessKey, "AWS secret access key for S3 results upload", "", "AWS Credentials (for S3)", "string"},
+	{envS3Region, "AWS region for S3 results bucket", "ap-northeast-2", "AWS Credentials (for S3)", "string"},
+	{envS3Bucket, "S3 bucket name for inference-perf results", "moreh-benchmark", "AWS Credentials (for S3)", "string"},
 
 	// HuggingFace
 	{envHFToken, "HuggingFace token", "", "HuggingFace", "string"},

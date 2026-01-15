@@ -30,19 +30,41 @@ func getGatewayServiceURL(serviceName string) string {
 
 func createInferencePerfJob(baseURL string, modelName string) (string, error) {
 	type jobTemplateData struct {
-		Namespace string
-		ModelName string
-		BaseURL   string
-		HFToken   string
-		HFEndpoint string
+		Namespace      string
+		ModelName      string
+		BaseURL        string
+		HFToken        string
+		HFEndpoint     string
+		IsKind         bool
+		S3AccessKeyID  string
+		S3SecretKey    string
+		S3Region       string
+		S3Bucket       string
+		S3PrefixBase   string
+		VLLMTag        string
+		Preset         string
+		ExpType        string
+		ExpName        string
 	}
 
+	_, imageTag := getInferenceImageInfo()
+
 	data := jobTemplateData{
-		Namespace: cfg.workloadNamespace,
-		ModelName: modelName,
-		BaseURL:   baseURL,
-		HFToken:   cfg.hfToken,
-		HFEndpoint: cfg.hfEndpoint,
+		Namespace:     cfg.workloadNamespace,
+		ModelName:     modelName,
+		BaseURL:       baseURL,
+		HFToken:       cfg.hfToken,
+		HFEndpoint:    cfg.hfEndpoint,
+		IsKind:        cfg.isUsingKindCluster,
+		S3AccessKeyID: cfg.s3AccessKeyID,
+		S3SecretKey:   cfg.s3SecretAccessKey,
+		S3Region:      cfg.s3Region,
+		S3Bucket:      cfg.s3Bucket,
+		S3PrefixBase:  inferencePerfS3PrefixBase,
+		VLLMTag:       imageTag,
+		Preset:        inferencePerfPreset,
+		ExpType:       inferencePerfExpType,
+		ExpName:       inferencePerfExpName,
 	}
 
 	jobYAML, err := renderTemplateFile("inference-perf-job.yaml.tmpl", data)

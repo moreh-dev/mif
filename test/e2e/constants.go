@@ -35,6 +35,14 @@ const (
 	imageTagDefault      = "20250915.1"
 )
 
+// Inference perf experiment defaults
+const (
+	inferencePerfS3PrefixBase = "vllm"
+	inferencePerfPreset       = "workertemplate-vllm-common"
+	inferencePerfExpType      = "performance"
+	inferencePerfExpName      = "synthetic_random_i1024_o1024_c64"
+)
+
 // Timeout and interval constants for E2E tests
 const (
 	timeoutShort    = 2 * time.Minute
