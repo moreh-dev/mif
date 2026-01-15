@@ -9,7 +9,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   namespace: {{ include "common.names.namespace" $ }}
-  name: {{ include "common.names.name" }}-{{ $dashboardName }}
+  name: {{ include "common.names.name" $ }}-dashboard-{{ $dashboardName }}
   annotations:
     {{- with $ps.grafana.sidecar.dashboards.annotations }}
     {{- toYaml . | nindent 4 }}
