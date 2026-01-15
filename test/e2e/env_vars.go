@@ -49,7 +49,7 @@ var envVars = []envVarInfo{
 	{envWorkloadNamespace, "Workload namespace for InferenceService", "quickstart", "Configuration", "string"},
 	{envMIFChartPath, "MIF Helm chart path", "deploy/helm/moai-inference-framework", "Configuration", "string"},
 	{envPresetChartPath, "Preset Helm chart path", "deploy/helm/moai-inference-preset", "Configuration", "string"},
-	{envTestModel, "Test model name", "meta-llama/Llama-3.2-1B-Instruct", "Configuration", "string"},
+	{envTestModel, "Test model name", "Qwen/Qwen3-0.6B", "Configuration", "string"},
 	{envGatewayClassName, "Gateway class (istio or kgateway)", "istio", "Configuration", "string"},
 	{envKindClusterName, "Kind cluster name", "mif-e2e", "Configuration", "string"},
 	{envKindK8sVersion, "Kubernetes version for kind", "(optional, no default)", "Configuration", "optional"},
