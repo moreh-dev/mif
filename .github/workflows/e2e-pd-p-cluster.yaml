@@ -123,7 +123,6 @@ jobs:
         with:
           files: |
             test-reports/*.xml
-            test-reports/*.json
           check_name: E2E Test Results
           comment_mode: off
           report_individual_runs: false
