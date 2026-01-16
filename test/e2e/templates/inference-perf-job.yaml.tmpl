@@ -17,12 +17,12 @@ spec:
       - name: inference-perf
         image: quay.io/inference-perf/inference-perf:d8e4af8
         command:
-        - /bin/bash
+        - /bin/sh
         - -c
         args:
         - |
 {{- if not .IsKind }}
-          TIMESTAMP=$(date +'%y%m%d%H%M%S')$(printf "%04d" $((RANDOM % 10000)))
+          TIMESTAMP="$(date +'%y%m%d%H%M%S')$(awk 'BEGIN {srand(); printf "%04d", int(rand()*10000)}')"
           
           S3_PREFIX_BASE="{{.S3PrefixBase}}"
           TAG="{{.VLLMTag}}"
