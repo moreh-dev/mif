@@ -17,7 +17,7 @@ spec:
       - name: inference-perf
         image: quay.io/inference-perf/inference-perf:d8e4af8
         command:
-        - /bin/sh
+        - /bin/bash
         - -c
         args:
         - |
@@ -85,7 +85,7 @@ spec:
             --log-level INFO
 
           cat reports*/*.json
-{{- if or (or .HFToken .HFEndpoint) (and (not .IsKind) .S3AccessKeyID .S3SecretKey) }}
+{{- if or .HFToken .HFEndpoint (and (not .IsKind) .S3AccessKeyID .S3SecretAccessKey) }}
         env:
 {{- if .HFToken }}
           - name: HF_TOKEN
@@ -95,11 +95,11 @@ spec:
           - name: HF_ENDPOINT
             value: "{{ .HFEndpoint }}"
 {{- end }}
-{{- if and (not .IsKind) .S3AccessKeyID .S3SecretKey }}
+{{- if and (not .IsKind) .S3AccessKeyID .S3SecretAccessKey }}
           - name: AWS_ACCESS_KEY_ID
             value: "{{ .S3AccessKeyID }}"
           - name: AWS_SECRET_ACCESS_KEY
-            value: "{{ .S3SecretKey }}"
+            value: "{{ .S3SecretAccessKey }}"
           - name: AWS_DEFAULT_REGION
             value: "{{ .S3Region }}"
 {{- end }}
