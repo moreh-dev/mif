@@ -33,6 +33,7 @@ Moreh Inference Framework
 | ecrTokenRefresher.aws.accessKeyId | string | `""` | AWS_ACCESS_KEY_ID |
 | ecrTokenRefresher.aws.region | string | `"ap-northeast-2"` | AWS Region. |
 | ecrTokenRefresher.aws.secretAccessKey | string | `""` | AWS_SECRET_ACCESS_KEY |
+| ecrTokenRefresher.enabled | bool | `true` | Enable ECR token refresher. |
 | ecrTokenRefresher.image.pullPolicy | string | `"IfNotPresent"` | Image pull policy. |
 | ecrTokenRefresher.image.pullSecrets | list | `[]` | Image pull secrets. |
 | ecrTokenRefresher.image.repository | string | `"heyvaldemar/aws-kubectl"` | Image repository. |
