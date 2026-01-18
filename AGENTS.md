@@ -59,3 +59,6 @@ The commit message should be structured as follows:
 - **Do not test resource specifications**:
   - Do not validate individual fields of the YAML file declaring the resource (resource spec).
   - Instead, create the resource and verify that its status reaches the expected state.
+- **Assume fully controlled cluster**:
+  - Do not check if components are already installed.
+  - Assume the cluster is fully controlled by the test and installed components are safe to overwrite or delete.
