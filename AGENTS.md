@@ -38,35 +38,22 @@ The commit message should be structured as follows:
 - `deploy`: Changes related to deployment (Helm charts, container files, etc.)
 - `config`: Changes related to files hard to manage within helm charts.
 - `preset`: Changes related to preset files.
+- `e2e`: Changes related to end-to-end tests.
 
 ## Code Style Guidelines
 
 ### Comments
 
-- **All comments in code must be written in English.**
-- This applies to:
-  - Shell scripts (`.sh` files)
-  - Makefiles
-  - Configuration files (YAML, JSON, TOML, INI, etc.)
-  - Source code comments
+- **Language**: All comments must be in English.
+- **Goals**: Focus on **why** something is done, not what or how.
+  - Explain non-obvious business logic, edge cases, or complex algorithms.
+  - Avoid restating the obvious or detailing implementation steps if the code is clear.
+- **API Documentation**: Exported functions should have concise doc comments explaining their purpose.
 
-#### Comment Guidelines
+## Test
 
-- **Remove verbose or redundant comments**: If the code is self-explanatory, remove the comment.
-- **Remove obvious comments**: Comments that simply restate what the code does should be removed.
-  - ❌ Bad: `// Check if secret already exists`
-  - ✅ Good: Code is clear without comment
-- **Remove implementation details**: Comments explaining step-by-step implementation should be removed if the code flow is clear.
-  - ❌ Bad: `// 1. Create hosts.toml file for the registry (containerd v1.5+ standard)`
-  - ✅ Good: Code structure makes the steps clear
-- **Keep essential comments**: Only keep comments that explain:
-  - **Why** something is done (not what or how)
-  - Non-obvious business logic or edge cases
-  - Complex algorithms or workarounds
-  - Public API documentation (for exported functions)
-- **Function documentation**: For exported functions, use concise doc comments that explain purpose, not implementation details.
-  - ❌ Bad: `// createMIFValuesFile creates a temporary values file for moai-inference-framework that configures ecrTokenRefresher with the given AWS credentials. These credentials are sourced from environment variables...`
-  - ✅ Good: `// createMIFValuesFile creates a values file for moai-inference-framework with ECR token refresher configuration.`
-- **Inline comments**: Use sparingly and only for non-obvious logic.
-  - ❌ Bad: `// Update namespace in metadata`
-  - ✅ Good: Code is self-explanatory
+### E2E Test
+
+- **Do not test resource specifications**:
+  - Do not validate individual fields of the YAML file declaring the resource (resource spec).
+  - Instead, create the resource and verify that its status reaches the expected state.
