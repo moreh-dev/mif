@@ -18,4 +18,27 @@ rules:
       - create
       - update
       - patch
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "mif.ecrTokenRefresher.fullname" . }}-init
+  namespace: {{ include "common.names.namespace" . }}
+  labels:
+    {{- include "mif.ecrTokenRefresher.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - get
+      - delete
+      - create
+      - update
+      - patch
 {{- end }}

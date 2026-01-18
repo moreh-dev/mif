@@ -8,9 +8,46 @@ metadata:
   labels:
     {{- include "mif.ecrTokenRefresher.labels" . | nindent 4 }}
   annotations:
-    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook: pre-install,pre-upgrade
     helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
 spec:
   template:
-    {{- include "mif.ecrTokenRefresher.jobTemplate" . | nindent 4 }}
+    metadata:
+      labels:
+        {{- include "mif.ecrTokenRefresher.labels" . | nindent 8 }}
+    spec:
+      restartPolicy: OnFailure
+      {{- if .Values.ecrTokenRefresher.serviceAccount.create }}
+      serviceAccountName: {{ include "mif.ecrTokenRefresher.serviceAccountName" . }}-init
+      {{- else }}
+      serviceAccountName: {{ include "mif.ecrTokenRefresher.serviceAccountName" . }}
+      {{- end }}
+      {{- include "common.images.pullSecrets" (dict "images" (list .Values.ecrTokenRefresher.image) "global" .Values.global) | nindent 6 }}
+      containers:
+        - name: main
+          image: {{ include "common.images.image" (dict "imageRoot" .Values.ecrTokenRefresher.image "global" .Values.global) }}
+          imagePullPolicy: {{ .Values.ecrTokenRefresher.image.pullPolicy }}
+          command:
+            - bash
+            - -c
+          args:
+            - |
+              {{- include "mif.ecrTokenRefresher.script" . | nindent 14 }}
+          env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: AWS_REGION
+              value: {{ .Values.ecrTokenRefresher.aws.region | quote }}
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "mif.ecrTokenRefresher.fullname" . }}-init
+                  key: AWS_ACCESS_KEY_ID
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "mif.ecrTokenRefresher.fullname" . }}-init
+                  key: AWS_SECRET_ACCESS_KEY
 {{- end }}

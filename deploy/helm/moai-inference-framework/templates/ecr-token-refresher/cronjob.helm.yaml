@@ -12,5 +12,38 @@ spec:
   jobTemplate:
     spec:
       template:
-        {{- include "mif.ecrTokenRefresher.jobTemplate" . | nindent 8 }}
+        metadata:
+          labels:
+            {{- include "mif.ecrTokenRefresher.labels" . | nindent 12 }}
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: {{ include "mif.ecrTokenRefresher.serviceAccountName" . }}
+          {{- include "common.images.pullSecrets" (dict "images" (list .Values.ecrTokenRefresher.image) "global" .Values.global) | nindent 10 }}
+          containers:
+            - name: main
+              image: {{ include "common.images.image" (dict "imageRoot" .Values.ecrTokenRefresher.image "global" .Values.global) }}
+              imagePullPolicy: {{ .Values.ecrTokenRefresher.image.pullPolicy }}
+              command:
+                - bash
+                - -c
+              args:
+                - |
+                  {{- include "mif.ecrTokenRefresher.script" . | nindent 18 }}
+              env:
+                - name: NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.namespace
+                - name: AWS_REGION
+                  value: {{ .Values.ecrTokenRefresher.aws.region | quote }}
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ include "mif.ecrTokenRefresher.fullname" . }}
+                      key: AWS_ACCESS_KEY_ID
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ include "mif.ecrTokenRefresher.fullname" . }}
+                      key: AWS_SECRET_ACCESS_KEY
 {{- end }}
