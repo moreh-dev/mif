@@ -5,7 +5,6 @@ package e2e
 
 import (
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
 
@@ -72,65 +71,15 @@ func setupPrerequisites() {
 		return
 	}
 
-	By("checking if cert manager is installed already")
-	cfg.isCertManagerAlreadyInstalled = utils.IsCertManagerCRDsInstalled()
-	if !cfg.isCertManagerAlreadyInstalled {
-		_, _ = fmt.Fprintf(GinkgoWriter, "Installing CertManager...\n")
-		Expect(utils.InstallCertManager()).To(Succeed(), "Failed to install CertManager")
-	} else {
-		_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: CertManager is already installed. Skipping installation...\n")
-	}
+	By("installing CertManager")
+	Expect(utils.InstallCertManager()).To(Succeed(), "Failed to install CertManager")
 
-	detectComponentState()
 	setupMIF()
 	setupPreset()
 	setupGateway()
 }
 
-// detectComponentState auto-detects cluster state and adjusts component enable flags.
-func detectComponentState() {
-	By("auto-detecting cluster state and adjusting component enable flags")
-	if os.Getenv(envKEDAEnabled) == "" {
-		By("checking if KEDA is already installed")
-		cfg.kedaEnabled = !utils.IsKEDAInstalled()
-		if cfg.kedaEnabled {
-			_, _ = fmt.Fprintf(GinkgoWriter, "KEDA is not installed. Enabling KEDA in MIF chart.\n")
-		} else {
-			_, _ = fmt.Fprintf(GinkgoWriter, "KEDA is already installed in the cluster. Disabling KEDA in MIF chart to avoid conflicts.\n")
-		}
-	}
 
-	if os.Getenv(envLWSEnabled) == "" {
-		By("checking if LWS is already installed")
-		cfg.lwsEnabled = !utils.IsLWSInstalled()
-		if cfg.lwsEnabled {
-			_, _ = fmt.Fprintf(GinkgoWriter, "LWS is not installed. Enabling LWS in MIF chart.\n")
-		} else {
-			_, _ = fmt.Fprintf(GinkgoWriter, "LWS is already installed in the cluster. Disabling LWS in MIF chart to avoid conflicts.\n")
-		}
-	}
-
-	if os.Getenv(envOdinCRDEnabled) == "" {
-		By("checking if Odin CRD is already installed")
-		cfg.odinCRDEnabled = !utils.IsOdinCRDInstalled()
-		if cfg.odinCRDEnabled {
-			_, _ = fmt.Fprintf(GinkgoWriter, "Odin CRD is not installed. Enabling Odin CRD in MIF chart.\n")
-		} else {
-			_, _ = fmt.Fprintf(GinkgoWriter, "Odin CRD is already installed in the cluster. Disabling Odin CRD in MIF chart to avoid conflicts.\n")
-		}
-	}
-
-	if os.Getenv(envPrometheusStackEnabled) == "" {
-		By("checking if Prometheus is already installed")
-		if utils.IsPrometheusInstalled() {
-			cfg.prometheusStackEnabled = false
-			_, _ = fmt.Fprintf(GinkgoWriter, "Prometheus is already installed in the cluster. Disabling Prometheus Stack in MIF chart to avoid conflicts.\n")
-		} else {
-			cfg.prometheusStackEnabled = false
-			_, _ = fmt.Fprintf(GinkgoWriter, "Prometheus Stack disabled by default in E2E tests to avoid resource issues. Set %s=true to enable.\n", envPrometheusStackEnabled)
-		}
-	}
-}
 
 // setupMIF installs MIF infrastructure if not already installed.
 func setupMIF() {
@@ -139,13 +88,6 @@ func setupMIF() {
 	_, err := utils.Run(cmd)
 	if err != nil && !strings.Contains(err.Error(), "AlreadyExists") {
 		Expect(err).NotTo(HaveOccurred(), "Failed to create MIF namespace")
-	}
-
-	By("checking if MIF is already installed")
-	cfg.isMIFAlreadyInstalled = utils.IsMIFInstalled(cfg.mifNamespace)
-	if cfg.isMIFAlreadyInstalled {
-		_, _ = fmt.Fprintf(GinkgoWriter, "MIF is already installed in namespace %s. Skipping installation...\n", cfg.mifNamespace)
-		return
 	}
 
 	By("deploying MIF infrastructure via Helm")
@@ -193,37 +135,19 @@ func setupMIF() {
 	waitForMIFComponents()
 }
 
-// setupPreset installs moai-inference-preset if not already installed.
+// setupPreset installs moai-inference-preset.
 func setupPreset() {
-	By("checking if moai-inference-preset is already installed")
-	cfg.isPresetAlreadyInstalled = utils.IsPresetInstalled(cfg.mifNamespace)
-	if cfg.isPresetAlreadyInstalled {
-		_, _ = fmt.Fprintf(GinkgoWriter, "moai-inference-preset is already installed in namespace %s. Skipping installation...\n", cfg.mifNamespace)
-	} else {
-		By("deploying moai-inference-preset")
-		Expect(utils.DeployMIFPreset(cfg.mifNamespace, cfg.presetChartPath)).To(Succeed(), "Failed to deploy moai-inference-preset")
-	}
+	By("deploying moai-inference-preset")
+	Expect(utils.DeployMIFPreset(cfg.mifNamespace, cfg.presetChartPath)).To(Succeed(), "Failed to deploy moai-inference-preset")
 }
 
-// setupGateway installs Gateway API and controller if needed.
+// setupGateway installs Gateway API and controller.
 func setupGateway() {
-	By("checking if Gateway API is already installed")
-	cfg.isGatewayAPIAlreadyInstalled = utils.IsGatewayAPIInstalled()
-	if cfg.isGatewayAPIAlreadyInstalled {
-		_, _ = fmt.Fprintf(GinkgoWriter, "Gateway API is already installed. Skipping installation...\n")
-	} else {
-		By("installing Gateway API standard CRDs")
-		Expect(utils.InstallGatewayAPI()).To(Succeed(), "Failed to install Gateway API standard CRDs")
-	}
+	By("installing Gateway API standard CRDs")
+	Expect(utils.InstallGatewayAPI()).To(Succeed(), "Failed to install Gateway API standard CRDs")
 
-	By("checking if Gateway API Inference Extension is already installed")
-	cfg.isGatewayInferenceExtensionInstalled = utils.IsGatewayInferenceExtensionInstalled()
-	if cfg.isGatewayInferenceExtensionInstalled {
-		_, _ = fmt.Fprintf(GinkgoWriter, "Gateway API Inference Extension is already installed. Skipping installation...\n")
-	} else {
-		By("installing Gateway API Inference Extension CRDs")
-		Expect(utils.InstallGatewayInferenceExtension()).To(Succeed(), "Failed to install Gateway API Inference Extension CRDs")
-	}
+	By("installing Gateway API Inference Extension CRDs")
+	Expect(utils.InstallGatewayInferenceExtension()).To(Succeed(), "Failed to install Gateway API Inference Extension CRDs")
 
 	switch cfg.gatewayClass {
 	case gatewayClassIstio:
@@ -235,56 +159,40 @@ func setupGateway() {
 	}
 }
 
-// setupIstio installs Istio if not already installed.
+// setupIstio installs Istio.
 func setupIstio() {
-	By("checking if Istio is already installed")
-	cfg.isIstioAlreadyInstalled = utils.IsIstioInstalled()
-	if cfg.isIstioAlreadyInstalled {
-		_, _ = fmt.Fprintf(GinkgoWriter, "Istio is already installed. Skipping installation...\n")
-	} else {
-		By("installing Istio base")
-		Expect(utils.InstallIstioBase()).To(Succeed(), "Failed to install Istio base")
+	By("installing Istio base")
+	Expect(utils.InstallIstioBase()).To(Succeed(), "Failed to install Istio base")
 
-		By("creating istiod values file")
-		istiodValuesPath, err := createIstiodValuesFile()
-		Expect(err).NotTo(HaveOccurred(), "Failed to create istiod values file")
+	By("creating istiod values file")
+	istiodValuesPath, err := createIstiodValuesFile()
+	Expect(err).NotTo(HaveOccurred(), "Failed to create istiod values file")
 
-		By("installing Istiod control plane")
-		Expect(utils.InstallIstiod(istiodValuesPath)).To(Succeed(), "Failed to install Istiod control plane")
-	}
+	By("installing Istiod control plane")
+	Expect(utils.InstallIstiod(istiodValuesPath)).To(Succeed(), "Failed to install Istiod control plane")
 }
 
-// setupKgateway installs KGateway if not already installed.
+// setupKgateway installs KGateway.
 func setupKgateway() {
-	By("checking if Kgateway is already installed")
-	cfg.isKgatewayAlreadyInstalled = utils.IsKgatewayInstalled()
-	if cfg.isKgatewayAlreadyInstalled {
-		_, _ = fmt.Fprintf(GinkgoWriter, "Kgateway is already installed. Skipping installation...\n")
-	} else {
-		By("creating Kgateway values file")
-		kgatewayValuesPath, err := createKgatewayValuesFile()
-		Expect(err).NotTo(HaveOccurred(), "Failed to create Kgateway values file")
+	By("creating Kgateway values file")
+	kgatewayValuesPath, err := createKgatewayValuesFile()
+	Expect(err).NotTo(HaveOccurred(), "Failed to create Kgateway values file")
 
-		By("installing Kgateway CRDs")
-		Expect(utils.InstallKgatewayCRDs()).To(Succeed(), "Failed to install Kgateway CRDs")
+	By("installing Kgateway CRDs")
+	Expect(utils.InstallKgatewayCRDs()).To(Succeed(), "Failed to install Kgateway CRDs")
 
-		By("installing Kgateway controller")
-		Expect(utils.InstallKgateway(kgatewayValuesPath)).To(Succeed(), "Failed to install Kgateway controller")
-	}
+	By("installing Kgateway controller")
+	Expect(utils.InstallKgateway(kgatewayValuesPath)).To(Succeed(), "Failed to install Kgateway controller")
 }
 
 // cleanupKindResources cleans up resources specific to kind cluster.
 func cleanupKindResources() {
-	if !cfg.isPresetAlreadyInstalled {
-		By("uninstalling moai-inference-preset")
-		utils.UninstallMIFPreset(cfg.mifNamespace)
-	}
+	By("uninstalling moai-inference-preset")
+	utils.UninstallMIFPreset(cfg.mifNamespace)
 
-	if !cfg.isMIFAlreadyInstalled {
-		By("uninstalling MIF")
-		cmd := exec.Command("helm", "uninstall", helmReleaseMIF, "-n", cfg.mifNamespace, "--ignore-not-found=true")
-		_, _ = utils.Run(cmd)
-	}
+	By("uninstalling MIF")
+	cmd := exec.Command("helm", "uninstall", helmReleaseMIF, "-n", cfg.mifNamespace, "--ignore-not-found=true")
+	_, _ = utils.Run(cmd)
 
 	By("deleting MIF namespace")
 	cleanupMIFNamespace()
@@ -296,36 +204,30 @@ func cleanupKindResources() {
 	cleanupKindCluster()
 }
 
-// cleanupPrerequisites uninstalls prerequisite components if they were installed during tests.
+// cleanupPrerequisites uninstalls prerequisite components.
 func cleanupPrerequisites() {
-	if cfg.gatewayClass == gatewayClassIstio && !cfg.isIstioAlreadyInstalled {
+	if cfg.gatewayClass == gatewayClassIstio {
 		By("uninstalling Istio")
 		if err := utils.UninstallGatewayController(cfg.gatewayClass); err != nil {
 			_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to uninstall Gateway controller: %v\n", err)
 		}
-	} else if cfg.gatewayClass == gatewayClassKgateway && !cfg.isKgatewayAlreadyInstalled {
+	} else if cfg.gatewayClass == gatewayClassKgateway {
 		By("uninstalling Kgateway")
 		if err := utils.UninstallGatewayController(cfg.gatewayClass); err != nil {
 			_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to uninstall Gateway controller: %v\n", err)
 		}
 	}
 
-	if !cfg.isGatewayInferenceExtensionInstalled {
-		By("uninstalling Gateway API Inference Extension")
-		if err := utils.UninstallGatewayInferenceExtension(); err != nil {
-			_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to uninstall Gateway API Inference Extension: %v\n", err)
-		}
+	By("uninstalling Gateway API Inference Extension")
+	if err := utils.UninstallGatewayInferenceExtension(); err != nil {
+		_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to uninstall Gateway API Inference Extension: %v\n", err)
 	}
 
-	if !cfg.isGatewayAPIAlreadyInstalled {
-		By("uninstalling Gateway API")
-		if err := utils.UninstallGatewayAPI(); err != nil {
-			_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to uninstall Gateway API: %v\n", err)
-		}
+	By("uninstalling Gateway API")
+	if err := utils.UninstallGatewayAPI(); err != nil {
+		_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to uninstall Gateway API: %v\n", err)
 	}
 
-	if !cfg.isCertManagerAlreadyInstalled {
-		_, _ = fmt.Fprintf(GinkgoWriter, "Uninstalling CertManager...\n")
-		utils.UninstallCertManager()
-	}
+	By("Uninstalling CertManager...")
+	utils.UninstallCertManager()
 }
