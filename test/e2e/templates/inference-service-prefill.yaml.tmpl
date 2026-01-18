@@ -17,21 +17,21 @@ spec:
     spec:
       containers:
         - name: main
-{{- if or (not .IsKind) .HFToken .HFEndpoint }}
+          {{- if or (not .IsKind) .HFToken .HFEndpoint }}
           env:
-{{- if not .IsKind }}
+            {{- if not .IsKind }}
             - name: ISVC_MODEL_NAME
               value: "{{ .Model }}"
-{{- end }}
-{{- if .HFToken }}
+            {{- end }}
+            {{- if .HFToken }}
             - name: HF_TOKEN
               value: "{{ .HFToken }}"
-{{- end }}
-{{- if .HFEndpoint }}
+            {{- end }}
+            {{- if .HFEndpoint }}
             - name: HF_ENDPOINT
               value: "{{ .HFEndpoint }}"
-{{- end }}
-{{- end }}
+            {{- end }}
+          {{- end }}
           readinessProbe:
             httpGet:
               path: /health
@@ -42,7 +42,7 @@ spec:
             timeoutSeconds: 5
             successThreshold: 1
             failureThreshold: 3
-{{- if not .IsKind }}
+          {{- if not .IsKind }}
           resources:
             requests:
               amd.com/gpu: "4"
@@ -54,4 +54,4 @@ spec:
         - key: amd.com/gpu
           operator: Exists
           effect: NoSchedule
-{{- end }}
+          {{- end }}
