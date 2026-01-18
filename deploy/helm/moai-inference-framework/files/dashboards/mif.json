@@ -1,4 +1,47 @@
 {
+  "__inputs": [
+    {
+      "name": "DS_PROMETHEUS",
+      "label": "Prometheus",
+      "description": "",
+      "type": "datasource",
+      "pluginId": "prometheus",
+      "pluginName": "Prometheus"
+    }
+  ],
+  "__elements": {},
+  "__requires": [
+    {
+      "type": "panel",
+      "id": "bargauge",
+      "name": "Bar gauge",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "gauge",
+      "name": "Gauge",
+      "version": ""
+    },
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "12.3.0"
+    },
+    {
+      "type": "datasource",
+      "id": "prometheus",
+      "name": "Prometheus",
+      "version": "1.0.0"
+    },
+    {
+      "type": "panel",
+      "id": "timeseries",
+      "name": "Time series",
+      "version": ""
+    }
+  ],
   "annotations": {
     "list": [
       {
@@ -18,7 +61,6 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
-  "id": 28,
   "links": [],
   "panels": [
     {
@@ -37,7 +79,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -84,9 +126,13 @@
         "showThresholdMarkers": true,
         "sizing": "auto"
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "disableTextWrap": false,
           "editorMode": "builder",
           "expr": "avg(gpu_gfx_activity{hostname=~\"$nodes\"})",
@@ -117,13 +163,14 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "thresholds"
           },
+          "decimals": 1,
           "mappings": [],
           "max": 100,
           "min": 0,
@@ -173,11 +220,15 @@
         "sizing": "auto",
         "valueMode": "color"
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.0",
       "repeat": "nodes",
       "repeatDirection": "v",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "editorMode": "builder",
           "expr": "sum by(gpu_id) (gpu_gfx_activity{hostname=\"$nodes\"})",
           "legendFormat": "{{gpu_id}}",
@@ -191,7 +242,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -222,6 +273,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -269,11 +321,15 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.3.0",
       "repeat": "nodes",
       "repeatDirection": "v",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "disableTextWrap": false,
           "editorMode": "builder",
           "expr": "sum by(gpu_id) (gpu_gfx_activity{hostname=\"$nodes\"})",
@@ -285,19 +341,20 @@
           "useBackend": false
         }
       ],
-      "title": "GPU Utilzation $nodes",
+      "title": "$nodes GPU Utilization",
       "type": "timeseries"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "thresholds"
           },
+          "decimals": 1,
           "mappings": [],
           "max": 1,
           "min": 0,
@@ -349,11 +406,15 @@
         "sizing": "auto",
         "valueMode": "color"
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.0",
       "repeat": "nodes",
       "repeatDirection": "v",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "disableTextWrap": false,
           "editorMode": "builder",
           "expr": "sum by(gpu_id) (gpu_used_vram{hostname=\"$nodes\"}) / (sum by(gpu_id) (gpu_total_vram{hostname=\"$nodes\"}))",
@@ -371,7 +432,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -451,11 +512,15 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.0",
       "repeat": "nodes",
       "repeatDirection": "v",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "disableTextWrap": false,
           "editorMode": "builder",
           "expr": "gpu_junction_temperature{hostname=\"$nodes\"}",
@@ -467,7 +532,7 @@
           "useBackend": false
         }
       ],
-      "title": "GPU Junction Temperature",
+      "title": "$nodes GPU Junction Temperature",
       "type": "timeseries"
     },
     {
@@ -476,7 +541,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 17
+        "y": 80
       },
       "id": 6,
       "panels": [],
@@ -486,13 +551,14 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "thresholds"
           },
+          "fieldMinMax": false,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -514,7 +580,7 @@
         "h": 8,
         "w": 6,
         "x": 0,
-        "y": 18
+        "y": 81
       },
       "id": 16,
       "options": {
@@ -532,15 +598,19 @@
         "showThresholdMarkers": true,
         "sizing": "auto"
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "inference_pool_ready_pods{job=~\"$heimdall\"}",
+          "expr": "sum by(namespace, pool) (inference_pool_ready_pods{namespace=~\"$namespace\", pool=~\"$inference_pool\"})",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "{{job}}",
+          "legendFormat": "{{namespace}}/{{pool}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -552,7 +622,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -586,6 +656,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -617,7 +688,7 @@
         "h": 8,
         "w": 6,
         "x": 6,
-        "y": 18
+        "y": 81
       },
       "id": 21,
       "options": {
@@ -633,34 +704,21 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.3.0",
       "targets": [
-        {
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "rate(inference_objective_request_total{job=~\"$heimdall\"}[$__rate_interval])",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "legendFormat": "Total",
-          "range": true,
-          "refId": "A",
-          "useBackend": false
-        },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "rate(inference_objective_request_error_total{job=~\"$heimdall\"}[$__rate_interval])",
+          "expr": "sum by(namespace, pool) (rate(inference_objective_request_total{namespace=~\"$namespace\", pool=~\"$inference_pool\"}[$__rate_interval]))",
           "fullMetaSearch": false,
-          "hide": false,
           "includeNullMetadata": true,
-          "instant": false,
-          "legendFormat": "Error",
+          "legendFormat": "{{namespace}}/{{pool}}",
           "range": true,
-          "refId": "B",
+          "refId": "A",
           "useBackend": false
         }
       ],
@@ -670,7 +728,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -701,6 +759,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -733,7 +792,7 @@
         "h": 8,
         "w": 6,
         "x": 12,
-        "y": 18
+        "y": 81
       },
       "id": 15,
       "options": {
@@ -749,15 +808,19 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.5, sum by(le, pod) (rate(inference_extension_scheduler_e2e_duration_seconds_bucket{job=~\"$heimdall\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.5, sum by(namespace, pool, le) (rate(inference_extension_scheduler_e2e_duration_seconds_bucket{namespace=~\"$namespace\", pool=~\"$inference_pool\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "P50 {{pod}}",
+          "legendFormat": "P50 {{namespace}}/{{pool}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -765,15 +828,15 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.75, sum by(le, pod) (rate(inference_extension_scheduler_e2e_duration_seconds_bucket{job=~\"$heimdall\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.75, sum by(namespace, pool, le) (rate(inference_extension_scheduler_e2e_duration_seconds_bucket{namespace=~\"$namespace\", pool=~\"$inference_pool\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
-          "legendFormat": "P75 {{pod}}",
+          "legendFormat": "P75 {{namespace}}/{{pool}}",
           "range": true,
           "refId": "B",
           "useBackend": false
@@ -781,15 +844,15 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.95, sum by(le, pod) (rate(inference_extension_scheduler_e2e_duration_seconds_bucket{job=~\"$heimdall\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by(namespace, pool, le) (rate(inference_extension_scheduler_e2e_duration_seconds_bucket{namespace=~\"$namespace\", pool=~\"$inference_pool\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
-          "legendFormat": "P95 {{pod}}",
+          "legendFormat": "P95 {{namespace}}/{{pool}}",
           "range": true,
           "refId": "C",
           "useBackend": false
@@ -801,7 +864,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -832,6 +895,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -863,7 +927,7 @@
         "h": 8,
         "w": 6,
         "x": 18,
-        "y": 18
+        "y": 81
       },
       "id": 34,
       "options": {
@@ -879,18 +943,18 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "builder",
-          "expr": "sum(rate(kvcache_index_lookup_hits_total{job=~\"$heimdall\"}[$__rate_interval]))/sum(rate(kvcache_index_lookup_requests_total{job=~\"$heimdall\"}[$__rate_interval]))",
+          "expr": "sum by(namespace, pool) (rate(kvcache_index_lookup_hits_total{namespace=~\"$namespace\", pool=~\"$inference_pool\"}[$__rate_interval])) / (sum by(namespace, pool) (rate(kvcache_index_lookup_requests_total{namespace=~\"$namespace\", pool=~\"$inference_pool\"}[$__rate_interval])))",
           "hide": false,
           "instant": false,
-          "legendFormat": "hit/req",
+          "legendFormat": "{{namespace}}/{{pool}}",
           "range": true,
           "refId": "A"
         }
@@ -904,7 +968,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 26
+        "y": 89
       },
       "id": 7,
       "panels": [],
@@ -914,7 +978,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -945,6 +1009,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -977,7 +1042,7 @@
         "h": 8,
         "w": 6,
         "x": 0,
-        "y": 27
+        "y": 90
       },
       "id": 8,
       "options": {
@@ -993,12 +1058,16 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.5, sum by(le, instance) (rate(llm_time_to_first_token_seconds_bucket{job=~\"$prefill\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.5, sum by(le, instance) (rate(llm_time_to_first_token_seconds_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=\"prefill\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "P50 {{instance}}",
@@ -1009,11 +1078,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.75, sum by(le, instance) (rate(llm_time_to_first_token_seconds_bucket{job=~\"$prefill\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.75, sum by(le, instance) (rate(llm_time_to_first_token_seconds_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=\"prefill\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -1025,11 +1094,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.95, sum by(le, instance) (rate(llm_time_to_first_token_seconds_bucket{job=~\"$prefill\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by(le, instance) (rate(llm_time_to_first_token_seconds_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=\"prefill\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -1039,13 +1108,13 @@
           "useBackend": false
         }
       ],
-      "title": "Prefill TTFT per Pod",
+      "title": "Prefill TTFT per Endpoint",
       "type": "timeseries"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1076,6 +1145,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -1108,7 +1178,7 @@
         "h": 8,
         "w": 6,
         "x": 6,
-        "y": 27
+        "y": 90
       },
       "id": 9,
       "options": {
@@ -1124,12 +1194,16 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.5, sum by(le) (rate(llm_time_to_first_token_seconds_bucket{job=~\"$prefill\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.5, sum by(le) (rate(llm_time_to_first_token_seconds_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=\"prefill\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "P50",
@@ -1140,11 +1214,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.75, sum by(le) (rate(llm_time_to_first_token_seconds_bucket{job=~\"$prefill\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.75, sum by(le) (rate(llm_time_to_first_token_seconds_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=\"prefill\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -1156,11 +1230,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.95, sum by(le) (rate(llm_time_to_first_token_seconds_bucket{job=~\"$prefill\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by(le) (rate(llm_time_to_first_token_seconds_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=\"prefill\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -1176,7 +1250,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1207,6 +1281,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -1239,7 +1314,7 @@
         "h": 8,
         "w": 6,
         "x": 12,
-        "y": 27
+        "y": 90
       },
       "id": 13,
       "options": {
@@ -1255,12 +1330,16 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.5, sum by(le, instance) (rate(llm_time_to_first_token_seconds_bucket{job=~\"$decode\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.5, sum by(le, instance) (rate(llm_time_to_first_token_seconds_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=~\"decode|\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "P50 {{instance}}",
@@ -1271,11 +1350,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.75, sum by(le, instance) (rate(llm_time_to_first_token_seconds_bucket{job=~\"$decode\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.75, sum by(le, instance) (rate(llm_time_to_first_token_seconds_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=~\"decode|\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -1287,11 +1366,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.95, sum by(le, instance) (rate(llm_time_to_first_token_seconds_bucket{job=~\"$decode\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by(le, instance) (rate(llm_time_to_first_token_seconds_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=~\"decode|\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -1301,13 +1380,13 @@
           "useBackend": false
         }
       ],
-      "title": "Decode TTFT per Pod",
+      "title": "Decode TTFT per Endpoint",
       "type": "timeseries"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1338,6 +1417,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -1370,7 +1450,7 @@
         "h": 8,
         "w": 6,
         "x": 18,
-        "y": 27
+        "y": 90
       },
       "id": 14,
       "options": {
@@ -1386,12 +1466,16 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.5, sum by(le) (rate(llm_time_to_first_token_seconds_bucket{job=~\"$decode\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.5, sum by(le) (rate(llm_time_to_first_token_seconds_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=~\"decode|\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "P50",
@@ -1402,11 +1486,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.75, sum by(le) (rate(llm_time_to_first_token_seconds_bucket{job=~\"$decode\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.75, sum by(le) (rate(llm_time_to_first_token_seconds_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=~\"decode|\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -1418,11 +1502,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.95, sum by(le) (rate(llm_time_to_first_token_seconds_bucket{job=~\"$decode\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by(le) (rate(llm_time_to_first_token_seconds_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=~\"decode|\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -1438,7 +1522,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1469,6 +1553,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -1501,7 +1586,7 @@
         "h": 8,
         "w": 6,
         "x": 0,
-        "y": 35
+        "y": 98
       },
       "id": 17,
       "options": {
@@ -1517,15 +1602,19 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.5, sum by(le, pod) (rate(llm_inter_token_latency_seconds_bucket{job=~\"$prefill\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.5, sum by(le, instance) (rate(llm_inter_token_latency_seconds_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=\"prefill\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "P50 {{pod}}",
+          "legendFormat": "P50 {{instance}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -1533,15 +1622,15 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.75, sum by(le, pod) (rate(llm_inter_token_latency_seconds_bucket{job=~\"$prefill\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.75, sum by(le, instance) (rate(llm_inter_token_latency_seconds_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=\"prefill\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
-          "legendFormat": "P75 {{pod}}",
+          "legendFormat": "P75 {{instance}}",
           "range": true,
           "refId": "B",
           "useBackend": false
@@ -1549,27 +1638,27 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.95, sum by(le, pod) (rate(llm_inter_token_latency_seconds_bucket{job=~\"$prefill\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by(le, instance) (rate(llm_inter_token_latency_seconds_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=\"prefill\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
-          "legendFormat": "P95 {{pod}}",
+          "legendFormat": "P95 {{instance}}",
           "range": true,
           "refId": "C",
           "useBackend": false
         }
       ],
-      "title": "Prefill ITL per Pod",
+      "title": "Prefill ITL per Endpoint",
       "type": "timeseries"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1600,6 +1689,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -1632,7 +1722,7 @@
         "h": 8,
         "w": 6,
         "x": 6,
-        "y": 35
+        "y": 98
       },
       "id": 18,
       "options": {
@@ -1648,12 +1738,16 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.5, sum by(le) (rate(llm_inter_token_latency_seconds_bucket{job=~\"$prefill\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.5, sum by(le) (rate(llm_inter_token_latency_seconds_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=\"prefill\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "P50",
@@ -1664,11 +1758,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.75, sum by(le) (rate(llm_inter_token_latency_seconds_bucket{job=~\"$prefill\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.75, sum by(le) (rate(llm_inter_token_latency_seconds_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=\"prefill\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -1680,11 +1774,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.95, sum by(le) (rate(llm_inter_token_latency_seconds_bucket{job=~\"$prefill\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by(le) (rate(llm_inter_token_latency_seconds_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=\"prefill\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -1700,7 +1794,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1731,6 +1825,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -1763,7 +1858,7 @@
         "h": 8,
         "w": 6,
         "x": 12,
-        "y": 35
+        "y": 98
       },
       "id": 19,
       "options": {
@@ -1779,12 +1874,16 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.5, sum by(le, instance) (rate(llm_inter_token_latency_seconds_bucket{job=~\"$decode\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.5, sum by(le, instance) (rate(llm_inter_token_latency_seconds_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=~\"decode|\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "P50 {{instance}}",
@@ -1795,11 +1894,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.75, sum by(le, instance) (rate(llm_inter_token_latency_seconds_bucket{job=~\"$decode\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.75, sum by(le, instance) (rate(llm_inter_token_latency_seconds_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=~\"decode|\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -1811,11 +1910,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.95, sum by(le, instance) (rate(llm_inter_token_latency_seconds_bucket{job=~\"$decode\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by(le, instance) (rate(llm_inter_token_latency_seconds_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=~\"decode|\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -1825,13 +1924,13 @@
           "useBackend": false
         }
       ],
-      "title": "Decode ITL per Pod",
+      "title": "Decode ITL per Endpoint",
       "type": "timeseries"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1862,6 +1961,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -1894,7 +1994,7 @@
         "h": 8,
         "w": 6,
         "x": 18,
-        "y": 35
+        "y": 98
       },
       "id": 20,
       "options": {
@@ -1910,12 +2010,16 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.5, sum by(le) (rate(llm_inter_token_latency_seconds_bucket{job=~\"$decode\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.5, sum by(le) (rate(llm_inter_token_latency_seconds_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=~\"decode|\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "P50",
@@ -1926,11 +2030,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.75, sum by(le) (rate(llm_inter_token_latency_seconds_bucket{job=~\"$decode\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.75, sum by(le) (rate(llm_inter_token_latency_seconds_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=~\"decode|\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -1942,11 +2046,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.95, sum by(le) (rate(llm_inter_token_latency_seconds_bucket{job=~\"$decode\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by(le) (rate(llm_inter_token_latency_seconds_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=~\"decode|\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -1962,7 +2066,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1993,6 +2097,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -2025,7 +2130,7 @@
         "h": 8,
         "w": 6,
         "x": 0,
-        "y": 43
+        "y": 106
       },
       "id": 22,
       "options": {
@@ -2041,15 +2146,19 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.5, sum by(le, pod) (rate(llm_e2e_request_latency_seconds_bucket{job=~\"$prefill\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.5, sum by(le, instance) (rate(llm_e2e_request_latency_seconds_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=\"prefill\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "P50 {{pod}}",
+          "legendFormat": "P50 {{instance}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -2057,15 +2166,15 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.75, sum by(le, pod) (rate(llm_e2e_request_latency_seconds_bucket{job=~\"$prefill\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.75, sum by(le, instance) (rate(llm_e2e_request_latency_seconds_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=\"prefill\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
-          "legendFormat": "P75 {{pod}}",
+          "legendFormat": "P75 {{instance}}",
           "range": true,
           "refId": "B",
           "useBackend": false
@@ -2073,27 +2182,27 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.95, sum by(le, pod) (rate(llm_e2e_request_latency_seconds_bucket{job=~\"$prefill\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by(le, instance) (rate(llm_e2e_request_latency_seconds_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=\"prefill\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
-          "legendFormat": "P95 {{pod}}",
+          "legendFormat": "P95 {{instance}}",
           "range": true,
           "refId": "C",
           "useBackend": false
         }
       ],
-      "title": "Prefill E2EL per Pod",
+      "title": "Prefill E2EL per Endpoint",
       "type": "timeseries"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -2124,6 +2233,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -2156,7 +2266,7 @@
         "h": 8,
         "w": 6,
         "x": 6,
-        "y": 43
+        "y": 106
       },
       "id": 23,
       "options": {
@@ -2172,12 +2282,16 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.5, sum by(le) (rate(llm_e2e_request_latency_seconds_bucket{job=~\"$prefill\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.5, sum by(le) (rate(llm_e2e_request_latency_seconds_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=\"prefill\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "P50",
@@ -2188,11 +2302,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.75, sum by(le) (rate(llm_e2e_request_latency_seconds_bucket{job=~\"$prefill\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.75, sum by(le) (rate(llm_e2e_request_latency_seconds_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=\"prefill\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -2204,11 +2318,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.95, sum by(le) (rate(llm_e2e_request_latency_seconds_bucket{job=~\"$prefill\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by(le) (rate(llm_e2e_request_latency_seconds_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=\"prefill\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -2224,7 +2338,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -2255,6 +2369,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -2287,7 +2402,7 @@
         "h": 8,
         "w": 6,
         "x": 12,
-        "y": 43
+        "y": 106
       },
       "id": 24,
       "options": {
@@ -2303,12 +2418,16 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.5, sum by(le, instance) (rate(llm_e2e_request_latency_seconds_bucket{job=~\"$decode\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.5, sum by(le, instance) (rate(llm_e2e_request_latency_seconds_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=~\"decode|\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "P50 {{instance}}",
@@ -2319,11 +2438,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.75, sum by(le, instance) (rate(llm_e2e_request_latency_seconds_bucket{job=~\"$decode\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.75, sum by(le, instance) (rate(llm_e2e_request_latency_seconds_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=~\"decode|\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -2335,11 +2454,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.95, sum by(le, instance) (rate(llm_e2e_request_latency_seconds_bucket{job=~\"$decode\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by(le, instance) (rate(llm_e2e_request_latency_seconds_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=~\"decode|\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -2349,13 +2468,13 @@
           "useBackend": false
         }
       ],
-      "title": "Decode E2EL per Pod",
+      "title": "Decode E2EL per Endpoint",
       "type": "timeseries"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -2386,6 +2505,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -2418,7 +2538,7 @@
         "h": 8,
         "w": 6,
         "x": 18,
-        "y": 43
+        "y": 106
       },
       "id": 25,
       "options": {
@@ -2434,12 +2554,16 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.5, sum by(le) (rate(llm_e2e_request_latency_seconds_bucket{job=~\"$decode\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.5, sum by(le) (rate(llm_e2e_request_latency_seconds_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=~\"decode|\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "P50",
@@ -2450,11 +2574,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.75, sum by(le) (rate(llm_e2e_request_latency_seconds_bucket{job=~\"$decode\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.75, sum by(le) (rate(llm_e2e_request_latency_seconds_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=~\"decode|\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -2466,11 +2590,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.95, sum by(le) (rate(llm_e2e_request_latency_seconds_bucket{job=~\"$decode\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by(le) (rate(llm_e2e_request_latency_seconds_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=~\"decode|\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -2486,7 +2610,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -2517,6 +2641,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -2548,7 +2673,7 @@
         "h": 8,
         "w": 6,
         "x": 0,
-        "y": 51
+        "y": 114
       },
       "id": 26,
       "options": {
@@ -2564,15 +2689,19 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.5, sum by(le, pod) (rate(llm_request_prompt_tokens_bucket{job=~\"$prefill\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.5, sum by(le, instance) (rate(llm_request_prompt_tokens_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=\"prefill\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "P50 {{pod}}",
+          "legendFormat": "P50 {{instance}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -2580,15 +2709,15 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.75, sum by(le, pod) (rate(llm_request_prompt_tokens_bucket{job=~\"$prefill\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.75, sum by(le, instance) (rate(llm_request_prompt_tokens_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=\"prefill\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
-          "legendFormat": "P75 {{pod}}",
+          "legendFormat": "P75 {{instance}}",
           "range": true,
           "refId": "B",
           "useBackend": false
@@ -2596,27 +2725,27 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.95, sum by(le, pod) (rate(llm_request_prompt_tokens_bucket{job=~\"$prefill\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by(le, instance) (rate(llm_request_prompt_tokens_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=\"prefill\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
-          "legendFormat": "P95 {{pod}}",
+          "legendFormat": "P95 {{instance}}",
           "range": true,
           "refId": "C",
           "useBackend": false
         }
       ],
-      "title": "Prefill ISL per Pod",
+      "title": "Prefill ISL per Endpoint",
       "type": "timeseries"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -2647,6 +2776,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -2678,7 +2808,7 @@
         "h": 8,
         "w": 6,
         "x": 6,
-        "y": 51
+        "y": 114
       },
       "id": 27,
       "options": {
@@ -2694,12 +2824,16 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.5, sum by(le) (rate(llm_request_prompt_tokens_bucket{job=~\"$prefill\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.5, sum by(le) (rate(llm_request_prompt_tokens_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=\"prefill\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "P50",
@@ -2710,11 +2844,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.75, sum by(le) (rate(llm_request_prompt_tokens_bucket{job=~\"$prefill\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.75, sum by(le) (rate(llm_request_prompt_tokens_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=\"prefill\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -2726,11 +2860,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.95, sum by(le) (rate(llm_request_prompt_tokens_bucket{job=~\"$prefill\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by(le) (rate(llm_request_prompt_tokens_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=\"prefill\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -2746,7 +2880,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -2777,6 +2911,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -2808,7 +2943,7 @@
         "h": 8,
         "w": 6,
         "x": 12,
-        "y": 51
+        "y": 114
       },
       "id": 28,
       "options": {
@@ -2824,15 +2959,19 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.5, sum by(le, pod) (rate(llm_request_prompt_tokens_bucket{job=~\"$decode\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.5, sum by(le, instance) (rate(llm_request_prompt_tokens_bucket{namespace=~\"$namespace\", pool=~\"$inference_pool\", inference_service=~\"$inference_service\", role=~\"decode|\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "P50 {{pod}}",
+          "legendFormat": "P50 {{instance}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -2840,15 +2979,15 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.75, sum by(le, pod) (rate(llm_request_prompt_tokens_bucket{job=~\"$decode\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.75, sum by(le, instance) (rate(llm_request_prompt_tokens_bucket{namespace=~\"$namespace\", pool=~\"$inference_pool\", inference_service=~\"$inference_service\", role=~\"decode|\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
-          "legendFormat": "P75 {{pod}}",
+          "legendFormat": "P75 {{instance}}",
           "range": true,
           "refId": "B",
           "useBackend": false
@@ -2856,27 +2995,27 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.95, sum by(le, pod) (rate(llm_request_prompt_tokens_bucket{job=~\"$decode\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by(le, instance) (rate(llm_request_prompt_tokens_bucket{namespace=~\"$namespace\", pool=~\"$inference_pool\", inference_service=~\"$inference_service\", role=~\"decode|\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
-          "legendFormat": "P95 {{pod}}",
+          "legendFormat": "P95 {{instance}}",
           "range": true,
           "refId": "C",
           "useBackend": false
         }
       ],
-      "title": "Decode ISL per Pod",
+      "title": "Decode ISL per Endpoint",
       "type": "timeseries"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -2907,6 +3046,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -2938,7 +3078,7 @@
         "h": 8,
         "w": 6,
         "x": 18,
-        "y": 51
+        "y": 114
       },
       "id": 29,
       "options": {
@@ -2954,12 +3094,16 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.5, sum by(le) (rate(llm_request_prompt_tokens_bucket{job=~\"$decode\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.5, sum by(le) (rate(llm_request_prompt_tokens_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=~\"decode|\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "P50",
@@ -2970,11 +3114,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.75, sum by(le) (rate(llm_request_prompt_tokens_bucket{job=~\"$decode\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.75, sum by(le) (rate(llm_request_prompt_tokens_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=~\"decode|\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -2986,11 +3130,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.95, sum by(le) (rate(llm_request_prompt_tokens_bucket{job=~\"$decode\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by(le) (rate(llm_request_prompt_tokens_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=~\"decode|\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -3006,7 +3150,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -3037,6 +3181,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -3068,7 +3213,7 @@
         "h": 8,
         "w": 6,
         "x": 0,
-        "y": 59
+        "y": 122
       },
       "id": 30,
       "options": {
@@ -3084,15 +3229,19 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.5, sum by(le, pod) (rate(llm_request_generation_tokens_bucket{job=~\"$prefill\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.5, sum by(le, instance) (rate(llm_request_generation_tokens_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=\"prefill\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "P50 {{pod}}",
+          "legendFormat": "P50 {{instance}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -3100,15 +3249,15 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.75, sum by(le, pod) (rate(llm_request_generation_tokens_bucket{job=~\"$prefill\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.75, sum by(le, instance) (rate(llm_request_generation_tokens_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=\"prefill\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
-          "legendFormat": "P75 {{pod}}",
+          "legendFormat": "P75 {{instance}}",
           "range": true,
           "refId": "B",
           "useBackend": false
@@ -3116,27 +3265,27 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.95, sum by(le, pod) (rate(llm_request_generation_tokens_bucket{job=~\"$prefill\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by(le, instance) (rate(llm_request_generation_tokens_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=\"prefill\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
-          "legendFormat": "P95 {{pod}}",
+          "legendFormat": "P95 {{instance}}",
           "range": true,
           "refId": "C",
           "useBackend": false
         }
       ],
-      "title": "Prefill OSL per Pod",
+      "title": "Prefill OSL per Endpoint",
       "type": "timeseries"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -3167,6 +3316,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -3198,7 +3348,7 @@
         "h": 8,
         "w": 6,
         "x": 6,
-        "y": 59
+        "y": 122
       },
       "id": 31,
       "options": {
@@ -3214,12 +3364,16 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.5, sum by(le) (rate(llm_request_generation_tokens_bucket{job=~\"$prefill\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.5, sum by(le) (rate(llm_request_generation_tokens_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=\"prefill\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "P50",
@@ -3230,11 +3384,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.75, sum by(le) (rate(llm_request_generation_tokens_bucket{job=~\"$prefill\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.75, sum by(le) (rate(llm_request_generation_tokens_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=\"prefill\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -3246,11 +3400,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.95, sum by(le) (rate(llm_request_generation_tokens_bucket{job=~\"$prefill\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by(le) (rate(llm_request_generation_tokens_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=\"prefill\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -3266,7 +3420,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -3297,6 +3451,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -3328,7 +3483,7 @@
         "h": 8,
         "w": 6,
         "x": 12,
-        "y": 59
+        "y": 122
       },
       "id": 32,
       "options": {
@@ -3344,15 +3499,19 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.5, sum by(le, pod) (rate(llm_request_generation_tokens_bucket{job=~\"$decode\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.5, sum by(le, instance) (rate(llm_request_generation_tokens_bucket{namespace=~\"$namespace\", pool=~\"$inference_pool\", inference_service=~\"$inference_service\", role=~\"decode|\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "P50 {{pod}}",
+          "legendFormat": "P50 {{instance}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -3360,15 +3519,15 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.75, sum by(le, pod) (rate(llm_request_generation_tokens_bucket{job=~\"$decode\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.75, sum by(le, instance) (rate(llm_request_generation_tokens_bucket{namespace=~\"$namespace\", pool=~\"$inference_pool\", inference_service=~\"$inference_service\", role=~\"decode|\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
-          "legendFormat": "P75 {{pod}}",
+          "legendFormat": "P75 {{instance}}",
           "range": true,
           "refId": "B",
           "useBackend": false
@@ -3376,27 +3535,27 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.95, sum by(le, pod) (rate(llm_request_generation_tokens_bucket{job=~\"$decode\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by(le, instance) (rate(llm_request_generation_tokens_bucket{namespace=~\"$namespace\", pool=~\"$inference_pool\", inference_service=~\"$inference_service\", role=~\"decode|\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
-          "legendFormat": "P95 {{pod}}",
+          "legendFormat": "P95 {{instance}}",
           "range": true,
           "refId": "C",
           "useBackend": false
         }
       ],
-      "title": "Decode OSL per Pod",
+      "title": "Decode OSL per Endpoint",
       "type": "timeseries"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -3427,6 +3586,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -3458,7 +3618,7 @@
         "h": 8,
         "w": 6,
         "x": 18,
-        "y": 59
+        "y": 122
       },
       "id": 33,
       "options": {
@@ -3474,12 +3634,16 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.5, sum by(le) (rate(llm_request_generation_tokens_bucket{job=~\"$decode\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.5, sum by(le) (rate(llm_request_generation_tokens_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=~\"decode|\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "P50",
@@ -3490,11 +3654,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.75, sum by(le) (rate(llm_request_generation_tokens_bucket{job=~\"$decode\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.75, sum by(le) (rate(llm_request_generation_tokens_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=~\"decode|\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -3506,11 +3670,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.95, sum by(le) (rate(llm_request_generation_tokens_bucket{job=~\"$decode\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by(le) (rate(llm_request_generation_tokens_bucket{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=~\"decode|\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -3526,7 +3690,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -3557,6 +3721,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -3590,7 +3755,7 @@
         "h": 8,
         "w": 6,
         "x": 0,
-        "y": 67
+        "y": 130
       },
       "id": 35,
       "options": {
@@ -3606,29 +3771,29 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "builder",
-          "expr": "llm_kv_cache_usage_perc{job=~\"$prefill\"}",
+          "expr": "llm_kv_cache_usage_perc{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=\"prefill\"}",
           "hide": false,
           "instant": false,
-          "legendFormat": "__auto",
+          "legendFormat": "{{instance}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Prefill KVCache Usage per Pod",
+      "title": "Prefill KVCache Usage per Endpoint",
       "type": "timeseries"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -3659,6 +3824,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -3692,7 +3858,7 @@
         "h": 8,
         "w": 6,
         "x": 6,
-        "y": 67
+        "y": 130
       },
       "id": 36,
       "options": {
@@ -3708,18 +3874,18 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "builder",
-          "expr": "avg(llm_kv_cache_usage_perc{job=~\"$prefill\"})",
+          "expr": "avg(llm_kv_cache_usage_perc{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=\"prefill\"})",
           "hide": false,
           "instant": false,
-          "legendFormat": "__auto",
+          "legendFormat": "Avg",
           "range": true,
           "refId": "A"
         }
@@ -3730,7 +3896,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -3761,6 +3927,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -3794,7 +3961,7 @@
         "h": 8,
         "w": 6,
         "x": 12,
-        "y": 67
+        "y": 130
       },
       "id": 37,
       "options": {
@@ -3810,15 +3977,15 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "builder",
-          "expr": "llm_kv_cache_usage_perc{job=~\"$decode\"}",
+          "expr": "llm_kv_cache_usage_perc{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=~\"decode|\"}",
           "hide": false,
           "instant": false,
           "legendFormat": "{{instance}}",
@@ -3826,13 +3993,13 @@
           "refId": "A"
         }
       ],
-      "title": "Decode KVCache Usage per Pod",
+      "title": "Decode KVCache Usage per Endpoint",
       "type": "timeseries"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -3863,6 +4030,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -3896,7 +4064,7 @@
         "h": 8,
         "w": 6,
         "x": 18,
-        "y": 67
+        "y": 130
       },
       "id": 38,
       "options": {
@@ -3912,18 +4080,18 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "builder",
-          "expr": "avg(llm_kv_cache_usage_perc{job=~\"$decode\"})",
+          "expr": "avg(llm_kv_cache_usage_perc{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=~\"decode|\"})",
           "hide": false,
           "instant": false,
-          "legendFormat": "__auto",
+          "legendFormat": "Avg",
           "range": true,
           "refId": "A"
         }
@@ -3934,7 +4102,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -3965,6 +4133,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -3996,7 +4165,7 @@
         "h": 8,
         "w": 6,
         "x": 0,
-        "y": 75
+        "y": 138
       },
       "id": 39,
       "options": {
@@ -4012,29 +4181,29 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "builder",
-          "expr": "llm_num_requests_waiting{job=~\"$prefill\"}",
+          "expr": "llm_num_requests_waiting{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=\"prefill\"}",
           "hide": false,
           "instant": false,
-          "legendFormat": "__auto",
+          "legendFormat": "{{instance}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Prefill waiting queue per DP",
+      "title": "Prefill waiting queue per Endpoint",
       "type": "timeseries"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -4065,6 +4234,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -4096,7 +4266,7 @@
         "h": 8,
         "w": 6,
         "x": 6,
-        "y": 75
+        "y": 138
       },
       "id": 40,
       "options": {
@@ -4112,18 +4282,18 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "builder",
-          "expr": "avg(llm_num_requests_waiting{job=~\"$prefill\"})",
+          "expr": "avg(llm_num_requests_waiting{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=\"prefill\"})",
           "hide": false,
           "instant": false,
-          "legendFormat": "__auto",
+          "legendFormat": "Avg",
           "range": true,
           "refId": "A"
         }
@@ -4134,7 +4304,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -4165,6 +4335,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -4196,7 +4367,7 @@
         "h": 8,
         "w": 6,
         "x": 12,
-        "y": 75
+        "y": 138
       },
       "id": 41,
       "options": {
@@ -4212,15 +4383,15 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "builder",
-          "expr": "llm_num_requests_waiting{job=~\"$decode\"}",
+          "expr": "llm_num_requests_waiting{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=~\"decode|\"}",
           "hide": false,
           "instant": false,
           "legendFormat": "{{instance}}",
@@ -4228,13 +4399,13 @@
           "refId": "A"
         }
       ],
-      "title": "Decode waiting queue per Pod",
+      "title": "Decode waiting queue per Endpoint",
       "type": "timeseries"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -4265,6 +4436,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -4296,7 +4468,7 @@
         "h": 8,
         "w": 6,
         "x": 18,
-        "y": 75
+        "y": 138
       },
       "id": 42,
       "options": {
@@ -4312,18 +4484,18 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "builder",
-          "expr": "avg(llm_num_requests_waiting{job=~\"$decode\"})",
+          "expr": "avg(llm_num_requests_waiting{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=~\"decode|\"})",
           "hide": false,
           "instant": false,
-          "legendFormat": "__auto",
+          "legendFormat": "Avg",
           "range": true,
           "refId": "A"
         }
@@ -4334,7 +4506,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -4365,6 +4537,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -4398,7 +4571,7 @@
         "h": 8,
         "w": 6,
         "x": 0,
-        "y": 83
+        "y": 146
       },
       "id": 47,
       "options": {
@@ -4414,29 +4587,29 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "builder",
-          "expr": "(sum by(instance) (rate(llm_prefix_cache_hits_total{job=~\"$prefill\"}[$__rate_interval])) * 100) / (sum by(instance) (rate(llm_prefix_cache_queries_total{job=~\"$prefill\"}[$__rate_interval])))",
+          "expr": "(sum by(instance) (rate(llm_prefix_cache_hits_total{namespace=~\"$namespace\", pool=~\"$inference_pool\", inference_service=~\"$inference_service\", role=\"prefill\"}[$__rate_interval]) * 100)) / (sum by(instance) (rate(llm_prefix_cache_queries_total{namespace=~\"$namespace\", pool=~\"$inference_pool\", inference_service=~\"$inference_service\", role=\"prefill\"}[$__rate_interval])))",
           "hide": false,
           "instant": false,
-          "legendFormat": "{{pod}}",
+          "legendFormat": "{{instance}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Prefill prefix hit rate per DP",
+      "title": "Prefill prefix hit rate per Endpoint",
       "type": "timeseries"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -4467,6 +4640,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -4500,7 +4674,7 @@
         "h": 8,
         "w": 6,
         "x": 6,
-        "y": 83
+        "y": 146
       },
       "id": 46,
       "options": {
@@ -4516,29 +4690,29 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "builder",
-          "expr": "(sum(rate(llm_prefix_cache_hits_total{job=~\"$prefill\"}[$__rate_interval])) * 100) / (sum(rate(llm_prefix_cache_queries_total{job=~\"$prefill\"}[$__rate_interval])))",
+          "expr": "(sum(rate(llm_prefix_cache_hits_total{namespace=~\"$namespace\", pool=~\"$inference_pool\", inference_service=~\"$inference_service\", role=\"prefill\"}[$__rate_interval]) * 100)) / (sum(rate(llm_prefix_cache_queries_total{namespace=~\"$namespace\", pool=~\"$inference_pool\", inference_service=~\"$inference_service\", role=\"prefill\"}[$__rate_interval])))",
           "hide": false,
           "instant": false,
-          "legendFormat": "{{pod}}",
+          "legendFormat": "Avg",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Decode prefix hit rate",
+      "title": "Prefill prefix hit rate",
       "type": "timeseries"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -4569,6 +4743,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -4602,7 +4777,7 @@
         "h": 8,
         "w": 6,
         "x": 12,
-        "y": 83
+        "y": 146
       },
       "id": 45,
       "options": {
@@ -4618,29 +4793,29 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "builder",
-          "expr": "(sum by(instance) (rate(llm_prefix_cache_hits_total{job=~\"$decode\"}[$__rate_interval])) * 100) / (sum by(instance) (rate(llm_prefix_cache_queries_total{job=~\"$decode\"}[$__rate_interval])))",
+          "expr": "(sum by(instance) (rate(llm_prefix_cache_hits_total{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=~\"decode|\"}[$__rate_interval])) * 100) / (sum by(instance) (rate(llm_prefix_cache_queries_total{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=~\"decode|\"}[$__rate_interval])))",
           "hide": false,
           "instant": false,
-          "legendFormat": "{{pod}}",
+          "legendFormat": "{{instance}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Decode prefix hit rate per Pod",
+      "title": "Decode prefix hit rate per Endpoint",
       "type": "timeseries"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -4671,6 +4846,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -4704,7 +4880,7 @@
         "h": 8,
         "w": 6,
         "x": 18,
-        "y": 83
+        "y": 146
       },
       "id": 43,
       "options": {
@@ -4720,249 +4896,37 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "builder",
-          "expr": "(sum(rate(llm_prefix_cache_hits_total{job=~\"$decode\"}[$__rate_interval])) * 100) / (sum(rate(llm_prefix_cache_queries_total{job=~\"$decode\"}[$__rate_interval])))",
+          "expr": "(sum(rate(llm_prefix_cache_hits_total{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=~\"decode|\"}[$__rate_interval])) * 100) / (sum(rate(llm_prefix_cache_queries_total{namespace=~\"$namespace\",pool=~\"$inference_pool\",inference_service=~\"$inference_service\",role=~\"decode|\"}[$__rate_interval])))",
           "hide": false,
           "instant": false,
-          "legendFormat": "{{pod}}",
+          "legendFormat": "Avg",
           "range": true,
           "refId": "A"
         }
       ],
       "title": "Decode prefix hit rate",
       "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "min": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 6,
-        "x": 0,
-        "y": 91
-      },
-      "id": 49,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": false
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "12.1.1",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "llm_num_requests_running{job=\"$prefill\"}",
-          "fullMetaSearch": false,
-          "hide": false,
-          "includeNullMetadata": true,
-          "instant": false,
-          "legendFormat": "{{instance}}",
-          "range": true,
-          "refId": "A",
-          "useBackend": false
-        }
-      ],
-      "title": "Prefill running queue per Pod",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "min": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 6,
-        "x": 12,
-        "y": 91
-      },
-      "id": 48,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": false
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "12.1.1",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "llm_num_requests_running{job=\"$decode\"}",
-          "fullMetaSearch": false,
-          "hide": false,
-          "includeNullMetadata": true,
-          "instant": false,
-          "legendFormat": "{{instance}}",
-          "range": true,
-          "refId": "A",
-          "useBackend": false
-        }
-      ],
-      "title": "Decode runnung queue per Pod",
-      "type": "timeseries"
     }
   ],
   "preload": false,
-  "refresh": "10s",
-  "schemaVersion": 41,
-  "tags": [],
+  "refresh": "30s",
+  "schemaVersion": 42,
+  "tags": [
+    "mif",
+    "gpu"
+  ],
   "templating": {
     "list": [
       {
-        "current": {
-          "text": [
-            "mi300-8"
-          ],
-          "value": [
-            "mi300-8"
-          ]
-        },
+        "current": {},
         "definition": "label_values(gpu_gfx_activity,hostname)",
         "description": "",
         "includeAll": true,
@@ -4980,20 +4944,37 @@
         "type": "query"
       },
       {
-        "current": {
-          "text": "All",
-          "value": "$__all"
-        },
-        "definition": "label_values(llm_time_to_first_token_seconds_bucket{role=\"prefill\"},job)",
+        "allValue": ".+",
+        "current": {},
+        "definition": "label_values(inference_extension_info,namespace)",
         "description": "",
         "includeAll": true,
-        "label": "prefill",
+        "label": "namespace",
         "multi": true,
-        "name": "prefill",
+        "name": "namespace",
         "options": [],
         "query": {
           "qryType": 1,
-          "query": "label_values(llm_time_to_first_token_seconds_bucket{role=\"prefill\"},job)",
+          "query": "label_values(inference_extension_info,namespace)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "type": "query"
+      },
+      {
+        "allValue": ".+",
+        "current": {},
+        "definition": "label_values(inference_extension_info{namespace=~\"$namespace\"},pool)",
+        "description": "",
+        "includeAll": true,
+        "label": "inference_pool",
+        "multi": true,
+        "name": "inference_pool",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(inference_extension_info{namespace=~\"$namespace\"},pool)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 2,
@@ -5001,42 +4982,18 @@
         "type": "query"
       },
       {
-        "current": {
-          "text": "All",
-          "value": "$__all"
-        },
-        "definition": "label_values(llm_time_to_first_token_seconds_bucket{role=\"decode\"},job)",
+        "allValue": ".+",
+        "current": {},
+        "definition": "label_values(llm_time_to_first_token_seconds_created{pool=~\"$inference_pool\", namespace=~\"$namespace\"},inference_service)",
         "description": "",
         "includeAll": true,
-        "label": "decode",
+        "label": "inference_service",
         "multi": true,
-        "name": "decode",
+        "name": "inference_service",
         "options": [],
         "query": {
           "qryType": 1,
-          "query": "label_values(llm_time_to_first_token_seconds_bucket{role=\"decode\"},job)",
-          "refId": "PrometheusVariableQueryEditor-VariableQuery"
-        },
-        "refresh": 2,
-        "regex": "",
-        "type": "query"
-      },
-      {
-        "current": {
-          "text": "All",
-          "value": [
-            "$__all"
-          ]
-        },
-        "definition": "label_values(inference_extension_info,job)",
-        "includeAll": true,
-        "label": "heimdall",
-        "multi": true,
-        "name": "heimdall",
-        "options": [],
-        "query": {
-          "qryType": 1,
-          "query": "label_values(inference_extension_info,job)",
+          "query": "label_values(llm_time_to_first_token_seconds_created{pool=~\"$inference_pool\", namespace=~\"$namespace\"},inference_service)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 2,
@@ -5046,12 +5003,14 @@
     ]
   },
   "time": {
-    "from": "now-5m",
+    "from": "now-30m",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "MIF-DP",
-  "uid": "mif-dp",
-  "version": 16
+  "title": "MIF",
+  "uid": "ef4g7j5ujda822",
+  "version": 2,
+  "weekStart": "",
+  "id": null
 }
