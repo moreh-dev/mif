@@ -50,7 +50,9 @@ The commit message should be structured as follows:
   - Avoid restating the obvious or detailing implementation steps if the code is clear.
 - **API Documentation**: Exported functions should have concise doc comments explaining their purpose.
 
-## Test
+### Go Templates
+
+- **Indentation**: Go template syntax (e.g., `{{- if ... }}`) must be indented to match the surrounding code context for better readability.
 
 ### E2E Test
 

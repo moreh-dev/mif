@@ -21,17 +21,17 @@ spec:
         - -c
         args:
         - |
-{{- if not .IsKind }}
+          {{- if not .IsKind }}
           TIMESTAMP="$(date +'%y%m%d%H%M%S')$(awk 'BEGIN {srand(); printf "%04d", int(rand()*10000)}')"
-          
+
           S3_PREFIX_BASE="{{.S3PrefixBase}}"
           TAG="{{.VLLMTag}}"
           PRESET="{{.Preset}}"
           EXP_TYPE="{{.ExpType}}"
           EXP_NAME="{{.ExpName}}"
-          
+
           S3_PREFIX="${S3_PREFIX_BASE}/${TAG}/${PRESET}/${EXP_TYPE}/${EXP_NAME}/${TIMESTAMP}"
-{{- end }}
+          {{- end }}
 
           cat <<EOF > /tmp/config.yaml
               api:
@@ -72,12 +72,12 @@ spec:
               storage:
                 local_storage:
                   path: reports
-{{- if not .IsKind }}
+                {{- if not .IsKind }}
                 simple_storage_service:
                   bucket_name: "{{.S3Bucket}}"
                   path: "${S3_PREFIX}"
                   report_file_prefix: null
-{{- end }}
+                {{- end }}
           EOF
 
           /workspace/.venv/bin/inference-perf \
@@ -85,22 +85,22 @@ spec:
             --log-level INFO
 
           cat reports*/*.json
-{{- if or .HFToken .HFEndpoint (and (not .IsKind) .S3AccessKeyID .S3SecretAccessKey) }}
+        {{- if or .HFToken .HFEndpoint (and (not .IsKind) .S3AccessKeyID .S3SecretAccessKey) }}
         env:
-{{- if .HFToken }}
+          {{- if .HFToken }}
           - name: HF_TOKEN
             value: "{{ .HFToken }}"
-{{- end }}
-{{- if .HFEndpoint }}
+          {{- end }}
+          {{- if .HFEndpoint }}
           - name: HF_ENDPOINT
             value: "{{ .HFEndpoint }}"
-{{- end }}
-{{- if and (not .IsKind) .S3AccessKeyID .S3SecretAccessKey }}
+          {{- end }}
+          {{- if and (not .IsKind) .S3AccessKeyID .S3SecretAccessKey }}
           - name: AWS_ACCESS_KEY_ID
             value: "{{ .S3AccessKeyID }}"
           - name: AWS_SECRET_ACCESS_KEY
             value: "{{ .S3SecretAccessKey }}"
           - name: AWS_DEFAULT_REGION
             value: "{{ .S3Region }}"
-{{- end }}
-{{- end }}
+          {{- end }}
+        {{- end }}
