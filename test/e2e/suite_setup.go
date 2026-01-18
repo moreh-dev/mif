@@ -149,40 +149,8 @@ func setupGateway() {
 	By("installing Gateway API Inference Extension CRDs")
 	Expect(utils.InstallGatewayInferenceExtension()).To(Succeed(), "Failed to install Gateway API Inference Extension CRDs")
 
-	switch cfg.gatewayClass {
-	case gatewayClassIstio:
-		setupIstio()
-	case gatewayClassKgateway:
-		setupKgateway()
-	default:
-		Fail(fmt.Sprintf("Unsupported %s=%s. Supported values are: %s, %s", envGatewayClassName, cfg.gatewayClass, gatewayClassIstio, gatewayClassKgateway))
-	}
-}
-
-// setupIstio installs Istio.
-func setupIstio() {
-	By("installing Istio base")
-	Expect(utils.InstallIstioBase()).To(Succeed(), "Failed to install Istio base")
-
-	By("creating istiod values file")
-	istiodValuesPath, err := createIstiodValuesFile()
-	Expect(err).NotTo(HaveOccurred(), "Failed to create istiod values file")
-
-	By("installing Istiod control plane")
-	Expect(utils.InstallIstiod(istiodValuesPath)).To(Succeed(), "Failed to install Istiod control plane")
-}
-
-// setupKgateway installs KGateway.
-func setupKgateway() {
-	By("creating Kgateway values file")
-	kgatewayValuesPath, err := createKgatewayValuesFile()
-	Expect(err).NotTo(HaveOccurred(), "Failed to create Kgateway values file")
-
-	By("installing Kgateway CRDs")
-	Expect(utils.InstallKgatewayCRDs()).To(Succeed(), "Failed to install Kgateway CRDs")
-
-	By("installing Kgateway controller")
-	Expect(utils.InstallKgateway(kgatewayValuesPath)).To(Succeed(), "Failed to install Kgateway controller")
+	By(fmt.Sprintf("installing %s controller", cfg.gatewayClass))
+	Expect(utils.InstallGatewayController(cfg.gatewayClass)).To(Succeed(), fmt.Sprintf("Failed to install %s controller", cfg.gatewayClass))
 }
 
 // cleanupKindResources cleans up resources specific to kind cluster.
