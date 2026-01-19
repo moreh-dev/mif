@@ -37,26 +37,6 @@ func createMIFValuesFile(awsAccessKeyID, awsSecretAccessKey string) (string, err
 	return writeValuesFile(tempFileMIFValues, valuesContent, 0600)
 }
 
-// createKgatewayValuesFile creates a values file for KGateway.
-func createKgatewayValuesFile() (string, error) {
-	valuesContent := `inferenceExtension:
-  enabled: true
-`
-
-	return writeValuesFile(tempFileKgatewayValues, valuesContent, 0644)
-}
-
-// createIstiodValuesFile creates a values file for Istiod.
-func createIstiodValuesFile() (string, error) {
-	valuesContent := `pilot:
-  env:
-    PILOT_ENABLE_ALPHA_GATEWAY_API: "true"
-    ENABLE_GATEWAY_API_INFERENCE_EXTENSION: "true"
-`
-
-	return writeValuesFile(tempFileIstiodValues, valuesContent, 0644)
-}
-
 // createHeimdallValuesFile creates a values file for Heimdall.
 func createHeimdallValuesFile() (string, error) {
 	projectDir, err := utils.GetProjectDir()

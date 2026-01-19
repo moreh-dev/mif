@@ -50,10 +50,15 @@ The commit message should be structured as follows:
   - Avoid restating the obvious or detailing implementation steps if the code is clear.
 - **API Documentation**: Exported functions should have concise doc comments explaining their purpose.
 
-## Test
+### Go Templates
+
+- **Indentation**: Go template syntax (e.g., `{{- if ... }}`) must be indented to match the surrounding code context for better readability.
 
 ### E2E Test
 
 - **Do not test resource specifications**:
   - Do not validate individual fields of the YAML file declaring the resource (resource spec).
   - Instead, create the resource and verify that its status reaches the expected state.
+- **Assume fully controlled cluster**:
+  - Do not check if components are already installed.
+  - Assume the cluster is fully controlled by the test and installed components are safe to overwrite or delete.

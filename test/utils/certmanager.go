@@ -2,7 +2,6 @@ package utils
 
 import (
 	"os/exec"
-	"strings"
 )
 
 const (
@@ -58,45 +57,4 @@ func UninstallCertManager() {
 			warnError(err)
 		}
 	}
-}
-
-// IsCertManagerCRDsInstalled checks if cert-manager CRDs are installed.
-func IsCertManagerCRDsInstalled() bool {
-	certManagerCRDs := []string{
-		"certificates.cert-manager.io",
-		"issuers.cert-manager.io",
-		"clusterissuers.cert-manager.io",
-		"certificaterequests.cert-manager.io",
-		"orders.acme.cert-manager.io",
-		"challenges.acme.cert-manager.io",
-	}
-
-	cmd := exec.Command("kubectl", "get", "crds")
-	output, err := Run(cmd)
-	if err != nil {
-		return false
-	}
-
-	crdList := GetNonEmptyLines(output)
-	foundCRDs := make(map[string]bool, len(certManagerCRDs))
-	for _, crd := range certManagerCRDs {
-		foundCRDs[crd] = false
-	}
-
-	for _, line := range crdList {
-		for _, crd := range certManagerCRDs {
-			if strings.Contains(line, crd) {
-				foundCRDs[crd] = true
-				break
-			}
-		}
-	}
-
-	for _, found := range foundCRDs {
-		if !found {
-			return false
-		}
-	}
-
-	return true
 }

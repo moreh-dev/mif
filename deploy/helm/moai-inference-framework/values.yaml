@@ -84,6 +84,9 @@ replicator:
   enabled: true
 
 ecrTokenRefresher:
+  # -- Enable ECR token refresher.
+  enabled: true
+
   image:
     # -- Image repository.
     repository: heyvaldemar/aws-kubectl
