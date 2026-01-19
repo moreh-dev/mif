@@ -8,7 +8,7 @@ import "time"
 // Resource names used in E2E tests
 const (
 	// Helm release names
-	helmReleaseMIF = "moai-inference-framework"
+	helmReleaseMIF = "mif"
 
 	// Gateway class types
 	gatewayClassIstio    = "istio"
@@ -20,8 +20,8 @@ const (
 
 	// Kubernetes resource names
 	secretNameMorehRegistry = "moreh-registry"
-	secretNameECRCreds      = "moai-inference-framework-ecr-token-refresher"
-	cronJobNameECRRefresher = "moai-inference-framework-ecr-token-refresher"
+	secretNameECRCreds      = "mif-ecr-token-refresher"
+	cronJobNameECRRefresher = "mif-ecr-token-refresher"
 	jobNameECRRefresher     = "ecr-token-refresher-init-manual"
 
 	// Helm repository
