@@ -62,6 +62,7 @@ Moreh Inference Framework
 | prometheus-stack.defaultRules.create | bool | `false` |  |
 | prometheus-stack.enabled | bool | `true` | Enable prometheus-community/kube-prometheus-stack. Set to false if already deployed. |
 | prometheus-stack.grafana.enabled | bool | `true` |  |
+| prometheus-stack.grafana.sidecar.dashboards.enabled | bool | `true` |  |
 | prometheus-stack.kubeApiServer.enabled | bool | `false` |  |
 | prometheus-stack.kubeControllerManager.enabled | bool | `false` |  |
 | prometheus-stack.kubeDns.enabled | bool | `false` |  |
