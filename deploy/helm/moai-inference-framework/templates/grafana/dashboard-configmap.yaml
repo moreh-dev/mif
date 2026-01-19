@@ -1,0 +1,25 @@
+{{- $ps := index .Values "prometheus-stack" }}
+{{- if and $ps.enabled $ps.grafana.enabled $ps.grafana.sidecar.dashboards.enabled }}
+{{- $files := .Files.Glob "files/dashboards/*.json" }}
+{{- if $files }}
+{{- range $path, $_ := $files }}
+{{- $dashboardName := base $path | trimSuffix ".json" }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: {{ include "common.names.namespace" $ }}
+  name: {{ include "common.names.name" $ }}-dashboard-{{ $dashboardName }}
+  annotations:
+    {{- with $ps.grafana.sidecar.dashboards.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  labels:
+    {{ tpl $ps.grafana.sidecar.dashboards.label $ }}: {{ ((tpl $ps.grafana.sidecar.dashboards.labelValue $) | default 1) | quote }}
+    {{- include "mif.labels" $ | nindent 4 }}
+data:
+  {{ base $path }}: |-
+    {{- $.Files.Get $path | nindent 4 }}
+{{- end }}
+{{- end }}
+{{- end }}

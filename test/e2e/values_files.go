@@ -32,7 +32,9 @@ func createMIFValuesFile(awsAccessKeyID, awsSecretAccessKey string) (string, err
   aws:
     accessKeyId: %s
     secretAccessKey: %s
-`, awsAccessKeyID, awsSecretAccessKey)
+
+fullnameOverride: %s
+`, awsAccessKeyID, awsSecretAccessKey, helmReleaseMIF)
 
 	return writeValuesFile(tempFileMIFValues, valuesContent, 0600)
 }
@@ -46,11 +48,11 @@ func createHeimdallValuesFile() (string, error) {
 
 	serviceMonitorSection := "serviceMonitor:\n  enabled: false\n"
 	if cfg.prometheusStackEnabled {
-		serviceMonitorSection = `serviceMonitor:
+		serviceMonitorSection = fmt.Sprintf(`serviceMonitor:
   enabled: true
   labels:
-    release: prometheus-stack
-`
+    release: %s
+`, helmReleaseMIF)
 	}
 
 	baseYAML := fmt.Sprintf(`global:
@@ -73,6 +75,10 @@ config:
 gateway:
   name: %s
   gatewayClassName: %s
+
+inferencePool:
+  targetPorts:
+    - number: 8000
 
 %s`, secretNameMorehRegistry, gatewayName, cfg.gatewayClass, serviceMonitorSection)
 
