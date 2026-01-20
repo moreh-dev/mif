@@ -25,7 +25,7 @@ spec:
           
           # Install system dependencies
           apt-get update
-          apt-get install -y curl git jq
+          apt-get install -y curl git bc # bc required for LIMIT calculation
           
           # Clone moreh-llm-eval repository
           echo "Cloning moreh-llm-eval repository..."
@@ -44,14 +44,8 @@ spec:
           export HOST="{{.GatewayHost}}"
           export PORT="{{.GatewayPort}}"
           export MODEL_PATH="{{.ModelName}}"
-          
-          # Set LIMIT for minimal testing (sample.sh style)
-          # Use 0.1 (10%) for minimal testing, similar to sample.sh
-          {{- if .Limit }}
+          export BENCHMARK="{{.Benchmarks}}"
           export LIMIT="{{.Limit}}"
-          {{- else }}
-          export LIMIT="0.1"
-          {{- end }}
           
           {{- if .HFToken }}
           export HF_TOKEN="{{.HFToken}}"
@@ -60,18 +54,14 @@ spec:
           export HF_ENDPOINT="{{.HFEndpoint}}"
           {{- end }}
           
-          # Use "sample" benchmark which runs sample.sh style prompts
-          # This is much faster than full benchmarks like mmlu, gsm8k_cot, etc.
-          BENCHMARK="sample"
-          
           RESULTS_DIR="/workspace/results"
           mkdir -p "$RESULTS_DIR"
           TIMESTAMP=$(date +%Y%m%d_%H%M%S)
           
           echo "=========================================="
-          echo "Running MINIMAL quality benchmark test"
-          echo "Benchmark: ${BENCHMARK} (sample.sh style)"
-          echo "Limit: ${LIMIT} (10% of prompts)"
+          echo "Running quality benchmark test"
+          echo "Benchmark: ${BENCHMARK}"
+          echo "Limit: ${LIMIT}"
           echo "Model: ${MODEL_PATH}"
           echo "Endpoint: http://${HOST}:${PORT}"
           echo "=========================================="

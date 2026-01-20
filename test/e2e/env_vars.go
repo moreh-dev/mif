@@ -96,8 +96,8 @@ var envVars = []envVarInfo{
 
 	// Quality Benchmark
 	{envQualityBenchmarkEnabled, "Enable quality benchmark execution", "false", "Quality Benchmark", "bool"},
-	{envQualityBenchmarks, "Comma-separated list of quality benchmarks to run (e.g., mmlu,gsm8k_cot,hellaswag)", "", "Quality Benchmark", "string"},
-	{envQualityBenchmarkLimit, "Limit for benchmark dataset (empty for full, 0.01 for 1%, 10 for first 10 samples)", "", "Quality Benchmark", "string"},
+	{envQualityBenchmarks, "Quality benchmark to run (e.g., sample, mmlu, gsm8k_cot, hellaswag, aime, gpqa)", "sample", "Quality Benchmark", "string"},
+	{envQualityBenchmarkLimit, "Limit for benchmark dataset (empty for full, 0.01 for 1%, 10 for first 10 samples)", "0.1", "Quality Benchmark", "string"},
 }
 
 // getUsedEnvVars returns environment variable names used in config.go init().

@@ -100,8 +100,8 @@ func init() {
 		prometheusStackEnabled: getEnvBool(envPrometheusStackEnabled, false),
 
 		qualityBenchmarkEnabled: getEnvBool(envQualityBenchmarkEnabled, false),
-		qualityBenchmarks:       getEnv(envQualityBenchmarks, ""),
-		qualityBenchmarkLimit:   getEnv(envQualityBenchmarkLimit, ""),
+		qualityBenchmarks:       getEnv(envQualityBenchmarks, "sample"),
+		qualityBenchmarkLimit:   getEnv(envQualityBenchmarkLimit, "0.1"),
 	}
 }
 
