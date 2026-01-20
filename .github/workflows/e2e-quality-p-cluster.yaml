@@ -1,0 +1,162 @@
+name: Quality Benchmark on Product Cluster
+
+# Required GitHub Secrets for Product Cluster Testing:
+# - KUBECONFIG_BASE64: Base64-encoded kubeconfig file for the Product cluster
+#   To create: kubectl config view --flatten | base64 -w 0
+# - GITOPS_TOKEN: GitHub token for cloning moreh-llm-eval repository (required for quality benchmark)
+#   This token is used to authenticate git clone operations for the moreh-llm-eval repository
+# - HF_TOKEN: HuggingFace token for model download (optional)
+# - HF_ENDPOINT: HuggingFace endpoint URL (optional)
+# - AWS_S3_ACCESS_KEY: AWS access key ID for S3 results upload (optional, mapped to env var S3_ACCESS_KEY_ID)
+# - AWS_S3_SECRET_KEY: AWS secret access key for S3 results upload (optional, mapped to env var S3_SECRET_ACCESS_KEY)
+#
+# Note: For Product cluster testing (SKIP_PREREQUISITE=true), setupPrerequisites() returns early
+# without installing or validating any components. All required components must be pre-installed:
+# - Prerequisites: cert-manager, Gateway API, Gateway controller (Istio), Gateway Inference Extension
+# - MIF infrastructure: moai-inference-framework (Odin controller, etc.)
+# - Preset: moai-inference-preset
+# The test will only deploy heimdall and InferenceService in the test workload namespace.
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+-rc[0-9]+"
+
+permissions:
+  packages: read
+  contents: read
+  checks: write
+
+jobs:
+  quality-benchmark:
+    name: Quality Benchmark E2E Test
+    runs-on: [self-hosted, github-runner]
+    concurrency:
+      group: quality-benchmark
+      cancel-in-progress: false
+
+    container:
+      image: golang:1.24
+
+    outputs:
+      test_passed: ${{ steps.validate.outputs.test_passed }}
+
+    env:
+      KUBECONFIG: "/tmp/kubeconfig"
+      MIF_NAMESPACE: "mif"
+      ISTIO_REV: "1-28-1"
+      TEST_MODEL: "Qwen/Qwen3-0.6B"
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      HF_ENDPOINT: ${{ secrets.HF_ENDPOINT }}
+      GITHUB_TOKEN: ${{ secrets.GITOPS_TOKEN }}
+      S3_ACCESS_KEY_ID: ${{ secrets.AWS_S3_ACCESS_KEY }}
+      S3_SECRET_ACCESS_KEY: ${{ secrets.AWS_S3_SECRET_KEY }}
+      SKIP_KIND: "true"
+      SKIP_PREREQUISITE: "true"
+      QUALITY_BENCHMARK_ENABLED: "true"
+      QUALITY_BENCHMARKS: "sample"
+      QUALITY_BENCHMARK_LIMIT: "0.1"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Set up asdf
+        uses: asdf-vm/actions/setup@v4
+
+      - name: Install asdf plugins
+        uses: asdf-vm/actions/plugins-add@v4
+
+      - name: Install tools via asdf
+        run: |
+          asdf install kubectl
+          asdf install helm
+
+      - name: Set workload namespace
+        run: |
+          COMMIT_HASH_SHORT=$(echo "${{ github.sha }}" | cut -c1-7)
+          echo "WORKLOAD_NAMESPACE=mif-quality-${COMMIT_HASH_SHORT}" >> "$GITHUB_ENV"
+
+      - name: Set up kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG_BASE64 }}" | base64 --decode > ${{ env.KUBECONFIG }}
+          chmod 600 ${{ env.KUBECONFIG }}
+          kubectl cluster-info
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run E2E Quality Benchmark test
+        id: validate
+        run: |
+          if make test-e2e; then
+            echo "test_passed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "test_passed=false" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+      - name: Debug test report files
+        if: always()
+        run: |
+          echo "Workspace: $(pwd)"
+          echo "Root listing:"
+          ls -la
+          echo "test-reports listing:"
+          ls -la test-reports || true
+          echo "test/e2e/test-reports listing:"
+          ls -la test/e2e/test-reports || true
+
+      - name: Publish test results
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: |
+            test-reports/*.xml
+          check_name: Quality Benchmark E2E Test Results
+          comment_mode: off
+          report_individual_runs: false
+          check_run_annotations: all tests, skipped tests
+          report_suite_logs: any
+          job_summary: true
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-benchmark-e2e-test-reports-${{ github.run_id }}
+          path: test-reports
+          retention-days: 30
+          if-no-files-found: warn
+
+  test-summary:
+    name: Quality Benchmark Summary
+    runs-on: ubuntu-latest
+    needs: [quality-benchmark]
+    if: always()
+
+    steps:
+      - name: Check test result
+        run: |
+          if [ "${{ needs.quality-benchmark.outputs.test_passed }}" == "true" ]; then
+            echo "✅ Quality benchmark E2E tests passed."
+            echo "::notice::Quality benchmark E2E tests passed."
+          else
+            echo "❌ Quality benchmark E2E tests failed. Please check the logs and fix issues."
+            echo "::error::Quality benchmark E2E tests failed."
+            exit 1
+          fi

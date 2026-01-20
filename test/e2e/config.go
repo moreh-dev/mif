@@ -38,6 +38,7 @@ type testConfig struct {
 	s3Bucket           string
 	hfToken            string
 	hfEndpoint         string
+	githubToken        string
 
 	inferenceImageRepo string
 	inferenceImageTag  string
@@ -47,6 +48,10 @@ type testConfig struct {
 	lwsEnabled             bool
 	odinCRDEnabled         bool
 	prometheusStackEnabled bool
+
+	qualityBenchmarkEnabled bool
+	qualityBenchmarks       string
+	qualityBenchmarkLimit   string
 }
 
 var cfg testConfig
@@ -83,6 +88,7 @@ func init() {
 		s3Bucket:           getEnv(envS3Bucket, "moreh-benchmark"),
 		hfToken:            getEnv(envHFToken, ""),
 		hfEndpoint:         getEnv(envHFEndpoint, ""),
+		githubToken:        getEnv(envGithubToken, ""),
 
 		inferenceImageRepo: getEnv(envInferenceImageRepo, ""),
 		inferenceImageTag:  getEnv(envInferenceImageTag, ""),
@@ -92,6 +98,10 @@ func init() {
 		lwsEnabled:             getEnvBool(envLWSEnabled, true),
 		odinCRDEnabled:         getEnvBool(envOdinCRDEnabled, true),
 		prometheusStackEnabled: getEnvBool(envPrometheusStackEnabled, false),
+
+		qualityBenchmarkEnabled: getEnvBool(envQualityBenchmarkEnabled, false),
+		qualityBenchmarks:       getEnv(envQualityBenchmarks, ""),
+		qualityBenchmarkLimit:   getEnv(envQualityBenchmarkLimit, ""),
 	}
 }
 

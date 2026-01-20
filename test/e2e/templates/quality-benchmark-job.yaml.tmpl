@@ -1,0 +1,122 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  generateName: quality-benchmark-
+  labels:
+    app: quality-benchmark
+  namespace: {{.Namespace}}
+spec:
+  template:
+    metadata:
+      labels:
+        app: quality-benchmark
+        sidecar.istio.io/inject: "false"
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: quality-benchmark
+        image: python:3.11-slim
+        command:
+        - /bin/bash
+        - -c
+        args:
+        - |
+          set -e
+          
+          # Install system dependencies
+          apt-get update
+          apt-get install -y curl git jq
+          
+          # Clone moreh-llm-eval repository
+          echo "Cloning moreh-llm-eval repository..."
+          if ! git clone --depth 1 --branch {{.QualityEvalBranch}} https://{{.GithubToken}}@github.com/moreh-dev/moreh-llm-eval.git /workspace/moreh-llm-eval; then
+            echo "Error: Failed to clone moreh-llm-eval repository with GITHUB_TOKEN"
+            exit 1
+          fi
+          cd /workspace/moreh-llm-eval
+          
+          # Install Python dependencies
+          echo "Installing Python dependencies..."
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          
+          # Set up environment variables
+          export HOST="{{.GatewayHost}}"
+          export PORT="{{.GatewayPort}}"
+          export MODEL_PATH="{{.ModelName}}"
+          
+          # Set LIMIT for minimal testing (sample.sh style)
+          # Use 0.1 (10%) for minimal testing, similar to sample.sh
+          {{- if .Limit }}
+          export LIMIT="{{.Limit}}"
+          {{- else }}
+          export LIMIT="0.1"
+          {{- end }}
+          
+          {{- if .HFToken }}
+          export HF_TOKEN="{{.HFToken}}"
+          {{- end }}
+          {{- if .HFEndpoint }}
+          export HF_ENDPOINT="{{.HFEndpoint}}"
+          {{- end }}
+          
+          # Use "sample" benchmark which runs sample.sh style prompts
+          # This is much faster than full benchmarks like mmlu, gsm8k_cot, etc.
+          BENCHMARK="sample"
+          
+          RESULTS_DIR="/workspace/results"
+          mkdir -p "$RESULTS_DIR"
+          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+          
+          echo "=========================================="
+          echo "Running MINIMAL quality benchmark test"
+          echo "Benchmark: ${BENCHMARK} (sample.sh style)"
+          echo "Limit: ${LIMIT} (10% of prompts)"
+          echo "Model: ${MODEL_PATH}"
+          echo "Endpoint: http://${HOST}:${PORT}"
+          echo "=========================================="
+          echo ""
+          
+          RESULTS_FILE="${RESULTS_DIR}/${BENCHMARK}_${TIMESTAMP}.log"
+          
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Running benchmark: ${BENCHMARK}"
+          echo "Results will be saved to: ${RESULTS_FILE}"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          
+          # Run the sample benchmark with LIMIT for minimal testing
+          # This executes sample.sh style prompts (similar to sample.sh script)
+          if bash run.sh --eval "${BENCHMARK}" --model "${MODEL_PATH}" --host "${HOST}" --port "${PORT}" 2>&1 | tee "${RESULTS_FILE}"; then
+            echo "✅ Benchmark ${BENCHMARK} completed successfully"
+          else
+            echo "❌ Benchmark ${BENCHMARK} failed"
+            exit 1
+          fi
+          
+          echo ""
+          
+          # Extract summary if available
+          if [ -f "${RESULTS_FILE}" ]; then
+            echo "=== ${BENCHMARK} Summary ==="
+            tail -30 "${RESULTS_FILE}" || true
+            echo ""
+          fi
+          
+          echo "=========================================="
+          echo "Benchmark Results Summary"
+          echo "=========================================="
+          echo "Benchmark: ${BENCHMARK}"
+          echo "Status: Completed"
+          
+          echo "✅ Minimal benchmark test passed!"
+        {{- if or .HFToken .HFEndpoint }}
+        env:
+          {{- if .HFToken }}
+          - name: HF_TOKEN
+            value: "{{ .HFToken }}"
+          {{- end }}
+          {{- if .HFEndpoint }}
+          - name: HF_ENDPOINT
+            value: "{{ .HFEndpoint }}"
+          {{- end }}
+        {{- end }}

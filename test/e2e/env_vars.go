@@ -25,6 +25,7 @@ const (
 	envS3Bucket               = "S3_BUCKET"
 	envHFToken                = "HF_TOKEN"
 	envHFEndpoint             = "HF_ENDPOINT"
+	envGithubToken            = "GITHUB_TOKEN"
 	envInferenceImageRepo     = "INFERENCE_IMAGE_REPO"
 	envInferenceImageTag      = "INFERENCE_IMAGE_TAG"
 	envIstioRev               = "ISTIO_REV"
@@ -32,6 +33,11 @@ const (
 	envLWSEnabled             = "LWS_ENABLED"
 	envOdinCRDEnabled         = "ODIN_CRD_ENABLED"
 	envPrometheusStackEnabled = "PROMETHEUS_STACK_ENABLED"
+
+	// Quality Benchmark
+	envQualityBenchmarks      = "QUALITY_BENCHMARKS"
+	envQualityBenchmarkLimit  = "QUALITY_BENCHMARK_LIMIT"
+	envQualityBenchmarkEnabled = "QUALITY_BENCHMARK_ENABLED"
 )
 
 type envVarInfo struct {
@@ -72,6 +78,9 @@ var envVars = []envVarInfo{
 	{envHFToken, "HuggingFace token", "", "HuggingFace", "string"},
 	{envHFEndpoint, "HuggingFace endpoint URL", "", "HuggingFace", "string"},
 
+	// GitHub
+	{envGithubToken, "GitHub token for cloning private repositories", "", "GitHub", "string"},
+
 	// Inference Image
 	{envInferenceImageRepo, "Inference image repository", "(optional)", "Inference Image", "optional"},
 	{envInferenceImageTag, "Inference image tag", "(optional)", "Inference Image", "optional"},
@@ -84,6 +93,11 @@ var envVars = []envVarInfo{
 	{envLWSEnabled, "Enable/disable LWS", "auto-detect", "Component Enable/Disable", "bool"},
 	{envOdinCRDEnabled, "Enable/disable Odin CRD", "auto-detect", "Component Enable/Disable", "bool"},
 	{envPrometheusStackEnabled, "Enable/disable Prometheus Stack", "false", "Component Enable/Disable", "bool"},
+
+	// Quality Benchmark
+	{envQualityBenchmarkEnabled, "Enable quality benchmark execution", "false", "Quality Benchmark", "bool"},
+	{envQualityBenchmarks, "Comma-separated list of quality benchmarks to run (e.g., mmlu,gsm8k_cot,hellaswag)", "", "Quality Benchmark", "string"},
+	{envQualityBenchmarkLimit, "Limit for benchmark dataset (empty for full, 0.01 for 1%, 10 for first 10 samples)", "", "Quality Benchmark", "string"},
 }
 
 // getUsedEnvVars returns environment variable names used in config.go init().
