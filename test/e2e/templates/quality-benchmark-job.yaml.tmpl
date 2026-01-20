@@ -29,10 +29,25 @@ spec:
           
           # Clone moreh-llm-eval repository
           echo "Cloning moreh-llm-eval repository..."
-          if ! git clone --depth 1 --branch {{.QualityEvalBranch}} https://{{.GithubToken}}@github.com/moreh-dev/moreh-llm-eval.git /workspace/moreh-llm-eval; then
-            echo "Error: Failed to clone moreh-llm-eval repository with GITHUB_TOKEN"
+          # Configure Git to use token via credential helper instead of embedding it in the URL
+          export GITHUB_TOKEN="{{.GithubToken}}"
+          if [ -z "$GITHUB_TOKEN" ]; then
+            echo "Error: GITHUB_TOKEN is required to clone moreh-llm-eval repository"
             exit 1
           fi
+
+          git config --global credential.helper store
+          # Store credentials in a file used by the credential helper
+          printf "https://%s:x-oauth-basic@github.com\n" "$GITHUB_TOKEN" > ~/.git-credentials
+
+          if ! git clone --depth 1 --branch {{.QualityEvalBranch}} {{.QualityEvalRepo}} /workspace/moreh-llm-eval; then
+            echo "Error: Failed to clone moreh-llm-eval repository with configured Git credentials"
+            exit 1
+          fi
+
+          # Best-effort cleanup of credentials from disk and environment
+          rm -f ~/.git-credentials
+          unset GITHUB_TOKEN
           cd /workspace/moreh-llm-eval
           
           # Install Python dependencies
@@ -99,14 +114,3 @@ spec:
           echo "Status: Completed"
           
           echo "✅ Minimal benchmark test passed!"
-        {{- if or .HFToken .HFEndpoint }}
-        env:
-          {{- if .HFToken }}
-          - name: HF_TOKEN
-            value: "{{ .HFToken }}"
-          {{- end }}
-          {{- if .HFEndpoint }}
-          - name: HF_ENDPOINT
-            value: "{{ .HFEndpoint }}"
-          {{- end }}
-        {{- end }}
