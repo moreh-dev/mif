@@ -59,6 +59,13 @@ jobs:
       QUALITY_BENCHMARK_LIMIT: "0.1"
 
     steps:
+      - name: Validate required secrets
+        run: |
+          if [ -z "${GITHUB_TOKEN}" ]; then
+            echo "::error::GITOPS_TOKEN (mapped to GITHUB_TOKEN) is required for quality benchmark to clone moreh-llm-eval repository, but it is not set."
+            exit 1
+          fi
+
       - name: Checkout
         uses: actions/checkout@v5
         with:
