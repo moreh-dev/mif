@@ -185,7 +185,3 @@ spec:
           emptyDir:
             medium: Memory
             sizeLimit: 16Gi
-      tolerations:
-        - key: amd.com/gpu
-          operator: Exists
-          effect: NoSchedule
