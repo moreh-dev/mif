@@ -13,8 +13,6 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
-	"github.com/moreh-dev/mif/test/utils"
 )
 
 // setupInterruptHandler sets up signal handlers for graceful shutdown.
@@ -46,7 +44,7 @@ func cleanupKindCluster() {
 		return
 	}
 
-	if !utils.IsKindClusterExists(cfg.kindClusterName) {
+	if !IsKindClusterExists(cfg.kindClusterName) {
 		_, _ = fmt.Fprintf(GinkgoWriter, "Kind cluster %s does not exist, skipping deletion\n", cfg.kindClusterName)
 		return
 	}
@@ -54,7 +52,7 @@ func cleanupKindCluster() {
 	By("deleting kind cluster (always cleanup)")
 	_, _ = fmt.Fprintf(GinkgoWriter, "Deleting kind cluster %s...\n", cfg.kindClusterName)
 
-	if err := utils.DeleteKindCluster(cfg.kindClusterName); err != nil {
+	if err := DeleteKindCluster(cfg.kindClusterName); err != nil {
 		_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to delete kind cluster %s: %v\n", cfg.kindClusterName, err)
 	} else {
 		_, _ = fmt.Fprintf(GinkgoWriter, "Successfully deleted kind cluster %s\n", cfg.kindClusterName)
@@ -62,14 +60,14 @@ func cleanupKindCluster() {
 }
 
 func cleanupMIFNamespace() {
-	if err := utils.DeleteNamespace(cfg.mifNamespace); err != nil {
+	if err := DeleteNamespace(cfg.mifNamespace); err != nil {
 		_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to delete MIF namespace: %v\n", err)
 	}
 }
 
 // cleanupE2ETempFiles removes temporary files created during E2E tests.
 func cleanupE2ETempFiles() {
-	projectDir, err := utils.GetProjectDir()
+	projectDir, err := GetProjectDir()
 	if err != nil {
 		_, _ = fmt.Fprintf(GinkgoWriter, "warning: failed to get project dir for temp file cleanup: %v\n", err)
 		return
@@ -120,6 +118,6 @@ func checkPrerequisites() {
 
 	By("verifying Kubernetes cluster connectivity")
 	cmd := exec.Command("kubectl", "cluster-info", "--request-timeout=30s")
-	_, err := utils.Run(cmd)
+	_, err := Run(cmd)
 	Expect(err).NotTo(HaveOccurred(), "Cannot connect to Kubernetes cluster. Please check your kubeconfig.")
 }

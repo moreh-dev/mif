@@ -8,8 +8,6 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
-	"github.com/moreh-dev/mif/test/utils"
 )
 
 var _ = Describe("Prefill-Decode Disaggregation", Ordered, func() {
@@ -61,7 +59,7 @@ var _ = Describe("Prefill-Decode Disaggregation", Ordered, func() {
 				return
 			}
 			By("cleaning up test workload namespace")
-			if err := utils.CleanupWorkloadNamespace(utils.CleanupConfig{
+			if err := CleanupWorkloadNamespace(CleanupConfig{
 				WorkloadNamespace: cfg.workloadNamespace,
 				GatewayClass:      cfg.gatewayClass,
 				MIFNamespace:      cfg.mifNamespace,

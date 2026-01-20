@@ -9,8 +9,6 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
-	"github.com/moreh-dev/mif/test/utils"
 )
 
 func installHeimdallForTest() {
@@ -19,7 +17,7 @@ func installHeimdallForTest() {
 	Expect(err).NotTo(HaveOccurred(), "Failed to create Heimdall values file for test")
 
 	By("installing Heimdall for test")
-	Expect(utils.InstallHeimdall(cfg.workloadNamespace, heimdallValuesPath)).To(Succeed(), "Failed to install Heimdall for test")
+	Expect(InstallHeimdall(cfg.workloadNamespace, heimdallValuesPath)).To(Succeed(), "Failed to install Heimdall for test")
 
 	By("waiting for Heimdall deployment to be ready")
 	cmd := exec.Command("kubectl", "wait", "deployment",
@@ -27,6 +25,6 @@ func installHeimdallForTest() {
 		"--for=condition=Available",
 		"-n", cfg.workloadNamespace,
 		fmt.Sprintf("--timeout=%v", timeoutLong))
-	_, err = utils.Run(cmd)
+	_, err = Run(cmd)
 	Expect(err).NotTo(HaveOccurred(), "Heimdall deployment not available")
 }

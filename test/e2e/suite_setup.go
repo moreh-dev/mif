@@ -10,26 +10,24 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
-	"github.com/moreh-dev/mif/test/utils"
 )
 
 // setupKindCluster creates or reuses a kind cluster for testing.
 func setupKindCluster() {
 	By("creating kind cluster")
-	if utils.IsKindClusterExists(cfg.kindClusterName) {
+	if IsKindClusterExists(cfg.kindClusterName) {
 		_, _ = fmt.Fprintf(GinkgoWriter, "Kind cluster %s already exists. Skipping creation...\n", cfg.kindClusterName)
 		By("exporting kubeconfig for existing kind cluster")
 		cmd := exec.Command("kind", "export", "kubeconfig", "--name", cfg.kindClusterName)
-		_, err := utils.Run(cmd)
+		_, err := Run(cmd)
 		Expect(err).NotTo(HaveOccurred(), "Failed to export kubeconfig for existing kind cluster")
 		cfg.isUsingKindCluster = true
 	} else {
 		_, _ = fmt.Fprintf(GinkgoWriter, "Creating kind cluster %s...\n", cfg.kindClusterName)
-		if err := utils.CreateKindCluster(cfg.kindClusterName); err != nil {
+		if err := CreateKindCluster(cfg.kindClusterName); err != nil {
 			_, _ = fmt.Fprintf(GinkgoWriter, "Kind cluster creation failed. Attempting to clean up partially created cluster...\n")
-			if utils.IsKindClusterExists(cfg.kindClusterName) {
-				_ = utils.DeleteKindCluster(cfg.kindClusterName)
+			if IsKindClusterExists(cfg.kindClusterName) {
+				_ = DeleteKindCluster(cfg.kindClusterName)
 			}
 			Expect(err).NotTo(HaveOccurred(), "Failed to create kind cluster")
 		}
@@ -38,11 +36,11 @@ func setupKindCluster() {
 		By("verifying kubectl access to kind cluster")
 		contextName := fmt.Sprintf("kind-%s", cfg.kindClusterName)
 		cmd := exec.Command("kubectl", "cluster-info", "--context", contextName)
-		_, err := utils.Run(cmd)
+		_, err := Run(cmd)
 		if err != nil {
 			_, _ = fmt.Fprintf(GinkgoWriter, "Failed to verify kind cluster. Attempting to clean up...\n")
-			if utils.IsKindClusterExists(cfg.kindClusterName) {
-				_ = utils.DeleteKindCluster(cfg.kindClusterName)
+			if IsKindClusterExists(cfg.kindClusterName) {
+				_ = DeleteKindCluster(cfg.kindClusterName)
 			}
 			Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("Failed to access kind cluster via kubectl context %s", contextName))
 		}
@@ -50,7 +48,7 @@ func setupKindCluster() {
 
 	By("adding moreh Helm repository")
 	cmd := exec.Command("helm", "repo", "add", helmRepoName, helmRepoURL)
-	if _, err := utils.Run(cmd); err != nil {
+	if _, err := Run(cmd); err != nil {
 		if !strings.Contains(err.Error(), "already exists") {
 			_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to add moreh helm repo: %v\n", err)
 		}
@@ -60,7 +58,7 @@ func setupKindCluster() {
 
 	By("updating moreh Helm repository")
 	cmd = exec.Command("helm", "repo", "update", helmRepoName)
-	if _, err := utils.Run(cmd); err != nil {
+	if _, err := Run(cmd); err != nil {
 		_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to update moreh helm repo: %v\n", err)
 	}
 }
@@ -72,7 +70,7 @@ func setupPrerequisites() {
 	}
 
 	By("installing CertManager")
-	Expect(utils.InstallCertManager()).To(Succeed(), "Failed to install CertManager")
+	Expect(InstallCertManager()).To(Succeed(), "Failed to install CertManager")
 
 	setupMIF()
 	setupPreset()
@@ -85,7 +83,7 @@ func setupPrerequisites() {
 func setupMIF() {
 	By("creating MIF namespace")
 	cmd := exec.Command("kubectl", "create", "ns", cfg.mifNamespace)
-	_, err := utils.Run(cmd)
+	_, err := Run(cmd)
 	if err != nil && !strings.Contains(err.Error(), "AlreadyExists") {
 		Expect(err).NotTo(HaveOccurred(), "Failed to create MIF namespace")
 	}
@@ -128,7 +126,7 @@ func setupMIF() {
 	}
 
 	cmd = exec.Command("helm", helmArgs...)
-	_, err = utils.Run(cmd)
+	_, err = Run(cmd)
 	Expect(err).NotTo(HaveOccurred(), "Failed to deploy MIF via Helm")
 
 	By("waiting for MIF components to be ready")
@@ -138,29 +136,29 @@ func setupMIF() {
 // setupPreset installs moai-inference-preset.
 func setupPreset() {
 	By("deploying moai-inference-preset")
-	Expect(utils.DeployMIFPreset(cfg.mifNamespace, cfg.presetChartPath)).To(Succeed(), "Failed to deploy moai-inference-preset")
+	Expect(DeployMIFPreset(cfg.mifNamespace, cfg.presetChartPath)).To(Succeed(), "Failed to deploy moai-inference-preset")
 }
 
 // setupGateway installs Gateway API and controller.
 func setupGateway() {
 	By("installing Gateway API standard CRDs")
-	Expect(utils.InstallGatewayAPI()).To(Succeed(), "Failed to install Gateway API standard CRDs")
+	Expect(InstallGatewayAPI()).To(Succeed(), "Failed to install Gateway API standard CRDs")
 
 	By("installing Gateway API Inference Extension CRDs")
-	Expect(utils.InstallGatewayInferenceExtension()).To(Succeed(), "Failed to install Gateway API Inference Extension CRDs")
+	Expect(InstallGatewayInferenceExtension()).To(Succeed(), "Failed to install Gateway API Inference Extension CRDs")
 
 	By(fmt.Sprintf("installing %s controller", cfg.gatewayClass))
-	Expect(utils.InstallGatewayController(cfg.gatewayClass)).To(Succeed(), fmt.Sprintf("Failed to install %s controller", cfg.gatewayClass))
+	Expect(InstallGatewayController(cfg.gatewayClass)).To(Succeed(), fmt.Sprintf("Failed to install %s controller", cfg.gatewayClass))
 }
 
 // cleanupKindResources cleans up resources specific to kind cluster.
 func cleanupKindResources() {
 	By("uninstalling moai-inference-preset")
-	utils.UninstallMIFPreset(cfg.mifNamespace)
+	UninstallMIFPreset(cfg.mifNamespace)
 
 	By("uninstalling MIF")
 	cmd := exec.Command("helm", "uninstall", helmReleaseMIF, "-n", cfg.mifNamespace, "--ignore-not-found=true")
-	_, _ = utils.Run(cmd)
+	_, _ = Run(cmd)
 
 	By("deleting MIF namespace")
 	cleanupMIFNamespace()
@@ -176,26 +174,26 @@ func cleanupKindResources() {
 func cleanupPrerequisites() {
 	if cfg.gatewayClass == gatewayClassIstio {
 		By("uninstalling Istio")
-		if err := utils.UninstallGatewayController(cfg.gatewayClass); err != nil {
+		if err := UninstallGatewayController(cfg.gatewayClass); err != nil {
 			_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to uninstall Gateway controller: %v\n", err)
 		}
 	} else if cfg.gatewayClass == gatewayClassKgateway {
 		By("uninstalling Kgateway")
-		if err := utils.UninstallGatewayController(cfg.gatewayClass); err != nil {
+		if err := UninstallGatewayController(cfg.gatewayClass); err != nil {
 			_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to uninstall Gateway controller: %v\n", err)
 		}
 	}
 
 	By("uninstalling Gateway API Inference Extension")
-	if err := utils.UninstallGatewayInferenceExtension(); err != nil {
+	if err := UninstallGatewayInferenceExtension(); err != nil {
 		_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to uninstall Gateway API Inference Extension: %v\n", err)
 	}
 
 	By("uninstalling Gateway API")
-	if err := utils.UninstallGatewayAPI(); err != nil {
+	if err := UninstallGatewayAPI(); err != nil {
 		_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to uninstall Gateway API: %v\n", err)
 	}
 
 	By("Uninstalling CertManager...")
-	utils.UninstallCertManager()
+	UninstallCertManager()
 }

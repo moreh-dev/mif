@@ -14,8 +14,6 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
-	"github.com/moreh-dev/mif/test/utils"
 )
 
 func renderTextTemplate(templateText string, data any) (string, error) {
@@ -32,7 +30,7 @@ func renderTextTemplate(templateText string, data any) (string, error) {
 }
 
 func loadTemplateFile(filename string) (string, error) {
-	projectDir, err := utils.GetProjectDir()
+	projectDir, err := GetProjectDir()
 	if err != nil {
 		return "", fmt.Errorf("failed to get project directory: %w", err)
 	}
@@ -61,7 +59,7 @@ func verifyOdinController(g Gomega) {
 		"--for=condition=Available",
 		"-n", cfg.mifNamespace,
 		fmt.Sprintf("--timeout=%v", timeoutLong))
-	_, err := utils.Run(cmd)
+	_, err := Run(cmd)
 	g.Expect(err).NotTo(HaveOccurred(), "Odin controller not available")
 }
 
@@ -72,7 +70,7 @@ func verifyAllPodsReady(g Gomega) {
 		"--for=condition=Ready",
 		"-n", cfg.mifNamespace,
 		fmt.Sprintf("--timeout=%v", timeoutVeryLong))
-	_, err := utils.Run(cmd)
+	_, err := Run(cmd)
 	g.Expect(err).NotTo(HaveOccurred(), "Some pods are not ready")
 }
 
@@ -102,12 +100,12 @@ func collectDebugInfo() {
 	cmd := exec.Command("kubectl", "get", "pods",
 		"-n", cfg.mifNamespace,
 		"-o", "jsonpath={.items[*].metadata.name}")
-	output, err := utils.Run(cmd)
+	output, err := Run(cmd)
 	if err == nil {
 		podNames := strings.Fields(output)
 		for _, podName := range podNames {
 			cmd = exec.Command("kubectl", "logs", podName, "-n", cfg.mifNamespace, "--all-containers=true", "--tail=100")
-			logs, logErr := utils.Run(cmd)
+			logs, logErr := Run(cmd)
 			if logErr == nil {
 				_, _ = fmt.Fprintf(GinkgoWriter, "Pod %s logs:\n%s\n", podName, logs)
 			}
@@ -116,14 +114,14 @@ func collectDebugInfo() {
 
 	By("fetching Kubernetes events")
 	cmd = exec.Command("kubectl", "get", "events", "-n", cfg.mifNamespace, "--sort-by=.lastTimestamp")
-	eventsOutput, err := utils.Run(cmd)
+	eventsOutput, err := Run(cmd)
 	if err == nil {
 		_, _ = fmt.Fprintf(GinkgoWriter, "Kubernetes events:\n%s\n", eventsOutput)
 	}
 
 	By("fetching resource status")
 	cmd = exec.Command("kubectl", "get", "all", "-n", cfg.mifNamespace)
-	allOutput, err := utils.Run(cmd)
+	allOutput, err := Run(cmd)
 	if err == nil {
 		_, _ = fmt.Fprintf(GinkgoWriter, "All resources:\n%s\n", allOutput)
 	}
@@ -132,7 +130,7 @@ func collectDebugInfo() {
 func createWorkloadNamespace() {
 	By("creating workload namespace")
 	cmd := exec.Command("kubectl", "create", "ns", cfg.workloadNamespace, "--request-timeout=30s")
-	_, err := utils.Run(cmd)
+	_, err := Run(cmd)
 	if err != nil && !strings.Contains(err.Error(), "AlreadyExists") {
 		Expect(err).NotTo(HaveOccurred(), "Failed to create workload namespace")
 	}
@@ -141,7 +139,7 @@ func createWorkloadNamespace() {
 		By("adding mif=enabled label to workload namespace for automatic secret copying")
 		cmd = exec.Command("kubectl", "label", "namespace", cfg.workloadNamespace,
 			"mif=enabled", "--overwrite", "--request-timeout=30s")
-		_, err = utils.Run(cmd)
+		_, err = Run(cmd)
 		if err != nil {
 			_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to add mif=enabled label to namespace: %v\n", err)
 		}
@@ -151,7 +149,7 @@ func createWorkloadNamespace() {
 		By(fmt.Sprintf("adding istio.io/rev=%s label to workload namespace", cfg.istioRev))
 		cmd = exec.Command("kubectl", "label", "namespace", cfg.workloadNamespace,
 			fmt.Sprintf("istio.io/rev=%s", cfg.istioRev), "--overwrite", "--request-timeout=30s")
-		_, err = utils.Run(cmd)
+		_, err = Run(cmd)
 		if err != nil {
 			_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to add istio.io/rev label to namespace: %v\n", err)
 		}

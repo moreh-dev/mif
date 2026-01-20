@@ -10,8 +10,6 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
-	"github.com/moreh-dev/mif/test/utils"
 )
 
 func runInferencePerfBenchmark() {
@@ -74,7 +72,7 @@ func createInferencePerfJob(baseURL string, modelName string) (string, error) {
 
 	cmd := exec.Command("kubectl", "create", "-f", "-", "-n", cfg.workloadNamespace, "-o", "name")
 	cmd.Stdin = strings.NewReader(jobYAML)
-	output, err := utils.Run(cmd)
+	output, err := Run(cmd)
 	if err != nil {
 		return "", fmt.Errorf("failed to create job: %w", err)
 	}
@@ -89,7 +87,7 @@ func waitForInferencePerfJob(jobName string) error {
 		"--for=condition=complete",
 		"-n", cfg.workloadNamespace,
 		fmt.Sprintf("--timeout=%v", timeoutVeryLong))
-	_, err := utils.Run(cmd)
+	_, err := Run(cmd)
 	if err != nil {
 		return fmt.Errorf("inference-perf job did not complete within timeout: %w", err)
 	}
@@ -107,7 +105,7 @@ func runInferencePerfJob(baseURL string, modelName string) error {
 	defer func() {
 		cmd := exec.Command("kubectl", "delete", "job", jobName,
 			"-n", cfg.workloadNamespace, "--ignore-not-found=true")
-		_, _ = utils.Run(cmd)
+		_, _ = Run(cmd)
 	}()
 
 	if err := waitForInferencePerfJob(jobName); err != nil {

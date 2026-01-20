@@ -12,8 +12,6 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
-	"github.com/moreh-dev/mif/test/utils"
 )
 
 type InferenceServiceData struct {
@@ -44,7 +42,7 @@ func getInferenceServiceData() InferenceServiceData {
 }
 
 func createPrefillInferenceServiceManifest() (string, error) {
-	projectDir, err := utils.GetProjectDir()
+	projectDir, err := GetProjectDir()
 	if err != nil {
 		return "", err
 	}
@@ -63,7 +61,7 @@ func createPrefillInferenceServiceManifest() (string, error) {
 }
 
 func createDecodeInferenceServiceManifest() (string, error) {
-	projectDir, err := utils.GetProjectDir()
+	projectDir, err := GetProjectDir()
 	if err != nil {
 		return "", err
 	}
@@ -99,10 +97,10 @@ func installPrefillDecodeInferenceServicesForTest() {
 	Expect(err).NotTo(HaveOccurred(), "Failed to create decode proxy template")
 
 	By("applying InferenceServiceTemplates")
-	Expect(utils.CreateInferenceServiceTemplate(cfg.workloadNamespace, commonTemplatePath)).To(Succeed(), "Failed to apply common template")
-	Expect(utils.CreateInferenceServiceTemplate(cfg.workloadNamespace, prefillMetaTemplatePath)).To(Succeed(), "Failed to apply prefill meta template")
-	Expect(utils.CreateInferenceServiceTemplate(cfg.workloadNamespace, decodeMetaTemplatePath)).To(Succeed(), "Failed to apply decode meta template")
-	Expect(utils.CreateInferenceServiceTemplate(cfg.workloadNamespace, decodeProxyTemplatePath)).To(Succeed(), "Failed to apply decode proxy template")
+	Expect(CreateInferenceServiceTemplate(cfg.workloadNamespace, commonTemplatePath)).To(Succeed(), "Failed to apply common template")
+	Expect(CreateInferenceServiceTemplate(cfg.workloadNamespace, prefillMetaTemplatePath)).To(Succeed(), "Failed to apply prefill meta template")
+	Expect(CreateInferenceServiceTemplate(cfg.workloadNamespace, decodeMetaTemplatePath)).To(Succeed(), "Failed to apply decode meta template")
+	Expect(CreateInferenceServiceTemplate(cfg.workloadNamespace, decodeProxyTemplatePath)).To(Succeed(), "Failed to apply decode proxy template")
 
 	By("creating prefill InferenceService manifest file")
 	prefillManifestPath, err := createPrefillInferenceServiceManifest()
@@ -113,10 +111,10 @@ func installPrefillDecodeInferenceServicesForTest() {
 	Expect(err).NotTo(HaveOccurred(), "Failed to create decode InferenceService manifest file")
 
 	By("creating prefill InferenceService")
-	Expect(utils.CreateInferenceService(cfg.workloadNamespace, prefillManifestPath)).To(Succeed(), "Failed to create prefill InferenceService")
+	Expect(CreateInferenceService(cfg.workloadNamespace, prefillManifestPath)).To(Succeed(), "Failed to create prefill InferenceService")
 
 	By("creating decode InferenceService")
-	Expect(utils.CreateInferenceService(cfg.workloadNamespace, decodeManifestPath)).To(Succeed(), "Failed to create decode InferenceService")
+	Expect(CreateInferenceService(cfg.workloadNamespace, decodeManifestPath)).To(Succeed(), "Failed to create decode InferenceService")
 
 	By("waiting for prefill InferenceService pods to be created")
 	Eventually(func() (string, error) {
@@ -124,7 +122,7 @@ func installPrefillDecodeInferenceServicesForTest() {
 			"-l", fmt.Sprintf("app.kubernetes.io/name=%s-prefill", inferenceServiceName),
 			"-n", cfg.workloadNamespace,
 			"-o", "name")
-		return utils.Run(checkCmd)
+		return Run(checkCmd)
 	}, timeoutLong, intervalShort).ShouldNot(BeEmpty())
 
 	By("waiting for prefill InferenceService pods to be ready")
@@ -133,7 +131,7 @@ func installPrefillDecodeInferenceServicesForTest() {
 		"--for=condition=Ready",
 		"-n", cfg.workloadNamespace,
 		fmt.Sprintf("--timeout=%v", timeoutVeryLong))
-	_, err = utils.Run(cmd)
+	_, err = Run(cmd)
 	Expect(err).NotTo(HaveOccurred(), "Prefill InferenceService pods not ready")
 
 	By("waiting for decode InferenceService pods to be created")
@@ -142,7 +140,7 @@ func installPrefillDecodeInferenceServicesForTest() {
 			"-l", fmt.Sprintf("app.kubernetes.io/name=%s-decode", inferenceServiceName),
 			"-n", cfg.workloadNamespace,
 			"-o", "name")
-		return utils.Run(checkCmd)
+		return Run(checkCmd)
 	}, timeoutLong, intervalShort).ShouldNot(BeEmpty())
 
 	By("waiting for decode InferenceService pods to be ready")
@@ -151,7 +149,7 @@ func installPrefillDecodeInferenceServicesForTest() {
 		"--for=condition=Ready",
 		"-n", cfg.workloadNamespace,
 		fmt.Sprintf("--timeout=%v", timeoutVeryLong))
-	_, err = utils.Run(cmd)
+	_, err = Run(cmd)
 	Expect(err).NotTo(HaveOccurred(), "Decode InferenceService pods not ready")
 }
 
@@ -162,7 +160,7 @@ func getGatewayServiceName(timeout, interval interface{}) string {
 			"-n", cfg.workloadNamespace,
 			"-l", "gateway.networking.k8s.io/gateway-name=mif",
 			"-o", "jsonpath={.items[0].metadata.name}")
-		output, err := utils.Run(cmd)
+		output, err := Run(cmd)
 		g.Expect(err).NotTo(HaveOccurred())
 		serviceName = strings.TrimSpace(output)
 		g.Expect(serviceName).NotTo(BeEmpty(), "Gateway service not found")
@@ -180,6 +178,6 @@ func verifyInferenceEndpoint() {
 		"--for=condition=Ready",
 		"-n", cfg.workloadNamespace,
 		fmt.Sprintf("--timeout=%v", timeoutVeryLong))
-	_, err := utils.Run(cmd)
+	_, err := Run(cmd)
 	Expect(err).NotTo(HaveOccurred(), "InferenceService decode pods not ready")
 }

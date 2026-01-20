@@ -12,8 +12,6 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
-	"github.com/moreh-dev/mif/test/utils"
 )
 
 func runQualityBenchmark() {
@@ -86,7 +84,7 @@ func createQualityBenchmarkJob(baseURL string, modelName string, benchmarks stri
 
 	cmd := exec.Command("kubectl", "create", "-f", "-", "-n", cfg.workloadNamespace, "-o", "name")
 	cmd.Stdin = strings.NewReader(jobYAML)
-	output, err := utils.Run(cmd)
+	output, err := Run(cmd)
 	if err != nil {
 		return "", fmt.Errorf("failed to create job: %w", err)
 	}
@@ -101,13 +99,13 @@ func waitForQualityBenchmarkJob(jobName string) error {
 		"--for=condition=complete",
 		"-n", cfg.workloadNamespace,
 		fmt.Sprintf("--timeout=%v", timeoutVeryLong))
-	_, err := utils.Run(cmd)
+	_, err := Run(cmd)
 	if err != nil {
 		By("collecting logs from failed quality benchmark job")
 		logCmd := exec.Command("kubectl", "logs", "-l", "app=quality-benchmark",
 			"-n", cfg.workloadNamespace,
 			"--tail=100")
-		if logs, logErr := utils.Run(logCmd); logErr == nil {
+		if logs, logErr := Run(logCmd); logErr == nil {
 			_, _ = fmt.Fprintf(GinkgoWriter, "Quality benchmark job logs:\n%s\n", logs)
 		}
 		return fmt.Errorf("quality benchmark job did not complete within timeout: %w", err)
@@ -127,7 +125,7 @@ func runQualityBenchmarkJob(baseURL string, modelName string, benchmarks string,
 		defer func() {
 			cmd := exec.Command("kubectl", "delete", "job", jobName,
 				"-n", cfg.workloadNamespace, "--ignore-not-found=true")
-			_, _ = utils.Run(cmd)
+			_, _ = Run(cmd)
 		}()
 	}
 

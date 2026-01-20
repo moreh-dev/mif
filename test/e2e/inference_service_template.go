@@ -7,12 +7,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-
-	"github.com/moreh-dev/mif/test/utils"
 )
 
 func createCommonTemplate() (string, error) {
-	projectDir, err := utils.GetProjectDir()
+	projectDir, err := GetProjectDir()
 	if err != nil {
 		return "", err
 	}
@@ -31,7 +29,7 @@ func createCommonTemplate() (string, error) {
 }
 
 func createPrefillMetaTemplate() (string, error) {
-	projectDir, err := utils.GetProjectDir()
+	projectDir, err := GetProjectDir()
 	if err != nil {
 		return "", err
 	}
@@ -50,7 +48,7 @@ func createPrefillMetaTemplate() (string, error) {
 }
 
 func createDecodeMetaTemplate() (string, error) {
-	projectDir, err := utils.GetProjectDir()
+	projectDir, err := GetProjectDir()
 	if err != nil {
 		return "", err
 	}
@@ -69,7 +67,7 @@ func createDecodeMetaTemplate() (string, error) {
 }
 
 func createDecodeProxyTemplate() (string, error) {
-	projectDir, err := utils.GetProjectDir()
+	projectDir, err := GetProjectDir()
 	if err != nil {
 		return "", err
 	}

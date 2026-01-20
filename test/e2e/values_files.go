@@ -7,13 +7,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-
-	"github.com/moreh-dev/mif/test/utils"
 )
 
 // writeValuesFile is a helper function to write Helm values files.
 func writeValuesFile(relativePath, content string, mode os.FileMode) (string, error) {
-	projectDir, err := utils.GetProjectDir()
+	projectDir, err := GetProjectDir()
 	if err != nil {
 		return "", err
 	}
@@ -41,7 +39,7 @@ fullnameOverride: %s
 
 // createHeimdallValuesFile creates a values file for Heimdall.
 func createHeimdallValuesFile() (string, error) {
-	projectDir, err := utils.GetProjectDir()
+	projectDir, err := GetProjectDir()
 	if err != nil {
 		return "", err
 	}
