@@ -39,6 +39,11 @@ spec:
               }
               trap cleanup SIGTERM SIGINT
 
+              if [ -n "$ISVC_PRE_PROCESS_SCRIPT" ]; then
+                echo "Running pre-process script..."
+                eval "$ISVC_PRE_PROCESS_SCRIPT"
+              fi
+
               _dp_size={{ "{{" }} or .Spec.Parallelism.Data 1 {{ "}}" }}
               _dp_local_size={{ "{{" }} or .Spec.Parallelism.DataLocal 1 {{ "}}" }}
               _start_rank=$(( ${LWS_WORKER_INDEX:-0} * _dp_local_size ))
@@ -83,6 +88,8 @@ spec:
 
               wait
           env:
+            - name: ISVC_PRE_PROCESS_SCRIPT
+              value: ""
             - name: ISVC_USE_KV_EVENTS
               value: "false"
             - name: ISVC_MODEL_NAME
