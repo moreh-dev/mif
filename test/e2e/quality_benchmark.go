@@ -27,8 +27,6 @@ func runQualityBenchmark() {
 	serviceName := getGatewayServiceName(timeoutMedium, intervalMedium)
 
 	By("running quality benchmarks as Kubernetes Job")
-	// For Kubernetes Job, use service DNS name with port
-	// Format: http://service-name:80 (within same namespace)
 	gatewayServiceURL := fmt.Sprintf("http://%s:80", serviceName)
 	err := runQualityBenchmarkJob(gatewayServiceURL, cfg.testModel, cfg.qualityBenchmarks, cfg.qualityBenchmarkLimit)
 	Expect(err).NotTo(HaveOccurred(), "quality benchmark job should complete successfully")
@@ -49,8 +47,6 @@ func createQualityBenchmarkJob(baseURL string, modelName string, benchmarks stri
 		QualityEvalBranch string
 	}
 
-	// Parse baseURL (format: http://service-name:80)
-	// Extract host and port
 	gatewayHost := baseURL
 	gatewayPort := "80"
 	if strings.HasPrefix(baseURL, "http://") {
@@ -119,11 +115,13 @@ func runQualityBenchmarkJob(baseURL string, modelName string, benchmarks string,
 		return fmt.Errorf("failed to create Job: %w", err)
 	}
 
-	defer func() {
-		cmd := exec.Command("kubectl", "delete", "job", jobName,
-			"-n", cfg.workloadNamespace, "--ignore-not-found=true")
-		_, _ = utils.Run(cmd)
-	}()
+	if !cfg.skipCleanup {
+		defer func() {
+			cmd := exec.Command("kubectl", "delete", "job", jobName,
+				"-n", cfg.workloadNamespace, "--ignore-not-found=true")
+			_, _ = utils.Run(cmd)
+		}()
+	}
 
 	if err := waitForQualityBenchmarkJob(jobName); err != nil {
 		return err
