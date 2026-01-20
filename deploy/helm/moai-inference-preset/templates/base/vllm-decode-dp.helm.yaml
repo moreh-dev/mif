@@ -125,6 +125,8 @@ spec:
 
               wait
           env:
+            - name: ISVC_PRE_PROCESS_SCRIPT
+              value: ""
             - name: ISVC_USE_KV_EVENTS
               value: "false"
             - name: ISVC_MODEL_NAME
