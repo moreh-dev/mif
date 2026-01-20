@@ -82,8 +82,9 @@ spec:
           echo "Results will be saved to: ${RESULTS_FILE}"
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           
-          # Run the sample benchmark with LIMIT for minimal testing
-          # This runs the general evaluation flow via run.sh --eval
+          # Run the sample benchmark for minimal testing.
+          # The LIMIT value is passed via the LIMIT environment variable and
+          # is consumed by the underlying evaluation script.
           if bash run.sh --eval "${BENCHMARK}" --model "${MODEL_PATH}" --host "${HOST}" --port "${PORT}" 2>&1 | tee "${RESULTS_FILE}"; then
             echo "✅ Benchmark ${BENCHMARK} completed successfully"
           else
