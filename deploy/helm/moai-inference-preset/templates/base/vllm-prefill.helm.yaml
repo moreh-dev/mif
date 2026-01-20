@@ -6,7 +6,7 @@ metadata:
   labels:
     {{- include "common.labels.standard" . | nindent 4 }}
 spec:
-  workerTemplate:
+  template:
     metadata:
       labels:
         heimdall.moreh.io/role: prefill # DEPRECATED

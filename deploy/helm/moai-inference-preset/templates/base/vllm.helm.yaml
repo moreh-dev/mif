@@ -6,7 +6,7 @@ metadata:
   labels:
     {{- include "common.labels.standard" . | nindent 4 }}
 spec:
-  workerTemplate:
+  template:
     spec:
       imagePullSecrets:
         - name: moreh-registry
