@@ -90,7 +90,7 @@ spec:
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           
           # Run the sample benchmark with LIMIT for minimal testing
-          # This executes sample.sh style prompts (similar to sample.sh script)
+          # This runs the general evaluation flow via run.sh --eval
           if bash run.sh --eval "${BENCHMARK}" --model "${MODEL_PATH}" --host "${HOST}" --port "${PORT}" 2>&1 | tee "${RESULTS_FILE}"; then
             echo "✅ Benchmark ${BENCHMARK} completed successfully"
           else
