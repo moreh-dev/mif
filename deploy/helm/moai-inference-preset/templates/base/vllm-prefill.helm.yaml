@@ -1,12 +1,12 @@
 apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceServiceTemplate
 metadata:
-  name: vllm-prefill-dp
+  name: vllm-prefill
   namespace: {{ include "common.names.namespace" . }}
   labels:
     {{- include "common.labels.standard" . | nindent 4 }}
 spec:
-  workerTemplate:
+  template:
     metadata:
       labels:
         heimdall.moreh.io/role: prefill # DEPRECATED
@@ -44,49 +44,32 @@ spec:
                 eval "$ISVC_PRE_PROCESS_SCRIPT"
               fi
 
-              _dp_size={{ "{{" }} or .Spec.Parallelism.Data 1 {{ "}}" }}
-              _dp_local_size={{ "{{" }} or .Spec.Parallelism.DataLocal 1 {{ "}}" }}
-              _start_rank=$(( ${LWS_WORKER_INDEX:-0} * _dp_local_size ))
-
-              for ((_index=0; _index<_dp_local_size; _index++)); do
-
-                _dp_rank_port=$((8000 + _index))
-
-                _kv_events_args=()
-                if [ "${ISVC_USE_KV_EVENTS:-false}" = "true" ]; then
-                  _inference_pool_name="{{ "{{" }} if .Spec.InferencePoolRefs {{ "}}" }}{{ "{{" }} (index .Spec.InferencePoolRefs 0).Name {{ "}}" }}{{ "{{" }} end {{ "}}" }}"
-                  if [ -z "$_inference_pool_name" ]; then
-                    echo "Set inferencePoolRefs in InferenceService"
-                    exit 1
-                  fi
-                  if [ -z "$ISVC_MODEL_NAME" ]; then
-                    echo "Set ISVC_MODEL_NAME in InferenceService"
-                    exit 1
-                  fi
-                  _kv_events_args=(--kv-events-config "{ \
-                    \"enable_kv_cache_events\": true, \
-                    \"publisher\": \"zmq\", \
-                    \"endpoint\": \"tcp://${_inference_pool_name}:5557\", \
-                    \"topic\": \"kv@${POD_IP}:${_dp_rank_port}@${ISVC_MODEL_NAME}\" \
-                  }")
+              _kv_events_args=()
+              if [ "${ISVC_USE_KV_EVENTS:-false}" = "true" ]; then
+                _inference_pool_name="{{ "{{" }} if .Spec.InferencePoolRefs {{ "}}" }}{{ "{{" }} (index .Spec.InferencePoolRefs 0).Name {{ "}}" }}{{ "{{" }} end {{ "}}" }}"
+                if [ -z "$_inference_pool_name" ]; then
+                  echo "Set inferencePoolRefs in InferenceService"
+                  exit 1
                 fi
+                if [ -z "$ISVC_MODEL_NAME" ]; then
+                  echo "Set ISVC_MODEL_NAME in InferenceService"
+                  exit 1
+                fi
+                _kv_events_args=(--kv-events-config "{ \
+                  \"enable_kv_cache_events\": true, \
+                  \"publisher\": \"zmq\", \
+                  \"endpoint\": \"tcp://${_inference_pool_name}:5557\", \
+                  \"topic\": \"kv@${POD_IP}:8000@${ISVC_MODEL_NAME}\" \
+                }")
+              fi
 
-                VLLM_NIXL_SIDE_CHANNEL_PORT=$((30020 + _index * 2)) \
-                CUDA_VISIBLE_DEVICES=$_index \
-                vllm serve \
-                  --port ${_dp_rank_port} \
-                  --tensor-parallel-size {{ "{{" }} or .Spec.Parallelism.Tensor 1 {{ "}}" }} \
-                  --data-parallel-size ${_dp_size} \
-                  --data-parallel-rank $((_start_rank + _index)) \
-                  --data-parallel-address $(LWS_LEADER_ADDRESS) \
-                  --data-parallel-rpc-port {{ "{{" }} or .Spec.Parallelism.DataRPCPort 13345 {{ "}}" }} \
-                  {{ "{{" }} if .Spec.Parallelism.Expert {{ "}}" }}--enable-expert-parallel{{ "{{" }} end {{ "}}" }} \
-                  "${_kv_events_args[@]}" \
-                  $(ISVC_EXTRA_ARGS) \
-                  &
-              done
-
-              wait
+              VLLM_NIXL_SIDE_CHANNEL_PORT=30020 \
+              exec vllm serve \
+                --port 8000 \
+                --tensor-parallel-size {{ "{{" }} or .Spec.Parallelism.Tensor 1 {{ "}}" }} \
+                {{ "{{" }} if .Spec.Parallelism.Expert {{ "}}" }}--enable-expert-parallel{{ "{{" }} end {{ "}}" }} \
+                "${_kv_events_args[@]}" \
+                $(ISVC_EXTRA_ARGS)
           env:
             - name: ISVC_PRE_PROCESS_SCRIPT
               value: ""
@@ -116,20 +99,6 @@ spec:
           ports:
             - name: http
               containerPort: 8000
-            - name: http1
-              containerPort: 8001
-            - name: http2
-              containerPort: 8002
-            - name: http3
-              containerPort: 8003
-            - name: http4
-              containerPort: 8004
-            - name: http5
-              containerPort: 8005
-            - name: http6
-              containerPort: 8006
-            - name: http7
-              containerPort: 8007
           readinessProbe:
             httpGet:
               path: /health
