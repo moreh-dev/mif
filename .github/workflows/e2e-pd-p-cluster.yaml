@@ -51,6 +51,7 @@ jobs:
       S3_SECRET_ACCESS_KEY: ${{ secrets.AWS_S3_SECRET_KEY }}
       SKIP_KIND: "true"
       SKIP_PREREQUISITE: "true"
+      INFERENCE_PERF_ENABLED: "true"
 
     steps:
       - name: Checkout

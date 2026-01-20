@@ -49,6 +49,7 @@ type testConfig struct {
 	odinCRDEnabled         bool
 	prometheusStackEnabled bool
 
+	inferencePerfEnabled    bool
 	qualityBenchmarkEnabled bool
 	qualityBenchmarks       string
 	qualityBenchmarkLimit   string
@@ -99,6 +100,7 @@ func init() {
 		odinCRDEnabled:         getEnvBool(envOdinCRDEnabled, true),
 		prometheusStackEnabled: getEnvBool(envPrometheusStackEnabled, false),
 
+		inferencePerfEnabled:    getEnvBool(envInferencePerfEnabled, false),
 		qualityBenchmarkEnabled: getEnvBool(envQualityBenchmarkEnabled, false),
 		qualityBenchmarks:       getEnv(envQualityBenchmarks, "sample"),
 		qualityBenchmarkLimit:   getEnv(envQualityBenchmarkLimit, "0.1"),

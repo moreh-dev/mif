@@ -34,9 +34,10 @@ const (
 	envOdinCRDEnabled         = "ODIN_CRD_ENABLED"
 	envPrometheusStackEnabled = "PROMETHEUS_STACK_ENABLED"
 
-	// Quality Benchmark
-	envQualityBenchmarks      = "QUALITY_BENCHMARKS"
-	envQualityBenchmarkLimit  = "QUALITY_BENCHMARK_LIMIT"
+	// Benchmark
+	envInferencePerfEnabled    = "INFERENCE_PERF_ENABLED"
+	envQualityBenchmarks       = "QUALITY_BENCHMARKS"
+	envQualityBenchmarkLimit   = "QUALITY_BENCHMARK_LIMIT"
 	envQualityBenchmarkEnabled = "QUALITY_BENCHMARK_ENABLED"
 )
 
@@ -94,7 +95,8 @@ var envVars = []envVarInfo{
 	{envOdinCRDEnabled, "Enable/disable Odin CRD", "auto-detect", "Component Enable/Disable", "bool"},
 	{envPrometheusStackEnabled, "Enable/disable Prometheus Stack", "false", "Component Enable/Disable", "bool"},
 
-	// Quality Benchmark
+	// Benchmark
+	{envInferencePerfEnabled, "Enable inference-perf performance benchmark execution", "false", "Quality Benchmark", "bool"},
 	{envQualityBenchmarkEnabled, "Enable quality benchmark execution", "false", "Quality Benchmark", "bool"},
 	{envQualityBenchmarks, "Quality benchmark to run (e.g., sample, mmlu, gsm8k_cot, hellaswag, aime, gpqa)", "sample", "Quality Benchmark", "string"},
 	{envQualityBenchmarkLimit, "Limit for benchmark dataset (empty for full, 0.01 for 1%, 10 for first 10 samples)", "0.1", "Quality Benchmark", "string"},

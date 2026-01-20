@@ -82,13 +82,15 @@ var _ = Describe("Prefill-Decode Disaggregation", Ordered, func() {
 			verifyInferenceEndpoint()
 		})
 
+		if cfg.inferencePerfEnabled {
+			It("should run inference-perf performance benchmark", func() {
+				runInferencePerfBenchmark()
+			})
+		}
+
 		if cfg.qualityBenchmarkEnabled {
 			It("should run quality benchmarks", func() {
 				runQualityBenchmark()
-			})
-		} else {
-			It("should run inference-perf performance benchmark", func() {
-				runInferencePerfBenchmark()
 			})
 		}
 	})
