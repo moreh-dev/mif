@@ -5,6 +5,8 @@ package e2e
 
 import (
 	"fmt"
+	"net"
+	"net/url"
 	"os/exec"
 	"strings"
 
@@ -49,11 +51,17 @@ func createQualityBenchmarkJob(baseURL string, modelName string, benchmarks stri
 
 	gatewayHost := baseURL
 	gatewayPort := "80"
-	if strings.HasPrefix(baseURL, "http://") {
-		gatewayHost = strings.TrimPrefix(baseURL, "http://")
-		if idx := strings.LastIndex(gatewayHost, ":"); idx != -1 {
-			gatewayPort = gatewayHost[idx+1:]
-			gatewayHost = gatewayHost[:idx]
+
+	parsedURL, err := url.Parse(baseURL)
+	if err == nil && parsedURL.Host != "" {
+		host := parsedURL.Host
+		// Try to split host and port safely (supports IPv4, IPv6, hostnames)
+		if h, p, splitErr := net.SplitHostPort(host); splitErr == nil {
+			gatewayHost = h
+			gatewayPort = p
+		} else {
+			// No explicit port in host, keep default port and use host as-is
+			gatewayHost = host
 		}
 	}
 
