@@ -98,7 +98,7 @@ var envVars = []envVarInfo{
 	// Benchmark
 	{envInferencePerfEnabled, "Enable inference-perf performance benchmark execution", "false", "Quality Benchmark", "bool"},
 	{envQualityBenchmarkEnabled, "Enable quality benchmark execution", "false", "Quality Benchmark", "bool"},
-	{envQualityBenchmarks, "Quality benchmark to run (e.g., sample, mmlu, gsm8k_cot, hellaswag, aime, gpqa)", "sample", "Quality Benchmark", "string"},
+	{envQualityBenchmarks, "Name of a single quality benchmark to run (for example: sample, mmlu, gsm8k_cot, hellaswag, aime, gpqa; this list is not exhaustive)", "sample", "Quality Benchmark", "string"},
 	{envQualityBenchmarkLimit, "Limit for benchmark dataset (empty for full, 0.01 for 1%, 10 for first 10 samples)", "0.1", "Quality Benchmark", "string"},
 }
 
