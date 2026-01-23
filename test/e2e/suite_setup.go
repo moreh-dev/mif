@@ -77,8 +77,6 @@ func setupPrerequisites() {
 	setupGateway()
 }
 
-
-
 // setupMIF installs MIF infrastructure if not already installed.
 func setupMIF() {
 	By("creating MIF namespace")

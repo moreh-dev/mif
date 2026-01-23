@@ -98,8 +98,8 @@ var envVars = []envVarInfo{
 	// Benchmark
 	{envInferencePerfEnabled, "Enable inference-perf performance benchmark execution", "false", "Quality Benchmark", "bool"},
 	{envQualityBenchmarkEnabled, "Enable quality benchmark execution", "false", "Quality Benchmark", "bool"},
-	{envQualityBenchmarks, "Name of a single quality benchmark to run (for example: sample, mmlu, gsm8k_cot, hellaswag, aime, gpqa; this list is not exhaustive)", "sample", "Quality Benchmark", "string"},
-	{envQualityBenchmarkLimit, "Optional limit hint for benchmark dataset; actual usage is defined by the benchmark implementation", "0.1", "Quality Benchmark", "string"},
+	{envQualityBenchmarks, "Name of a single quality benchmark to run (for example: sample, mmlu, gsm8k_cot, hellaswag, aime, gpqa; this list is not exhaustive)", "mmlu", "Quality Benchmark", "string"},
+	{envQualityBenchmarkLimit, "Optional limit hint for benchmark dataset; actual usage is defined by the benchmark implementation", "", "Quality Benchmark", "string"},
 }
 
 // getUsedEnvVars returns environment variable names used in config.go init().

@@ -8,13 +8,13 @@ import (
 )
 
 type testConfig struct {
-	skipPrerequisite        bool
-	isCertManagerAlreadyInstalled bool
+	skipPrerequisite                     bool
+	isCertManagerAlreadyInstalled        bool
 	isGatewayAPIAlreadyInstalled         bool
 	isGatewayInferenceExtensionInstalled bool
 	isIstioAlreadyInstalled              bool
 	isKgatewayAlreadyInstalled           bool
-	skipCleanup                   bool
+	skipCleanup                          bool
 
 	mifNamespace      string
 	workloadNamespace string
@@ -59,13 +59,13 @@ var cfg testConfig
 
 func init() {
 	cfg = testConfig{
-		skipPrerequisite:        getEnvBool(envSkipPrerequisite, false),
-		isCertManagerAlreadyInstalled: false,
-		isGatewayAPIAlreadyInstalled: false,
+		skipPrerequisite:                     getEnvBool(envSkipPrerequisite, false),
+		isCertManagerAlreadyInstalled:        false,
+		isGatewayAPIAlreadyInstalled:         false,
 		isGatewayInferenceExtensionInstalled: false,
-		isIstioAlreadyInstalled: false,
-		isKgatewayAlreadyInstalled: false,
-		skipCleanup:             getEnvBool(envSkipCleanup, false),
+		isIstioAlreadyInstalled:              false,
+		isKgatewayAlreadyInstalled:           false,
+		skipCleanup:                          getEnvBool(envSkipCleanup, false),
 
 		mifNamespace:      getEnv(envMIFNamespace, "mif"),
 		workloadNamespace: getEnv(envWorkloadNamespace, "quickstart"),
@@ -102,8 +102,8 @@ func init() {
 
 		inferencePerfEnabled:    getEnvBool(envInferencePerfEnabled, false),
 		qualityBenchmarkEnabled: getEnvBool(envQualityBenchmarkEnabled, false),
-		qualityBenchmarks:       getEnv(envQualityBenchmarks, "sample"),
-		qualityBenchmarkLimit:   getEnv(envQualityBenchmarkLimit, "0.1"),
+		qualityBenchmarks:       getEnv(envQualityBenchmarks, "mmlu"),
+		qualityBenchmarkLimit:   getEnv(envQualityBenchmarkLimit, ""),
 	}
 }
 
