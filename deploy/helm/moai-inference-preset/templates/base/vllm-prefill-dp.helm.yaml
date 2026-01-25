@@ -74,6 +74,8 @@ spec:
                 VLLM_NIXL_SIDE_CHANNEL_PORT=$((30020 + _index * 2)) \
                 CUDA_VISIBLE_DEVICES=$_index \
                 vllm serve \
+                  "${ISVC_MODEL_PATH}" \
+                  --served-model-name "${ISVC_MODEL_NAME}" \
                   --port ${_dp_rank_port} \
                   --tensor-parallel-size {{ "{{" }} or .Spec.Parallelism.Tensor 1 {{ "}}" }} \
                   --data-parallel-size ${_dp_size} \
@@ -94,9 +96,10 @@ spec:
               value: "false"
             - name: ISVC_MODEL_NAME
               value: "meta-llama/Llama-3.2-1B-Instruct"
+            - name: ISVC_MODEL_PATH
+              value: "$(ISVC_MODEL_NAME)"
             - name: ISVC_EXTRA_ARGS
               value: >-
-                $(ISVC_MODEL_NAME)
                 --disable-uvicorn-access-log
                 --no-enable-log-requests
                 --quantization None

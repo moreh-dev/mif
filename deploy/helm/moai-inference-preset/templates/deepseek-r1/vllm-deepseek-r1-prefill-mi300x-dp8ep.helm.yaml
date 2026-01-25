@@ -50,8 +50,6 @@ spec:
               value: "10"
             - name: ISVC_EXTRA_ARGS
               value: >-
-                $(ISVC_MODEL_NAME)
-                --served-model-name $(ISVC_MODEL_NAME)
                 --trust-remote-code
                 --kv-transfer-config '{"kv_connector":"NixlConnector","kv_role":"kv_both"}'
                 --disable-uvicorn-access-log
