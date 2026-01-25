@@ -92,7 +92,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "avg(gpu_gfx_activity{hostname=~\"$nodes\"})",
+          "expr": "avg(gpu_gfx_activity{hostname=~\"$amd_nodes\"})",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "__auto",
@@ -114,7 +114,7 @@
       },
       "id": 4,
       "panels": [],
-      "title": "GPU",
+      "title": "AMD GPU",
       "type": "row"
     },
     {
@@ -178,7 +178,7 @@
         "valueMode": "color"
       },
       "pluginVersion": "12.3.0",
-      "repeat": "nodes",
+      "repeat": "amd_nodes",
       "repeatDirection": "v",
       "targets": [
         {
@@ -187,7 +187,7 @@
             "uid": "prometheus"
           },
           "editorMode": "builder",
-          "expr": "sum by(gpu_id) (gpu_gfx_activity{hostname=\"$nodes\"})",
+          "expr": "sum by(gpu_id) (gpu_gfx_activity{hostname=\"$amd_nodes\"})",
           "legendFormat": "{{gpu_id}}",
           "range": true,
           "refId": "A"
@@ -279,7 +279,7 @@
         }
       },
       "pluginVersion": "12.3.0",
-      "repeat": "nodes",
+      "repeat": "amd_nodes",
       "repeatDirection": "v",
       "targets": [
         {
@@ -289,7 +289,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "sum by(gpu_id) (gpu_gfx_activity{hostname=\"$nodes\"})",
+          "expr": "sum by(gpu_id) (gpu_gfx_activity{hostname=\"$amd_nodes\"})",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "GPU {{gpu_id}}",
@@ -298,7 +298,7 @@
           "useBackend": false
         }
       ],
-      "title": "$nodes GPU Utilization",
+      "title": "$amd_nodes GPU Utilization",
       "type": "timeseries"
     },
     {
@@ -364,7 +364,7 @@
         "valueMode": "color"
       },
       "pluginVersion": "12.3.0",
-      "repeat": "nodes",
+      "repeat": "amd_nodes",
       "repeatDirection": "v",
       "targets": [
         {
@@ -374,7 +374,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "sum by(gpu_id) (gpu_used_vram{hostname=\"$nodes\"}) / (sum by(gpu_id) (gpu_total_vram{hostname=\"$nodes\"}))",
+          "expr": "sum by(gpu_id) (gpu_used_vram{hostname=\"$amd_nodes\"}) / (sum by(gpu_id) (gpu_total_vram{hostname=\"$amd_nodes\"}))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "{{gpu_id}}",
@@ -470,7 +470,7 @@
         }
       },
       "pluginVersion": "12.3.0",
-      "repeat": "nodes",
+      "repeat": "amd_nodes",
       "repeatDirection": "v",
       "targets": [
         {
@@ -480,7 +480,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "gpu_junction_temperature{hostname=\"$nodes\"}",
+          "expr": "gpu_junction_temperature{hostname=\"$amd_nodes\"}",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "GPU {{gpu_id}}",
@@ -489,7 +489,7 @@
           "useBackend": false
         }
       ],
-      "title": "$nodes GPU Junction Temperature",
+      "title": "$amd_nodes GPU Junction Temperature",
       "type": "timeseries"
     },
     {
@@ -498,7 +498,397 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 80
+        "y": 17
+      },
+      "id": 48,
+      "panels": [],
+      "title": "NVIDIA GPU",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 1,
+          "mappings": [],
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 3,
+        "x": 0,
+        "y": 18
+      },
+      "id": 49,
+      "options": {
+        "displayMode": "gradient",
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "maxVizHeight": 300,
+        "minVizHeight": 16,
+        "minVizWidth": 8,
+        "namePlacement": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [],
+          "fields": "",
+          "values": false
+        },
+        "showUnfilled": true,
+        "sizing": "auto",
+        "valueMode": "color"
+      },
+      "pluginVersion": "12.3.0",
+      "repeat": "nvidia_nodes",
+      "repeatDirection": "v",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "builder",
+          "expr": "sum by(gpu) (DCGM_FI_DEV_GPU_UTIL{Hostname=\"$nvidia_nodes\"})",
+          "legendFormat": "{{gpu}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "GPU Utilization",
+      "type": "bargauge"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "showValues": false,
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 9,
+        "x": 3,
+        "y": 18
+      },
+      "id": 50,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.3.0",
+      "repeat": "nvidia_nodes",
+      "repeatDirection": "v",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "expr": "DCGM_FI_DEV_GPU_UTIL{Hostname=\"$nvidia_nodes\"}",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "legendFormat": "GPU {{gpu}}",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "$nvidia_nodes GPU Utilization",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 1,
+          "mappings": [],
+          "max": 1,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 3,
+        "x": 12,
+        "y": 18
+      },
+      "id": 51,
+      "options": {
+        "displayMode": "gradient",
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "maxVizHeight": 300,
+        "minVizHeight": 16,
+        "minVizWidth": 8,
+        "namePlacement": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showUnfilled": true,
+        "sizing": "auto",
+        "valueMode": "color"
+      },
+      "pluginVersion": "12.3.0",
+      "repeat": "nvidia_nodes",
+      "repeatDirection": "v",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "disableTextWrap": false,
+          "editorMode": "code",
+          "expr": "DCGM_FI_DEV_FB_USED{Hostname=\"$nvidia_nodes\"}\n  / on(gpu) ( \n    DCGM_FI_DEV_FB_USED{Hostname=\"$nvidia_nodes\"}\n    + on(gpu)\n      DCGM_FI_DEV_FB_FREE{Hostname=\"$nvidia_nodes\"}\n    )",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "legendFormat": "{{gpu}}",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "VRAM Usage",
+      "type": "bargauge"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "showValues": false,
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "celsius"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 9,
+        "x": 15,
+        "y": 18
+      },
+      "id": 52,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.3.0",
+      "repeat": "nvidia_nodes",
+      "repeatDirection": "v",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "expr": "DCGM_FI_DEV_GPU_TEMP{Hostname=\"$nvidia_nodes\"}",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "legendFormat": "GPU {{gpu}}",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "$nvidia_nodes GPU Junction Temperature",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 25
       },
       "id": 6,
       "panels": [],
@@ -537,7 +927,7 @@
         "h": 8,
         "w": 6,
         "x": 0,
-        "y": 81
+        "y": 26
       },
       "id": 16,
       "options": {
@@ -645,7 +1035,7 @@
         "h": 8,
         "w": 6,
         "x": 6,
-        "y": 81
+        "y": 26
       },
       "id": 21,
       "options": {
@@ -749,7 +1139,7 @@
         "h": 8,
         "w": 6,
         "x": 12,
-        "y": 81
+        "y": 26
       },
       "id": 15,
       "options": {
@@ -884,7 +1274,7 @@
         "h": 8,
         "w": 6,
         "x": 18,
-        "y": 81
+        "y": 26
       },
       "id": 34,
       "options": {
@@ -925,7 +1315,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 89
+        "y": 34
       },
       "id": 7,
       "panels": [],
@@ -999,7 +1389,7 @@
         "h": 8,
         "w": 6,
         "x": 0,
-        "y": 90
+        "y": 35
       },
       "id": 8,
       "options": {
@@ -1135,7 +1525,7 @@
         "h": 8,
         "w": 6,
         "x": 6,
-        "y": 90
+        "y": 35
       },
       "id": 9,
       "options": {
@@ -1271,7 +1661,7 @@
         "h": 8,
         "w": 6,
         "x": 12,
-        "y": 90
+        "y": 35
       },
       "id": 13,
       "options": {
@@ -1407,7 +1797,7 @@
         "h": 8,
         "w": 6,
         "x": 18,
-        "y": 90
+        "y": 35
       },
       "id": 14,
       "options": {
@@ -1543,7 +1933,7 @@
         "h": 8,
         "w": 6,
         "x": 0,
-        "y": 98
+        "y": 43
       },
       "id": 17,
       "options": {
@@ -1679,7 +2069,7 @@
         "h": 8,
         "w": 6,
         "x": 6,
-        "y": 98
+        "y": 43
       },
       "id": 18,
       "options": {
@@ -1815,7 +2205,7 @@
         "h": 8,
         "w": 6,
         "x": 12,
-        "y": 98
+        "y": 43
       },
       "id": 19,
       "options": {
@@ -1951,7 +2341,7 @@
         "h": 8,
         "w": 6,
         "x": 18,
-        "y": 98
+        "y": 43
       },
       "id": 20,
       "options": {
@@ -2087,7 +2477,7 @@
         "h": 8,
         "w": 6,
         "x": 0,
-        "y": 106
+        "y": 51
       },
       "id": 22,
       "options": {
@@ -2223,7 +2613,7 @@
         "h": 8,
         "w": 6,
         "x": 6,
-        "y": 106
+        "y": 51
       },
       "id": 23,
       "options": {
@@ -2359,7 +2749,7 @@
         "h": 8,
         "w": 6,
         "x": 12,
-        "y": 106
+        "y": 51
       },
       "id": 24,
       "options": {
@@ -2495,7 +2885,7 @@
         "h": 8,
         "w": 6,
         "x": 18,
-        "y": 106
+        "y": 51
       },
       "id": 25,
       "options": {
@@ -2630,7 +3020,7 @@
         "h": 8,
         "w": 6,
         "x": 0,
-        "y": 114
+        "y": 59
       },
       "id": 26,
       "options": {
@@ -2765,7 +3155,7 @@
         "h": 8,
         "w": 6,
         "x": 6,
-        "y": 114
+        "y": 59
       },
       "id": 27,
       "options": {
@@ -2900,7 +3290,7 @@
         "h": 8,
         "w": 6,
         "x": 12,
-        "y": 114
+        "y": 59
       },
       "id": 28,
       "options": {
@@ -3035,7 +3425,7 @@
         "h": 8,
         "w": 6,
         "x": 18,
-        "y": 114
+        "y": 59
       },
       "id": 29,
       "options": {
@@ -3170,7 +3560,7 @@
         "h": 8,
         "w": 6,
         "x": 0,
-        "y": 122
+        "y": 67
       },
       "id": 30,
       "options": {
@@ -3305,7 +3695,7 @@
         "h": 8,
         "w": 6,
         "x": 6,
-        "y": 122
+        "y": 67
       },
       "id": 31,
       "options": {
@@ -3440,7 +3830,7 @@
         "h": 8,
         "w": 6,
         "x": 12,
-        "y": 122
+        "y": 67
       },
       "id": 32,
       "options": {
@@ -3575,7 +3965,7 @@
         "h": 8,
         "w": 6,
         "x": 18,
-        "y": 122
+        "y": 67
       },
       "id": 33,
       "options": {
@@ -3712,7 +4102,7 @@
         "h": 8,
         "w": 6,
         "x": 0,
-        "y": 130
+        "y": 75
       },
       "id": 35,
       "options": {
@@ -3815,7 +4205,7 @@
         "h": 8,
         "w": 6,
         "x": 6,
-        "y": 130
+        "y": 75
       },
       "id": 36,
       "options": {
@@ -3918,7 +4308,7 @@
         "h": 8,
         "w": 6,
         "x": 12,
-        "y": 130
+        "y": 75
       },
       "id": 37,
       "options": {
@@ -4021,7 +4411,7 @@
         "h": 8,
         "w": 6,
         "x": 18,
-        "y": 130
+        "y": 75
       },
       "id": 38,
       "options": {
@@ -4122,7 +4512,7 @@
         "h": 8,
         "w": 6,
         "x": 0,
-        "y": 138
+        "y": 83
       },
       "id": 39,
       "options": {
@@ -4223,7 +4613,7 @@
         "h": 8,
         "w": 6,
         "x": 6,
-        "y": 138
+        "y": 83
       },
       "id": 40,
       "options": {
@@ -4324,7 +4714,7 @@
         "h": 8,
         "w": 6,
         "x": 12,
-        "y": 138
+        "y": 83
       },
       "id": 41,
       "options": {
@@ -4425,7 +4815,7 @@
         "h": 8,
         "w": 6,
         "x": 18,
-        "y": 138
+        "y": 83
       },
       "id": 42,
       "options": {
@@ -4528,7 +4918,7 @@
         "h": 8,
         "w": 6,
         "x": 0,
-        "y": 146
+        "y": 91
       },
       "id": 47,
       "options": {
@@ -4631,7 +5021,7 @@
         "h": 8,
         "w": 6,
         "x": 6,
-        "y": 146
+        "y": 91
       },
       "id": 46,
       "options": {
@@ -4734,7 +5124,7 @@
         "h": 8,
         "w": 6,
         "x": 12,
-        "y": 146
+        "y": 91
       },
       "id": 45,
       "options": {
@@ -4837,7 +5227,7 @@
         "h": 8,
         "w": 6,
         "x": 18,
-        "y": 146
+        "y": 91
       },
       "id": 43,
       "options": {
@@ -4887,13 +5277,30 @@
         "definition": "label_values(gpu_gfx_activity,hostname)",
         "description": "",
         "includeAll": true,
-        "label": "nodes",
+        "label": "amd_nodes",
         "multi": true,
-        "name": "nodes",
+        "name": "amd_nodes",
         "options": [],
         "query": {
           "qryType": 1,
           "query": "label_values(gpu_gfx_activity,hostname)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "type": "query"
+      },
+      {
+        "current": {},
+        "definition": "label_values(DCGM_FI_DEV_GPU_UTIL,Hostname)",
+        "includeAll": true,
+        "label": "nvidia_nodes",
+        "multi": true,
+        "name": "nvidia_nodes",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(DCGM_FI_DEV_GPU_UTIL,Hostname)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 2,
@@ -4967,5 +5374,5 @@
   "timezone": "browser",
   "title": "MIF",
   "uid": "mif",
-  "version": 1
+  "version": 10
 }
