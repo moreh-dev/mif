@@ -25,7 +25,6 @@ const (
 	envS3Bucket               = "S3_BUCKET"
 	envHFToken                = "HF_TOKEN"
 	envHFEndpoint             = "HF_ENDPOINT"
-	envGithubToken            = "GITHUB_TOKEN"
 	envInferenceImageRepo     = "INFERENCE_IMAGE_REPO"
 	envInferenceImageTag      = "INFERENCE_IMAGE_TAG"
 	envIstioRev               = "ISTIO_REV"
@@ -78,9 +77,6 @@ var envVars = []envVarInfo{
 	// HuggingFace
 	{envHFToken, "HuggingFace token", "", "HuggingFace", "string"},
 	{envHFEndpoint, "HuggingFace endpoint URL", "", "HuggingFace", "string"},
-
-	// GitHub
-	{envGithubToken, "GitHub token for cloning private repositories", "", "GitHub", "string"},
 
 	// Inference Image
 	{envInferenceImageRepo, "Inference image repository", "(optional)", "Inference Image", "optional"},

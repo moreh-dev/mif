@@ -38,7 +38,6 @@ type testConfig struct {
 	s3Bucket           string
 	hfToken            string
 	hfEndpoint         string
-	githubToken        string
 
 	inferenceImageRepo string
 	inferenceImageTag  string
@@ -89,7 +88,6 @@ func init() {
 		s3Bucket:           getEnv(envS3Bucket, "moreh-benchmark"),
 		hfToken:            getEnv(envHFToken, ""),
 		hfEndpoint:         getEnv(envHFEndpoint, ""),
-		githubToken:        getEnv(envGithubToken, ""),
 
 		inferenceImageRepo: getEnv(envInferenceImageRepo, ""),
 		inferenceImageTag:  getEnv(envInferenceImageTag, ""),
