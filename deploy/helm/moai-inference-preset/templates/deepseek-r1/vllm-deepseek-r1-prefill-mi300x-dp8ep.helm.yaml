@@ -6,6 +6,9 @@ metadata:
   labels:
     {{- include "common.labels.standard" . | nindent 4 }}
 spec:
+  parallelism:
+    data: 8
+    expert: true
   workerTemplate:
     spec:
       containers:
