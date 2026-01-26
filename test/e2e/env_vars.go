@@ -93,11 +93,11 @@ var envVars = []envVarInfo{
 	{envPrometheusStackEnabled, "Enable/disable Prometheus Stack", "false", "Component Enable/Disable", "bool"},
 
 	// Benchmark
-	{envInferencePerfEnabled, "Enable inference-perf performance benchmark execution", "false", "Quality Benchmark", "bool"},
-	{envQualityBenchmarkEnabled, "Enable quality benchmark execution", "false", "Quality Benchmark", "bool"},
-	{envQualityBenchmarks, "Name of a single quality benchmark to run (for example: sample, mmlu, gsm8k_cot, hellaswag, aime, gpqa; this list is not exhaustive)", "mmlu", "Quality Benchmark", "string"},
-	{envQualityBenchmarkLimit, "Optional limit hint for benchmark dataset; actual usage is defined by the benchmark implementation", "", "Quality Benchmark", "string"},
-	{envQualityBenchmarkImage, "Container image for quality benchmark job", "255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/moreh-llm-eval:v0.0.1", "Quality Benchmark", "string"},
+	{envInferencePerfEnabled, "Enable inference-perf performance benchmark execution", "false", "Benchmark", "bool"},
+	{envQualityBenchmarkEnabled, "Enable quality benchmark execution", "false", "Benchmark", "bool"},
+	{envQualityBenchmarks, "Name of a single quality benchmark to run (for example: sample, mmlu, gsm8k_cot, hellaswag, aime, gpqa; this list is not exhaustive)", "mmlu", "Benchmark", "string"},
+	{envQualityBenchmarkLimit, "Optional limit hint for benchmark dataset; actual usage is defined by the benchmark implementation", "", "Benchmark", "string"},
+	{envQualityBenchmarkImage, "Container image for quality benchmark job", "255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/moreh-llm-eval:v0.0.1", "Benchmark", "string"},
 }
 
 // getUsedEnvVars returns environment variable names used in config.go init().
