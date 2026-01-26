@@ -48,9 +48,9 @@ const (
 
 	// Benchmark
 	envInferencePerfEnabled    = "INFERENCE_PERF_ENABLED"
+	envQualityBenchmarkEnabled = "QUALITY_BENCHMARK_ENABLED"
 	envQualityBenchmarks       = "QUALITY_BENCHMARKS"
 	envQualityBenchmarkLimit   = "QUALITY_BENCHMARK_LIMIT"
-	envQualityBenchmarkEnabled = "QUALITY_BENCHMARK_ENABLED"
 	envQualityBenchmarkImage   = "QUALITY_BENCHMARK_IMAGE"
 )
 

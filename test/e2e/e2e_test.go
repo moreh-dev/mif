@@ -58,24 +58,27 @@ var _ = Describe("Prefill-Decode Disaggregation", Ordered, func() {
 				return
 			}
 			By("cleaning up test workload namespace")
-			utils.CleanupWorkloadNamespace()
+			err := utils.CleanupWorkloadNamespace()
+			Expect(err).NotTo(HaveOccurred(), "failed to clean up test workload namespace")
 		})
 
 		It("should have inference-service decode pods reachable behind Gateway", func() {
 			utils.VerifyInferenceEndpoint()
 		})
 
-		if utils.Cfg.InferencePerfEnabled {
-			It("should run inference-perf performance benchmark", func() {
-				utils.RunInferencePerfBenchmark()
-			})
-		}
+		It("should run inference-perf performance benchmark", func() {
+			if !utils.Cfg.InferencePerfEnabled {
+				Skip("Inference performance benchmark is disabled (INFERENCE_PERF_ENABLED=false)")
+			}
+			utils.RunInferencePerfBenchmark()
+		})
 
-		if utils.Cfg.QualityBenchmarkEnabled {
-			It("should run quality benchmarks", func() {
-				utils.RunQualityBenchmark()
-			})
-		}
+		It("should run quality benchmarks", func() {
+			if !utils.Cfg.QualityBenchmarkEnabled {
+				Skip("Quality benchmark is disabled (QUALITY_BENCHMARK_ENABLED=false)")
+			}
+			utils.RunQualityBenchmark()
+		})
 	})
 
 })
