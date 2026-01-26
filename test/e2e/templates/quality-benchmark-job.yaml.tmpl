@@ -18,24 +18,15 @@ spec:
       containers:
       - name: quality-benchmark
         image: {{ .QualityBenchmarkImage }}
-        command:
-        - /bin/bash
-        - -c
         args:
-        - |
-          set -e
-          # Install curl if not present
-          if ! command -v curl &> /dev/null; then
-            echo "Installing curl..."
-            apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
-          fi
-          # Execute the original entrypoint with arguments
-          # Pass arguments as separate strings to avoid shell quoting issues
-          exec /usr/local/share/moreh-llm-eval/run.sh \
-            --eval "{{.Benchmarks}}" \
-            --model "{{.ModelName}}" \
-            --host "{{.GatewayHost}}" \
-            --port "{{.GatewayPort}}"
+        - --eval
+        - "{{.Benchmarks}}"
+        - --model
+        - "{{.ModelName}}"
+        - --host
+        - "{{.GatewayHost}}"
+        - --port
+        - "{{.GatewayPort}}"
         {{- if or .HFToken .HFEndpoint .Limit }}
         env:
           {{- if .HFToken }}
