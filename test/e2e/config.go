@@ -52,6 +52,7 @@ type testConfig struct {
 	qualityBenchmarkEnabled bool
 	qualityBenchmarks       string
 	qualityBenchmarkLimit   string
+	qualityBenchmarkImage   string
 }
 
 var cfg testConfig
@@ -102,6 +103,7 @@ func init() {
 		qualityBenchmarkEnabled: getEnvBool(envQualityBenchmarkEnabled, false),
 		qualityBenchmarks:       getEnv(envQualityBenchmarks, "mmlu"),
 		qualityBenchmarkLimit:   getEnv(envQualityBenchmarkLimit, ""),
+		qualityBenchmarkImage:   getEnv(envQualityBenchmarkImage, "255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/moreh-llm-eval:v0.0.1"),
 	}
 }
 

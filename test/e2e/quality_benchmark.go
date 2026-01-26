@@ -37,27 +37,29 @@ func runQualityBenchmark() {
 
 func createQualityBenchmarkJob(serviceName string, modelName string, benchmarks string, limit string) (string, error) {
 	type jobTemplateData struct {
-		Namespace       string
-		ModelName       string
-		GatewayHost     string
-		GatewayPort     string
-		HFToken         string
-		HFEndpoint      string
-		Benchmarks      string
-		Limit           string
-		ImagePullSecret string
+		Namespace             string
+		ModelName             string
+		GatewayHost           string
+		GatewayPort           string
+		HFToken               string
+		HFEndpoint            string
+		Benchmarks            string
+		Limit                 string
+		ImagePullSecret       string
+		QualityBenchmarkImage string
 	}
 
 	data := jobTemplateData{
-		Namespace:       cfg.workloadNamespace,
-		ModelName:       modelName,
-		GatewayHost:     serviceName,
-		GatewayPort:     "80",
-		HFToken:         cfg.hfToken,
-		HFEndpoint:      cfg.hfEndpoint,
-		Benchmarks:      benchmarks,
-		Limit:           limit,
-		ImagePullSecret: secretNameMorehRegistry,
+		Namespace:             cfg.workloadNamespace,
+		ModelName:             modelName,
+		GatewayHost:           serviceName,
+		GatewayPort:           "80",
+		HFToken:               cfg.hfToken,
+		HFEndpoint:            cfg.hfEndpoint,
+		Benchmarks:            benchmarks,
+		Limit:                 limit,
+		ImagePullSecret:       secretNameMorehRegistry,
+		QualityBenchmarkImage: cfg.qualityBenchmarkImage,
 	}
 
 	jobYAML, err := renderTemplateFile("quality-benchmark-job.yaml.tmpl", data)
