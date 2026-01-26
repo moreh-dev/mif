@@ -5,8 +5,6 @@ package e2e
 
 import (
 	"fmt"
-	"net"
-	"net/url"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -33,12 +31,11 @@ func runQualityBenchmark() {
 	serviceName := getGatewayServiceName(timeoutMedium, intervalMedium)
 
 	By("running quality benchmarks as Kubernetes Job")
-	gatewayServiceURL := fmt.Sprintf("http://%s:80", serviceName)
-	err := runQualityBenchmarkJob(gatewayServiceURL, cfg.testModel, cfg.qualityBenchmarks, cfg.qualityBenchmarkLimit)
+	err := runQualityBenchmarkJob(serviceName, cfg.testModel, cfg.qualityBenchmarks, cfg.qualityBenchmarkLimit)
 	Expect(err).NotTo(HaveOccurred(), "quality benchmark job should complete successfully")
 }
 
-func createQualityBenchmarkJob(baseURL string, modelName string, benchmarks string, limit string) (string, error) {
+func createQualityBenchmarkJob(serviceName string, modelName string, benchmarks string, limit string) (string, error) {
 	type jobTemplateData struct {
 		Namespace       string
 		ModelName       string
@@ -52,27 +49,11 @@ func createQualityBenchmarkJob(baseURL string, modelName string, benchmarks stri
 		IsKind          bool
 	}
 
-	gatewayHost := baseURL
-	gatewayPort := "80"
-
-	parsedURL, err := url.Parse(baseURL)
-	if err == nil && parsedURL.Host != "" {
-		host := parsedURL.Host
-		// Try to split host and port safely (supports IPv4, IPv6, hostnames)
-		if h, p, splitErr := net.SplitHostPort(host); splitErr == nil {
-			gatewayHost = h
-			gatewayPort = p
-		} else {
-			// No explicit port in host, keep default port and use host as-is
-			gatewayHost = host
-		}
-	}
-
 	data := jobTemplateData{
 		Namespace:       cfg.workloadNamespace,
 		ModelName:       modelName,
-		GatewayHost:     gatewayHost,
-		GatewayPort:     gatewayPort,
+		GatewayHost:     serviceName,
+		GatewayPort:     "80",
 		HFToken:         cfg.hfToken,
 		HFEndpoint:      cfg.hfEndpoint,
 		Benchmarks:      benchmarks,
@@ -97,9 +78,9 @@ func createQualityBenchmarkJob(baseURL string, modelName string, benchmarks stri
 	return jobName, nil
 }
 
-func runQualityBenchmarkJob(baseURL string, modelName string, benchmarks string, limit string) error {
+func runQualityBenchmarkJob(serviceName string, modelName string, benchmarks string, limit string) error {
 	By("creating quality benchmark Job")
-	jobName, err := createQualityBenchmarkJob(baseURL, modelName, benchmarks, limit)
+	jobName, err := createQualityBenchmarkJob(serviceName, modelName, benchmarks, limit)
 	if err != nil {
 		return fmt.Errorf("failed to create Job: %w", err)
 	}
