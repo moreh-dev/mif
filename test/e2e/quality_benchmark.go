@@ -46,7 +46,6 @@ func createQualityBenchmarkJob(serviceName string, modelName string, benchmarks 
 		Benchmarks      string
 		Limit           string
 		ImagePullSecret string
-		IsKind          bool
 	}
 
 	data := jobTemplateData{
@@ -59,7 +58,6 @@ func createQualityBenchmarkJob(serviceName string, modelName string, benchmarks 
 		Benchmarks:      benchmarks,
 		Limit:           limit,
 		ImagePullSecret: secretNameMorehRegistry,
-		IsKind:          cfg.isUsingKindCluster,
 	}
 
 	jobYAML, err := renderTemplateFile("quality-benchmark-job.yaml.tmpl", data)
