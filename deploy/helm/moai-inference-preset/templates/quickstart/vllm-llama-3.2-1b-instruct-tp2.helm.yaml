@@ -6,6 +6,8 @@ metadata:
   labels:
     {{- include "common.labels.standard" . | nindent 4 }}
 spec:
+  parallelism:
+    tensor: 2
   template:
     spec:
       containers:
