@@ -1,7 +1,7 @@
-//go:build e2e && !printenv
-// +build e2e,!printenv
+//go:build e2e
+// +build e2e
 
-package e2e
+package utils
 
 import (
 	"fmt"
@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -37,8 +38,37 @@ func getInferenceServiceData() InferenceServiceData {
 		Model:           cfg.testModel,
 		HFToken:         cfg.hfToken,
 		HFEndpoint:      cfg.hfEndpoint,
-		IsKind:          cfg.isUsingKindCluster,
+		IsKind:          cfg.IsUsingKindCluster,
 	}
+}
+
+// CreateInferenceService creates an InferenceService CR in the given namespace.
+func CreateInferenceService(namespace, valuesPath string) error {
+	if valuesPath == "" {
+		return fmt.Errorf("inference service manifest path is required (e.g., path/to/manifest.yaml)")
+	}
+
+	kubectlArgs := []string{
+		"apply",
+		"-f", valuesPath,
+	}
+
+	if namespace != "" {
+		kubectlArgs = append(kubectlArgs, "-n", namespace)
+	}
+
+	cmd := exec.Command("kubectl", kubectlArgs...)
+	_, err := Run(cmd)
+	return err
+}
+
+// DeleteInferenceService deletes an InferenceService from the given namespace.
+func DeleteInferenceService(namespace, inferenceServiceName string) error {
+	By("deleting InferenceService")
+	cmd := exec.Command("kubectl", "delete", "inferenceservice", inferenceServiceName,
+		"-n", namespace, "--ignore-not-found=true")
+	_, err := Run(cmd)
+	return err
 }
 
 func createPrefillInferenceServiceManifest() (string, error) {
@@ -53,6 +83,9 @@ func createPrefillInferenceServiceManifest() (string, error) {
 	}
 
 	manifestPath := filepath.Join(projectDir, tempFileInferenceServicePrefill)
+	if err := ensureParentDir(manifestPath); err != nil {
+		return "", err
+	}
 	if err := os.WriteFile(manifestPath, []byte(rendered), 0600); err != nil {
 		return "", fmt.Errorf("failed to write prefill InferenceService manifest file: %w", err)
 	}
@@ -72,6 +105,9 @@ func createDecodeInferenceServiceManifest() (string, error) {
 	}
 
 	manifestPath := filepath.Join(projectDir, tempFileInferenceServiceDecode)
+	if err := ensureParentDir(manifestPath); err != nil {
+		return "", err
+	}
 	if err := os.WriteFile(manifestPath, []byte(rendered), 0600); err != nil {
 		return "", fmt.Errorf("failed to write decode InferenceService manifest file: %w", err)
 	}
@@ -79,7 +115,8 @@ func createDecodeInferenceServiceManifest() (string, error) {
 	return manifestPath, nil
 }
 
-func installPrefillDecodeInferenceServicesForTest() {
+// InstallPrefillDecodeInferenceServicesForTest installs test InferenceServices.
+func InstallPrefillDecodeInferenceServicesForTest() {
 	By("creating common InferenceServiceTemplate")
 	commonTemplatePath, err := createCommonTemplate()
 	Expect(err).NotTo(HaveOccurred(), "Failed to create common template")
@@ -123,14 +160,14 @@ func installPrefillDecodeInferenceServicesForTest() {
 			"-n", cfg.workloadNamespace,
 			"-o", "name")
 		return Run(checkCmd)
-	}, timeoutLong, intervalShort).ShouldNot(BeEmpty())
+	}, TimeoutLong, IntervalShort).ShouldNot(BeEmpty())
 
 	By("waiting for prefill InferenceService pods to be ready")
 	cmd := exec.Command("kubectl", "wait", "pod",
 		"-l", fmt.Sprintf("app.kubernetes.io/name=%s-prefill", inferenceServiceName),
 		"--for=condition=Ready",
 		"-n", cfg.workloadNamespace,
-		fmt.Sprintf("--timeout=%v", timeoutVeryLong))
+		fmt.Sprintf("--timeout=%v", TimeoutVeryLong))
 	_, err = Run(cmd)
 	Expect(err).NotTo(HaveOccurred(), "Prefill InferenceService pods not ready")
 
@@ -141,19 +178,20 @@ func installPrefillDecodeInferenceServicesForTest() {
 			"-n", cfg.workloadNamespace,
 			"-o", "name")
 		return Run(checkCmd)
-	}, timeoutLong, intervalShort).ShouldNot(BeEmpty())
+	}, TimeoutLong, IntervalShort).ShouldNot(BeEmpty())
 
 	By("waiting for decode InferenceService pods to be ready")
 	cmd = exec.Command("kubectl", "wait", "pod",
 		"-l", fmt.Sprintf("app.kubernetes.io/name=%s-decode", inferenceServiceName),
 		"--for=condition=Ready",
 		"-n", cfg.workloadNamespace,
-		fmt.Sprintf("--timeout=%v", timeoutVeryLong))
+		fmt.Sprintf("--timeout=%v", TimeoutVeryLong))
 	_, err = Run(cmd)
 	Expect(err).NotTo(HaveOccurred(), "Decode InferenceService pods not ready")
 }
 
-func getGatewayServiceName(timeout, interval interface{}) string {
+// getGatewayServiceName gets the name of the Gateway service in the workload namespace.
+func getGatewayServiceName(timeout time.Duration, interval time.Duration) string {
 	var serviceName string
 	Eventually(func(g Gomega) {
 		cmd := exec.Command("kubectl", "get", "service",
@@ -168,16 +206,17 @@ func getGatewayServiceName(timeout, interval interface{}) string {
 	return serviceName
 }
 
-func verifyInferenceEndpoint() {
+// VerifyInferenceEndpoint verifies inference endpoint reachability.
+func VerifyInferenceEndpoint() {
 	By("verifying Gateway service exists")
-	getGatewayServiceName(timeoutLong, intervalLong)
+	getGatewayServiceName(TimeoutLong, IntervalLong)
 
 	By("waiting for inference-service decode pods to be ready")
 	cmd := exec.Command("kubectl", "wait", "pod",
 		"-l", fmt.Sprintf("app.kubernetes.io/name=%s-decode", inferenceServiceName),
 		"--for=condition=Ready",
 		"-n", cfg.workloadNamespace,
-		fmt.Sprintf("--timeout=%v", timeoutVeryLong))
+		fmt.Sprintf("--timeout=%v", TimeoutVeryLong))
 	_, err := Run(cmd)
 	Expect(err).NotTo(HaveOccurred(), "InferenceService decode pods not ready")
 }

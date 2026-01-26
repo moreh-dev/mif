@@ -56,4 +56,4 @@ test-e2e-clean: ## Manually clean up E2E test resources.
 
 .PHONY: test-e2e-env
 test-e2e-env: ## Display E2E test environment variables (auto-generated from code).
-	@go run -tags=printenv,e2e ./test/e2e/cmd/printenv env
+	@go run -tags=e2e ./test/cmd/printenv env

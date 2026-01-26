@@ -1,20 +1,20 @@
-//go:build e2e && !printenv
-// +build e2e,!printenv
+//go:build e2e
+// +build e2e
 
-package e2e
+package utils
 
 import (
 	"os"
 )
 
-type testConfig struct {
-	skipPrerequisite                     bool
+type Config struct {
+	SkipPrerequisite                     bool
 	isCertManagerAlreadyInstalled        bool
 	isGatewayAPIAlreadyInstalled         bool
 	isGatewayInferenceExtensionInstalled bool
 	isIstioAlreadyInstalled              bool
 	isKgatewayAlreadyInstalled           bool
-	skipCleanup                          bool
+	SkipCleanup                          bool
 
 	mifNamespace      string
 	workloadNamespace string
@@ -24,8 +24,8 @@ type testConfig struct {
 	gatewayClass      string
 
 	kindClusterName    string
-	skipKind           bool
-	isUsingKindCluster bool
+	SkipKind           bool
+	IsUsingKindCluster bool
 
 	isMIFAlreadyInstalled    bool
 	isPresetAlreadyInstalled bool
@@ -48,24 +48,25 @@ type testConfig struct {
 	odinCRDEnabled         bool
 	prometheusStackEnabled bool
 
-	inferencePerfEnabled    bool
-	qualityBenchmarkEnabled bool
+	InferencePerfEnabled    bool
+	QualityBenchmarkEnabled bool
 	qualityBenchmarks       string
 	qualityBenchmarkLimit   string
 	qualityBenchmarkImage   string
 }
 
-var cfg testConfig
+var cfg Config
+var Cfg = &cfg
 
 func init() {
-	cfg = testConfig{
-		skipPrerequisite:                     getEnvBool(envSkipPrerequisite, false),
+	cfg = Config{
+		SkipPrerequisite:                     getEnvBool(envSkipPrerequisite, false),
 		isCertManagerAlreadyInstalled:        false,
 		isGatewayAPIAlreadyInstalled:         false,
 		isGatewayInferenceExtensionInstalled: false,
 		isIstioAlreadyInstalled:              false,
 		isKgatewayAlreadyInstalled:           false,
-		skipCleanup:                          getEnvBool(envSkipCleanup, false),
+		SkipCleanup:                          getEnvBool(envSkipCleanup, false),
 
 		mifNamespace:      getEnv(envMIFNamespace, "mif"),
 		workloadNamespace: getEnv(envWorkloadNamespace, "quickstart"),
@@ -75,8 +76,8 @@ func init() {
 		gatewayClass:      getEnv(envGatewayClassName, "istio"),
 
 		kindClusterName:    getEnv(envKindClusterName, "mif-e2e"),
-		skipKind:           getEnvBool(envSkipKind, false),
-		isUsingKindCluster: false,
+		SkipKind:           getEnvBool(envSkipKind, false),
+		IsUsingKindCluster: false,
 
 		isMIFAlreadyInstalled:    false,
 		isPresetAlreadyInstalled: false,
@@ -99,8 +100,8 @@ func init() {
 		odinCRDEnabled:         getEnvBool(envOdinCRDEnabled, true),
 		prometheusStackEnabled: getEnvBool(envPrometheusStackEnabled, false),
 
-		inferencePerfEnabled:    getEnvBool(envInferencePerfEnabled, false),
-		qualityBenchmarkEnabled: getEnvBool(envQualityBenchmarkEnabled, false),
+		InferencePerfEnabled:    getEnvBool(envInferencePerfEnabled, false),
+		QualityBenchmarkEnabled: getEnvBool(envQualityBenchmarkEnabled, false),
 		qualityBenchmarks:       getEnv(envQualityBenchmarks, "mmlu"),
 		qualityBenchmarkLimit:   getEnv(envQualityBenchmarkLimit, ""),
 		qualityBenchmarkImage:   getEnv(envQualityBenchmarkImage, "255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/moreh-llm-eval:v0.0.1"),

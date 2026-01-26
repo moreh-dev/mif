@@ -1,4 +1,7 @@
-package e2e
+//go:build e2e
+// +build e2e
+
+package utils
 
 import (
 	"os/exec"

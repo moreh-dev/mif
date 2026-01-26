@@ -1,5 +1,5 @@
-//go:build e2e && !printenv
-// +build e2e,!printenv
+//go:build e2e
+// +build e2e
 
 package e2e
 
@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"testing"
 
+	utils "github.com/moreh-dev/mif/test/utils"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -14,37 +15,37 @@ import (
 func TestE2E(t *testing.T) {
 	RegisterFailHandler(Fail)
 	_, _ = fmt.Fprintf(GinkgoWriter, "Starting MIF E2E test suite\n")
-	stopInterruptHandler := setupInterruptHandler()
+	stopInterruptHandler := utils.SetupInterruptHandler()
 	defer stopInterruptHandler()
 	RunSpecs(t, "MIF E2E Suite")
 }
 
 var _ = BeforeSuite(func() {
 	By("checking prerequisites")
-	checkPrerequisites()
+	utils.CheckPrerequisites()
 
-	if !cfg.skipKind {
-		setupKindCluster()
+	if !utils.Cfg.SkipKind {
+		utils.SetupKindCluster()
 	} else {
-		cfg.isUsingKindCluster = false
+		utils.Cfg.IsUsingKindCluster = false
 		_, _ = fmt.Fprintf(GinkgoWriter, "Using existing cluster (kubeconfig). Resource cleanup will be skipped for safety.\n")
 	}
 
-	setupPrerequisites()
+	utils.SetupPrerequisites()
 })
 
 var _ = AfterSuite(func() {
-	cleanupE2ETempFiles()
+	utils.CleanupE2ETempFiles()
 
-	if cfg.skipCleanup {
-		_, _ = fmt.Fprintf(GinkgoWriter, "%s=true: skipping test namespace, resources, and kind cluster deletion.\n", envSkipCleanup)
+	if utils.Cfg.SkipCleanup {
+		_, _ = fmt.Fprintf(GinkgoWriter, "%s=true: skipping test namespace, resources, and kind cluster deletion.\n", utils.EnvSkipCleanup)
 		return
 	}
 
-	if !cfg.isUsingKindCluster {
+	if !utils.Cfg.IsUsingKindCluster {
 		_, _ = fmt.Fprintf(GinkgoWriter, "Using existing cluster (kubeconfig). Skipping resource cleanup for safety.\n")
 		return
 	}
 
-	cleanupKindResources()
+	utils.CleanupKindResources()
 })

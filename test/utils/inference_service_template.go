@@ -1,13 +1,45 @@
-//go:build e2e && !printenv
-// +build e2e,!printenv
+//go:build e2e
+// +build e2e
 
-package e2e
+package utils
 
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+
+	. "github.com/onsi/ginkgo/v2"
 )
+
+// CreateInferenceServiceTemplate creates an InferenceServiceTemplate CR in the given namespace.
+func CreateInferenceServiceTemplate(namespace, manifestPath string) error {
+	if manifestPath == "" {
+		return fmt.Errorf("inference service template manifest path is required (e.g., path/to/template.yaml)")
+	}
+
+	kubectlArgs := []string{
+		"apply",
+		"-f", manifestPath,
+	}
+
+	if namespace != "" {
+		kubectlArgs = append(kubectlArgs, "-n", namespace)
+	}
+
+	cmd := exec.Command("kubectl", kubectlArgs...)
+	_, err := Run(cmd)
+	return err
+}
+
+// DeleteInferenceServiceTemplate deletes an InferenceServiceTemplate from the given namespace.
+func DeleteInferenceServiceTemplate(namespace, templateName string) error {
+	By(fmt.Sprintf("deleting InferenceServiceTemplate %s", templateName))
+	cmd := exec.Command("kubectl", "delete", "inferenceservicetemplate", templateName,
+		"-n", namespace, "--ignore-not-found=true")
+	_, err := Run(cmd)
+	return err
+}
 
 func createCommonTemplate() (string, error) {
 	projectDir, err := GetProjectDir()
@@ -21,6 +53,9 @@ func createCommonTemplate() (string, error) {
 	}
 
 	manifestPath := filepath.Join(projectDir, tempFileInferenceServiceTemplateCommon)
+	if err := ensureParentDir(manifestPath); err != nil {
+		return "", err
+	}
 	if err := os.WriteFile(manifestPath, []byte(rendered), 0600); err != nil {
 		return "", fmt.Errorf("failed to write common template file: %w", err)
 	}
@@ -40,6 +75,9 @@ func createPrefillMetaTemplate() (string, error) {
 	}
 
 	manifestPath := filepath.Join(projectDir, tempFileInferenceServiceTemplatePrefillMeta)
+	if err := ensureParentDir(manifestPath); err != nil {
+		return "", err
+	}
 	if err := os.WriteFile(manifestPath, []byte(rendered), 0600); err != nil {
 		return "", fmt.Errorf("failed to write prefill meta template file: %w", err)
 	}
@@ -59,6 +97,9 @@ func createDecodeMetaTemplate() (string, error) {
 	}
 
 	manifestPath := filepath.Join(projectDir, tempFileInferenceServiceTemplateDecodeMeta)
+	if err := ensureParentDir(manifestPath); err != nil {
+		return "", err
+	}
 	if err := os.WriteFile(manifestPath, []byte(rendered), 0600); err != nil {
 		return "", fmt.Errorf("failed to write decode meta template file: %w", err)
 	}
@@ -78,6 +119,9 @@ func createDecodeProxyTemplate() (string, error) {
 	}
 
 	manifestPath := filepath.Join(projectDir, tempFileInferenceServiceTemplateDecodeProxy)
+	if err := ensureParentDir(manifestPath); err != nil {
+		return "", err
+	}
 	if err := os.WriteFile(manifestPath, []byte(rendered), 0600); err != nil {
 		return "", fmt.Errorf("failed to write decode proxy template file: %w", err)
 	}

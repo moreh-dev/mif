@@ -1,7 +1,7 @@
-//go:build e2e && !printenv
-// +build e2e,!printenv
+//go:build e2e
+// +build e2e
 
-package e2e
+package utils
 
 import (
 	"fmt"
@@ -18,8 +18,9 @@ const (
 	minMMLUScore = 0.37
 )
 
-func runQualityBenchmark() {
-	if !cfg.qualityBenchmarkEnabled {
+// RunQualityBenchmark runs quality benchmarks.
+func RunQualityBenchmark() {
+	if !cfg.QualityBenchmarkEnabled {
 		Skip("Quality benchmark is disabled (QUALITY_BENCHMARK_ENABLED=false)")
 	}
 
@@ -28,7 +29,7 @@ func runQualityBenchmark() {
 	}
 
 	By("getting Gateway service name")
-	serviceName := getGatewayServiceName(timeoutMedium, intervalMedium)
+	serviceName := getGatewayServiceName(TimeoutMedium, IntervalMedium)
 
 	By("running quality benchmarks as Kubernetes Job")
 	err := runQualityBenchmarkJob(serviceName, cfg.testModel, cfg.qualityBenchmarks, cfg.qualityBenchmarkLimit)
@@ -85,7 +86,7 @@ func runQualityBenchmarkJob(serviceName string, modelName string, benchmarks str
 		return fmt.Errorf("failed to create Job: %w", err)
 	}
 
-	if !cfg.skipCleanup {
+	if !cfg.SkipCleanup {
 		defer func() {
 			cmd := exec.Command("kubectl", "delete", "job", jobName,
 				"-n", cfg.workloadNamespace, "--ignore-not-found=true")
@@ -119,7 +120,7 @@ func waitForQualityBenchmarkJob(jobName string) error {
 	cmd := exec.Command("kubectl", "wait", "job", jobName,
 		"--for=condition=complete",
 		"-n", cfg.workloadNamespace,
-		fmt.Sprintf("--timeout=%v", timeoutVeryLong))
+		fmt.Sprintf("--timeout=%v", TimeoutVeryLong))
 	_, err := Run(cmd)
 	if err != nil {
 		By("collecting logs from failed quality benchmark job")
@@ -226,7 +227,7 @@ func validateMMLUResults(logs string) error {
 	}
 
 	// Skip threshold validation for kind clusters (no GPU support)
-	if cfg.isUsingKindCluster {
+	if cfg.IsUsingKindCluster {
 		By(fmt.Sprintf("MMLU score %.4f extracted (threshold validation skipped for kind cluster)", score))
 		return nil
 	}

@@ -1,4 +1,7 @@
-package e2e
+//go:build e2e
+// +build e2e
+
+package utils
 
 import (
 	"fmt"
@@ -69,4 +72,12 @@ func GetProjectDir() (string, error) {
 		}
 		dir = parentAbs
 	}
+}
+
+func ensureParentDir(path string) error {
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("failed to create directory %s: %w", dir, err)
+	}
+	return nil
 }

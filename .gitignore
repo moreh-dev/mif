@@ -117,17 +117,7 @@ $RECYCLE.BIN/
 # End of https://www.toptal.com/developers/gitignore/api/vim,linux,macos,windows,visualstudiocode
 
 # E2E test temporary files (may contain sensitive credentials)
-test/e2e/moai-inference-framework-values.yaml
-test/e2e/heimdall-values.yaml
-test/e2e/inference-service-values.yaml
-test/e2e/istiod-values.yaml
-test/e2e/kgateway-values.yaml
-test/e2e/inference-service-prefill.yaml
-test/e2e/inference-service-decode.yaml
-test/e2e/inference-service-template-common.yaml
-test/e2e/inference-service-template-prefill-meta.yaml
-test/e2e/inference-service-template-decode-meta.yaml
-test/e2e/inference-service-template-decode-proxy.yaml
+test/tmp/
 
 # E2E test reports
 test-reports/

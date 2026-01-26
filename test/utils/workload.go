@@ -1,62 +1,45 @@
-package e2e
+//go:build e2e
+// +build e2e
+
+package utils
 
 import (
 	"fmt"
 	"os/exec"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
-// DeleteNamespace deletes a namespace, with fallback to force delete by removing finalizers if needed.
-func DeleteNamespace(namespace string) error {
-	By(fmt.Sprintf("deleting namespace %s", namespace))
-	cmd := exec.Command("kubectl", "delete", "ns", namespace, "--timeout=60s", "--ignore-not-found=true")
-	output, err := Run(cmd)
-	if err != nil {
-		By("attempting to force delete namespace by removing finalizers")
-		cmd = exec.Command("kubectl", "patch", "namespace", namespace,
-			"--type=json", "-p", `[{"op": "replace", "path": "/spec/finalizers", "value": []}]`, "--ignore-not-found=true")
-		_, _ = Run(cmd)
+// CreateWorkloadNamespace creates the workload namespace and labels.
+func CreateWorkloadNamespace() {
+	By("creating workload namespace")
+	cmd := exec.Command("kubectl", "create", "ns", cfg.workloadNamespace, "--request-timeout=30s")
+	_, err := Run(cmd)
+	if err != nil && !strings.Contains(err.Error(), "AlreadyExists") {
+		Expect(err).NotTo(HaveOccurred(), "Failed to create workload namespace")
+	}
 
-		cmd = exec.Command("kubectl", "delete", "ns", namespace, "--timeout=30s", "--ignore-not-found=true")
+	if cfg.mifNamespace != cfg.workloadNamespace {
+		By("adding mif=enabled label to workload namespace for automatic secret copying")
+		cmd = exec.Command("kubectl", "label", "namespace", cfg.workloadNamespace,
+			"mif=enabled", "--overwrite", "--request-timeout=30s")
 		_, err = Run(cmd)
 		if err != nil {
-			return fmt.Errorf("failed to delete namespace: %w", err)
-		}
-	} else if output != "" {
-		_, _ = fmt.Fprintf(GinkgoWriter, "Namespace deletion output: %s\n", output)
-	}
-
-	return nil
-}
-
-// DeleteGatewayResources deletes Gateway resources (Gateway, ConfigMap, or GatewayParameters) from the given namespace.
-func DeleteGatewayResources(workloadNamespace, gatewayClass string) error {
-	By("deleting Gateway resource")
-	cmd := exec.Command("kubectl", "delete", "gateway", "mif",
-		"-n", workloadNamespace, "--ignore-not-found=true")
-	if _, err := Run(cmd); err != nil {
-		warnError(fmt.Errorf("failed to delete Gateway: %w", err))
-	}
-
-	switch gatewayClass {
-	case "istio":
-		By("deleting Gateway infrastructure ConfigMap")
-		cmd := exec.Command("kubectl", "delete", "configmap", "mif-gateway-infrastructure",
-			"-n", workloadNamespace, "--ignore-not-found=true")
-		if _, err := Run(cmd); err != nil {
-			warnError(fmt.Errorf("failed to delete Gateway ConfigMap: %w", err))
-		}
-	case "kgateway":
-		By("deleting Gateway infrastructure GatewayParameters")
-		cmd := exec.Command("kubectl", "delete", "gatewayparameters", "mif-gateway-infrastructure",
-			"-n", workloadNamespace, "--ignore-not-found=true")
-		if _, err := Run(cmd); err != nil {
-			warnError(fmt.Errorf("failed to delete Gateway GatewayParameters: %w", err))
+			_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to add mif=enabled label to namespace: %v\n", err)
 		}
 	}
 
-	return nil
+	if cfg.istioRev != "" {
+		By(fmt.Sprintf("adding istio.io/rev=%s label to workload namespace", cfg.istioRev))
+		cmd = exec.Command("kubectl", "label", "namespace", cfg.workloadNamespace,
+			fmt.Sprintf("istio.io/rev=%s", cfg.istioRev), "--overwrite", "--request-timeout=30s")
+		_, err = Run(cmd)
+		if err != nil {
+			_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to add istio.io/rev label to namespace: %v\n", err)
+		}
+	}
 }
 
 // CleanupConfig holds configuration for cleaning up test resources in a workload namespace.
@@ -74,7 +57,21 @@ type CleanupConfig struct {
 // If MIFNamespace equals WorkloadNamespace, the namespace deletion is skipped to avoid deleting MIF infrastructure.
 // If PrefillName or DecodeName is empty, the corresponding InferenceService deletion is skipped.
 // If TemplateNames is empty, InferenceServiceTemplate deletion is skipped.
-func CleanupWorkloadNamespace(config CleanupConfig) error {
+func CleanupWorkloadNamespace() error {
+	config := CleanupConfig{
+		WorkloadNamespace: cfg.workloadNamespace,
+		GatewayClass:      cfg.gatewayClass,
+		MIFNamespace:      cfg.mifNamespace,
+		PrefillName:       fmt.Sprintf("%s-prefill", inferenceServiceName),
+		DecodeName:        fmt.Sprintf("%s-decode", inferenceServiceName),
+		TemplateNames: []string{
+			"workertemplate-vllm-common",
+			"workertemplate-pd-prefill-meta",
+			"workertemplate-pd-decode-meta",
+			"workertemplate-decode-proxy",
+		},
+	}
+
 	if config.PrefillName != "" {
 		if err := DeleteInferenceService(config.WorkloadNamespace, config.PrefillName); err != nil {
 			warnError(fmt.Errorf("failed to delete prefill InferenceService: %w", err))

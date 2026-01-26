@@ -1,7 +1,7 @@
 //go:build e2e && !printenv
 // +build e2e,!printenv
 
-package e2e
+package utils
 
 import (
 	"fmt"
@@ -12,9 +12,10 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func runInferencePerfBenchmark() {
+// RunInferencePerfBenchmark runs inference-perf benchmark.
+func RunInferencePerfBenchmark() {
 	By("getting Gateway service name")
-	serviceName := getGatewayServiceName(timeoutMedium, intervalMedium)
+	serviceName := getGatewayServiceName(TimeoutMedium, IntervalMedium)
 
 	By("running inference-perf performance benchmark as Kubernetes Job")
 	gatewayServiceURL := getGatewayServiceURL(serviceName)
@@ -28,21 +29,21 @@ func getGatewayServiceURL(serviceName string) string {
 
 func createInferencePerfJob(baseURL string, modelName string) (string, error) {
 	type jobTemplateData struct {
-		Namespace          string
-		ModelName          string
-		BaseURL            string
-		HFToken            string
-		HFEndpoint         string
-		IsKind             bool
-		S3AccessKeyID      string
-		S3SecretAccessKey  string
-		S3Region           string
-		S3Bucket           string
-		S3PrefixBase       string
-		VLLMTag            string
-		Preset             string
-		ExpType            string
-		ExpName            string
+		Namespace         string
+		ModelName         string
+		BaseURL           string
+		HFToken           string
+		HFEndpoint        string
+		IsKind            bool
+		S3AccessKeyID     string
+		S3SecretAccessKey string
+		S3Region          string
+		S3Bucket          string
+		S3PrefixBase      string
+		VLLMTag           string
+		Preset            string
+		ExpType           string
+		ExpName           string
 	}
 
 	_, imageTag := getInferenceImageInfo()
@@ -53,7 +54,7 @@ func createInferencePerfJob(baseURL string, modelName string) (string, error) {
 		BaseURL:           baseURL,
 		HFToken:           cfg.hfToken,
 		HFEndpoint:        cfg.hfEndpoint,
-		IsKind:            cfg.isUsingKindCluster,
+		IsKind:            cfg.IsUsingKindCluster,
 		S3AccessKeyID:     cfg.s3AccessKeyID,
 		S3SecretAccessKey: cfg.s3SecretAccessKey,
 		S3Region:          cfg.s3Region,
@@ -86,7 +87,7 @@ func waitForInferencePerfJob(jobName string) error {
 	cmd := exec.Command("kubectl", "wait", "job", jobName,
 		"--for=condition=complete",
 		"-n", cfg.workloadNamespace,
-		fmt.Sprintf("--timeout=%v", timeoutVeryLong))
+		fmt.Sprintf("--timeout=%v", TimeoutVeryLong))
 	_, err := Run(cmd)
 	if err != nil {
 		return fmt.Errorf("inference-perf job did not complete within timeout: %w", err)

@@ -1,33 +1,46 @@
 //go:build e2e
 // +build e2e
 
-package e2e
+package utils
 
 import "fmt"
 
 const (
-	envSkipKind               = "SKIP_KIND"
-	envSkipPrerequisite       = "SKIP_PREREQUISITE"
-	envSkipCleanup            = "SKIP_CLEANUP"
-	envMIFNamespace           = "MIF_NAMESPACE"
-	envWorkloadNamespace      = "WORKLOAD_NAMESPACE"
-	envMIFChartPath           = "MIF_CHART_PATH"
-	envPresetChartPath        = "PRESET_CHART_PATH"
-	envTestModel              = "TEST_MODEL"
-	envGatewayClassName       = "GATEWAY_CLASS_NAME"
-	envKindClusterName        = "KIND_CLUSTER_NAME"
-	envKindK8sVersion         = "KIND_K8S_VERSION"
-	envAWSAccessKeyID         = "AWS_ACCESS_KEY_ID"
-	envAWSSecretAccessKey     = "AWS_SECRET_ACCESS_KEY"
-	envS3AccessKeyID          = "S3_ACCESS_KEY_ID"
-	envS3SecretAccessKey      = "S3_SECRET_ACCESS_KEY"
-	envS3Region               = "S3_REGION"
-	envS3Bucket               = "S3_BUCKET"
-	envHFToken                = "HF_TOKEN"
-	envHFEndpoint             = "HF_ENDPOINT"
-	envInferenceImageRepo     = "INFERENCE_IMAGE_REPO"
-	envInferenceImageTag      = "INFERENCE_IMAGE_TAG"
-	envIstioRev               = "ISTIO_REV"
+	// Skip
+	envSkipKind         = "SKIP_KIND"
+	envSkipPrerequisite = "SKIP_PREREQUISITE"
+	envSkipCleanup      = "SKIP_CLEANUP"
+
+	// Configuration
+	envMIFNamespace      = "MIF_NAMESPACE"
+	envWorkloadNamespace = "WORKLOAD_NAMESPACE"
+	envMIFChartPath      = "MIF_CHART_PATH"
+	envPresetChartPath   = "PRESET_CHART_PATH"
+	envTestModel         = "TEST_MODEL"
+	envGatewayClassName  = "GATEWAY_CLASS_NAME"
+	envKindClusterName   = "KIND_CLUSTER_NAME"
+	envKindK8sVersion    = "KIND_K8S_VERSION"
+
+	// AWS Credentials
+	envAWSAccessKeyID     = "AWS_ACCESS_KEY_ID"
+	envAWSSecretAccessKey = "AWS_SECRET_ACCESS_KEY"
+	envS3AccessKeyID      = "S3_ACCESS_KEY_ID"
+	envS3SecretAccessKey  = "S3_SECRET_ACCESS_KEY"
+	envS3Region           = "S3_REGION"
+	envS3Bucket           = "S3_BUCKET"
+
+	// HuggingFace
+	envHFToken    = "HF_TOKEN"
+	envHFEndpoint = "HF_ENDPOINT"
+
+	// Inference Image
+	envInferenceImageRepo = "INFERENCE_IMAGE_REPO"
+	envInferenceImageTag  = "INFERENCE_IMAGE_TAG"
+
+	// Istio
+	envIstioRev = "ISTIO_REV"
+
+	// Component Enable/Disable
 	envKEDAEnabled            = "KEDA_ENABLED"
 	envLWSEnabled             = "LWS_ENABLED"
 	envOdinCRDEnabled         = "ODIN_CRD_ENABLED"
@@ -39,6 +52,11 @@ const (
 	envQualityBenchmarkLimit   = "QUALITY_BENCHMARK_LIMIT"
 	envQualityBenchmarkEnabled = "QUALITY_BENCHMARK_ENABLED"
 	envQualityBenchmarkImage   = "QUALITY_BENCHMARK_IMAGE"
+)
+
+// Exported aliases for tests in other packages.
+const (
+	EnvSkipCleanup = envSkipCleanup
 )
 
 type envVarInfo struct {

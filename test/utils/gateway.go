@@ -1,7 +1,7 @@
-//go:build e2e && !printenv
-// +build e2e,!printenv
+//go:build e2e
+// +build e2e
 
-package e2e
+package utils
 
 import (
 	"fmt"
@@ -77,7 +77,7 @@ func InstallGatewayController(gatewayClass string) error {
 		cmd = exec.Command("helm", "upgrade", "-i", "istiod", "istio/istiod",
 			"--version", "1.28.1",
 			"-n", "istio-system",
-			"-f", filepath.Join(projectDir, "test/e2e/scripts/base/istiod-values.yaml"))
+			"-f", filepath.Join(projectDir, "test/scripts/base/istiod-values.yaml"))
 		_, err := Run(cmd)
 		return err
 
@@ -95,7 +95,7 @@ func InstallGatewayController(gatewayClass string) error {
 			"oci://cr.kgateway.dev/kgateway-dev/charts/kgateway",
 			"--version", "v2.1.1",
 			"-n", "kgateway-system",
-			"-f", filepath.Join(projectDir, "test/e2e/scripts/base/kgateway-values.yaml"))
+			"-f", filepath.Join(projectDir, "test/scripts/base/kgateway-values.yaml"))
 		_, err = Run(cmd)
 		return err
 
@@ -130,8 +130,20 @@ func UninstallGatewayController(gatewayClass string) error {
 	}
 }
 
+// setupGateway installs Gateway API and controller.
+func setupGateway() {
+	By("installing Gateway API standard CRDs")
+	Expect(InstallGatewayAPI()).To(Succeed(), "Failed to install Gateway API standard CRDs")
 
-func applyGatewayResource() {
+	By("installing Gateway API Inference Extension CRDs")
+	Expect(InstallGatewayInferenceExtension()).To(Succeed(), "Failed to install Gateway API Inference Extension CRDs")
+
+	By(fmt.Sprintf("installing %s controller", cfg.gatewayClass))
+	Expect(InstallGatewayController(cfg.gatewayClass)).To(Succeed(), fmt.Sprintf("Failed to install %s controller", cfg.gatewayClass))
+}
+
+// ApplyGatewayResource applies Gateway resources in the workload namespace.
+func ApplyGatewayResource() {
 	By("applying Gateway resource and infrastructure parameters")
 
 	var baseYAML string
@@ -223,7 +235,7 @@ spec:
 	cmd = exec.Command("kubectl", "wait", "gateway", "mif",
 		"--for=condition=Accepted",
 		"-n", cfg.workloadNamespace,
-		fmt.Sprintf("--timeout=%v", timeoutLong))
+		fmt.Sprintf("--timeout=%v", TimeoutLong))
 	_, err = Run(cmd)
 	Expect(err).NotTo(HaveOccurred(), "Gateway not accepted")
 
@@ -234,14 +246,43 @@ spec:
 			"-n", cfg.workloadNamespace,
 			"-o", "name")
 		return Run(checkCmd)
-	}, timeoutLong, intervalShort).ShouldNot(BeEmpty())
+	}, TimeoutLong, IntervalShort).ShouldNot(BeEmpty())
 
 	By("waiting for Gateway pods to be ready")
 	cmd = exec.Command("kubectl", "wait", "pod",
 		"-l", "gateway.networking.k8s.io/gateway-name=mif",
 		"--for=condition=Ready",
 		"-n", cfg.workloadNamespace,
-		fmt.Sprintf("--timeout=%v", timeoutLong))
+		fmt.Sprintf("--timeout=%v", TimeoutLong))
 	_, err = Run(cmd)
 	Expect(err).NotTo(HaveOccurred(), "Gateway pods not ready")
+}
+
+// DeleteGatewayResources deletes Gateway resources (Gateway, ConfigMap, or GatewayParameters) from the given namespace.
+func DeleteGatewayResources(workloadNamespace, gatewayClass string) error {
+	By("deleting Gateway resource")
+	cmd := exec.Command("kubectl", "delete", "gateway", "mif",
+		"-n", workloadNamespace, "--ignore-not-found=true")
+	if _, err := Run(cmd); err != nil {
+		warnError(fmt.Errorf("failed to delete Gateway: %w", err))
+	}
+
+	switch gatewayClass {
+	case "istio":
+		By("deleting Gateway infrastructure ConfigMap")
+		cmd := exec.Command("kubectl", "delete", "configmap", "mif-gateway-infrastructure",
+			"-n", workloadNamespace, "--ignore-not-found=true")
+		if _, err := Run(cmd); err != nil {
+			warnError(fmt.Errorf("failed to delete Gateway ConfigMap: %w", err))
+		}
+	case "kgateway":
+		By("deleting Gateway infrastructure GatewayParameters")
+		cmd := exec.Command("kubectl", "delete", "gatewayparameters", "mif-gateway-infrastructure",
+			"-n", workloadNamespace, "--ignore-not-found=true")
+		if _, err := Run(cmd); err != nil {
+			warnError(fmt.Errorf("failed to delete Gateway GatewayParameters: %w", err))
+		}
+	}
+
+	return nil
 }
