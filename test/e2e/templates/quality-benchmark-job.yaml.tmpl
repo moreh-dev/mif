@@ -29,16 +29,16 @@ spec:
         - "{{.GatewayPort}}"
         {{- if or .HFToken .HFEndpoint .Limit }}
         env:
-          {{- if .HFToken }}
+        {{- if .HFToken }}
           - name: HF_TOKEN
             value: "{{ .HFToken }}"
-          {{- end }}
-          {{- if .HFEndpoint }}
+        {{- end }}
+        {{- if .HFEndpoint }}
           - name: HF_ENDPOINT
             value: "{{ .HFEndpoint }}"
-          {{- end }}
-          {{- if .Limit }}
+        {{- end }}
+        {{- if .Limit }}
           - name: LIMIT
             value: "{{.Limit}}"
-          {{- end }}
+        {{- end }}
         {{- end }}
