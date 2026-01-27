@@ -37,17 +37,27 @@ helm-dependency: ## Update Helm chart dependencies.
 ##@ Testing
 
 .PHONY: test-e2e
-test-e2e: ## Run E2E tests using Ginkgo (with automatic cleanup).
-	@mkdir -p test-reports
-	@go test -tags=e2e -v ./test/e2e/... -timeout 30m \
-		-ginkgo.v \
-		-ginkgo.junit-report="$(CURDIR)/test-reports/junit.xml" \
-		-ginkgo.json-report="$(CURDIR)/test-reports/report.json"
+test-e2e: ## Run all E2E tests (performance + quality).
+	@$(MAKE) test-e2e-performance
+	@$(MAKE) test-e2e-quality
 
-.PHONY: test-e2e-no-cleanup
-test-e2e-no-cleanup: ## Run E2E tests without automatic cleanup (for debugging).
-	@SKIP_CLEANUP=true go test -tags=e2e -v ./test/e2e/... -timeout 30m \
-		-ginkgo.v
+.PHONY: test-e2e-performance
+test-e2e-performance: ## Run inference-perf performance tests.
+	@mkdir -p test-reports
+	@go test -tags=e2e -v ./test/e2e/performance/... -timeout 30m \
+		-ginkgo.v \
+		-ginkgo.label-filter=performance \
+		-ginkgo.junit-report="$(CURDIR)/test-reports/junit-performance.xml" \
+		-ginkgo.json-report="$(CURDIR)/test-reports/report-performance.json"
+
+.PHONY: test-e2e-quality
+test-e2e-quality: ## Run quality benchmark tests.
+	@mkdir -p test-reports
+	@go test -tags=e2e -v ./test/e2e/quality/... -timeout 30m \
+		-ginkgo.v \
+		-ginkgo.label-filter=quality \
+		-ginkgo.junit-report="$(CURDIR)/test-reports/junit-quality.xml" \
+		-ginkgo.json-report="$(CURDIR)/test-reports/report-quality.json"
 
 .PHONY: test-e2e-clean
 test-e2e-clean: ## Manually clean up E2E test resources.

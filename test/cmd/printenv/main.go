@@ -7,12 +7,12 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/moreh-dev/mif/test/utils"
+	e2e "github.com/moreh-dev/mif/test/e2e/envs"
 )
 
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "env" {
-		utils.PrintEnvVarsHelp()
+		e2e.PrintEnvVarsHelp()
 		os.Exit(0)
 	}
 	fmt.Fprintf(os.Stderr, "Usage: go run -tags=e2e ./test/cmd/printenv env\n")

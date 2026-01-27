@@ -51,7 +51,6 @@ jobs:
       S3_SECRET_ACCESS_KEY: ${{ secrets.AWS_S3_SECRET_KEY }}
       SKIP_KIND: "true"
       SKIP_PREREQUISITE: "true"
-      INFERENCE_PERF_ENABLED: "true"
 
     steps:
       - name: Checkout
@@ -101,10 +100,10 @@ jobs:
       - name: Download dependencies
         run: go mod download
 
-      - name: Run E2E PD-Disaggregation test
+      - name: Run performance E2E test
         id: validate
         run: |
-          if make test-e2e; then
+          if make test-e2e-performance; then
             echo "test_passed=true" >> "$GITHUB_OUTPUT"
           else
             echo "test_passed=false" >> "$GITHUB_OUTPUT"
