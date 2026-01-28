@@ -164,9 +164,7 @@ func createInferencePerfJob(namespace string, baseURL string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to create job: %w", err)
 	}
-
-	jobName := strings.TrimPrefix(strings.TrimSpace(output), "job.batch/")
-	return jobName, nil
+	return utils.ParseResourceName(output), nil
 }
 
 func deleteInferencePerfJob(namespace string, jobName string) {
