@@ -20,10 +20,12 @@ const (
 	// AWS Credentials
 	envAWSAccessKeyID     = "AWS_ACCESS_KEY_ID"
 	envAWSSecretAccessKey = "AWS_SECRET_ACCESS_KEY"
-	envS3AccessKeyID      = "S3_ACCESS_KEY_ID"
-	envS3SecretAccessKey  = "S3_SECRET_ACCESS_KEY"
-	envS3Region           = "S3_REGION"
-	envS3Bucket           = "S3_BUCKET"
+
+	// S3 Credentials for performance results
+	envS3AccessKeyID     = "S3_ACCESS_KEY_ID"
+	envS3SecretAccessKey = "S3_SECRET_ACCESS_KEY"
+	envS3Region          = "S3_REGION"
+	envS3Bucket          = "S3_BUCKET"
 
 	// HuggingFace
 	envHFToken    = "HF_TOKEN"
@@ -65,7 +67,7 @@ var envVars = []envVarInfo{
 	{envAWSAccessKeyID, "", "AWS access key ID", "AWS Credentials (for ECR)", "string"},
 	{envAWSSecretAccessKey, "", "AWS secret access key", "AWS Credentials (for ECR)", "string"},
 
-	// S3 Credentials
+	// S3 Credentials for performance results
 	{envS3AccessKeyID, "", "AWS access key ID for S3 results upload", "AWS Credentials (for S3)", "string"},
 	{envS3SecretAccessKey, "", "AWS secret access key for S3 results upload", "AWS Credentials (for S3)", "string"},
 	{envS3Region, "ap-northeast-2", "AWS region for S3 results bucket", "AWS Credentials (for S3)", "string"},
@@ -104,7 +106,7 @@ var (
 	AWSAccessKeyID     = getEnv(envAWSAccessKeyID)
 	AWSSecretAccessKey = getEnv(envAWSSecretAccessKey)
 
-	// S3 Credentials
+	// S3 Credentials for performance results
 	S3AccessKeyID     = getEnv(envS3AccessKeyID)
 	S3SecretAccessKey = getEnv(envS3SecretAccessKey)
 	S3Region          = getEnv(envS3Region)
