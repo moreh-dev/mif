@@ -1,13 +1,13 @@
-name: moai-inference-preset-prod-deploy
+name: moai-inference-preset-production-deploy
 
 on:
   push:
     tags:
-      - "preset/v[0-9]+.[0-9]+.[0-9]+"
+      - preset/v[0-9]+.[0-9]+.[0-9]+
 
 jobs:
   release:
-    name: Release(Prod)
+    name: Release(production)
     runs-on: [ubuntu-latest]
     steps:
       - uses: actions/checkout@v5
