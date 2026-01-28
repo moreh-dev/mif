@@ -279,7 +279,7 @@ func validateMMLUResults(logs string) error {
 	}
 
 	if score < settings.MinMMLUScore {
-		return fmt.Errorf("MMLU score %.4f is below minimum threshold %.2f (expected >= %.2f)", score, settings.MinMMLUScore, settings.MinMMLUScore)
+		return fmt.Errorf("MMLU score %.4f is below minimum threshold %.2f", score, settings.MinMMLUScore)
 	}
 
 	return nil
