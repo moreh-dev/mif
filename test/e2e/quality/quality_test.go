@@ -4,6 +4,7 @@
 package quality
 
 import (
+	"bufio"
 	"fmt"
 	"os/exec"
 	"strconv"
@@ -204,41 +205,38 @@ func getQualityBenchmarkJobLogs(namespace string, jobName string) (string, error
 }
 
 func extractMMLUScore(logs string) (float64, error) {
+	scanner := bufio.NewScanner(strings.NewReader(logs))
 	inGroups := false
-	for _, line := range strings.Split(logs, "\n") {
-		trimmed := strings.TrimSpace(line)
-		if trimmed == "" {
+
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+
+		if line == "" {
 			if inGroups {
 				break
 			}
 			continue
 		}
 
-		if strings.HasPrefix(trimmed, "|") && strings.Contains(trimmed, "Groups") {
+		if strings.HasPrefix(line, "|") && strings.Contains(line, "Groups") {
 			inGroups = true
 			continue
 		}
 
-		if !inGroups {
-			continue
+		if inGroups && strings.Contains(line, "|") && strings.Contains(line, "mmlu") {
+			parts := strings.Split(line, "|")
+			if len(parts) >= 8 {
+				value := strings.TrimSpace(parts[7])
+				score, err := strconv.ParseFloat(value, 64)
+				if err != nil {
+					return 0, fmt.Errorf("failed to parse MMLU score %q: %w", value, err)
+				}
+				return score, nil
+			}
 		}
-
-		if !(strings.HasPrefix(trimmed, "|") && strings.Contains(trimmed, "mmlu")) {
-			continue
-		}
-		parts := strings.Split(trimmed, "|")
-		if len(parts) < 9 {
-			continue
-		}
-		value := strings.TrimSpace(parts[7])
-		score, err := strconv.ParseFloat(value, 64)
-		if err != nil {
-			return 0, fmt.Errorf("failed to parse MMLU score %q: %w", value, err)
-		}
-		return score, nil
 	}
 
-	return 0, fmt.Errorf("MMLU score not found in summary table logs. Expected Groups summary table with |mmlu| row")
+	return 0, fmt.Errorf("MMLU score not found in summary table logs. Expected Groups summary table with |mmlu| row.")
 }
 
 func validateQualityBenchmarkResults(benchmark string, logs string) error {
