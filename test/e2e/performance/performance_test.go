@@ -53,7 +53,7 @@ var _ = Describe("Inference Performance", Label("performance"), Ordered, func() 
 			GatewayClass:            envs.GatewayClassName,
 		}
 
-		values, err := utils.RenderTemplate("./config/heimdall-values.yaml.tmpl", data)
+		values, err := utils.RenderTemplate("test/e2e/performance/config/heimdall-values.yaml.tmpl", data)
 		Expect(err).NotTo(HaveOccurred(), "failed to render Heimdall values template")
 		Expect(utils.InstallHeimdall(envs.WorkloadNamespace, values)).To(Succeed())
 
@@ -171,7 +171,7 @@ func createInferencePerfJob(namespace string, baseURL string) (string, error) {
 		ExpName:           InferencePerfExpName,
 	}
 
-	jobYAML, err := utils.RenderTemplate("./config/inference-perf-job.yaml.tmpl", data)
+	jobYAML, err := utils.RenderTemplate("test/e2e/performance/config/inference-perf-job.yaml.tmpl", data)
 	if err != nil {
 		return "", fmt.Errorf("failed to render job template: %w", err)
 	}

@@ -17,7 +17,6 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-// Quality benchmark
 const (
 	QualityBenchmarkImage = "255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/moreh-llm-eval:v0.0.1"
 	MinMMLUScore          = 0.37
@@ -54,7 +53,7 @@ var _ = Describe("Quality Benchmark", Label("quality"), Ordered, func() {
 			GatewayClass:            envs.GatewayClassName,
 		}
 
-		values, err := utils.RenderTemplate("./config/heimdall-values.yaml.tmpl", data)
+		values, err := utils.RenderTemplate("test/e2e/quality/config/heimdall-values.yaml.tmpl", data)
 		Expect(err).NotTo(HaveOccurred(), "failed to render Heimdall values template")
 		Expect(utils.InstallHeimdall(envs.WorkloadNamespace, values)).To(Succeed())
 
@@ -172,7 +171,7 @@ func createQualityBenchmarkJob(namespace string, serviceName string) (string, er
 		QualityBenchmarkImage: QualityBenchmarkImage,
 	}
 
-	jobYAML, err := utils.RenderTemplate("./config/quality-benchmark-job.yaml.tmpl", data)
+	jobYAML, err := utils.RenderTemplate("test/e2e/quality/config/quality-benchmark-job.yaml.tmpl", data)
 	if err != nil {
 		return "", fmt.Errorf("failed to render job template: %w", err)
 	}
