@@ -1,46 +1,39 @@
+//go:build e2e
+// +build e2e
+
 package utils
 
 import (
+	"fmt"
 	"os/exec"
-)
 
-const (
-	certmanagerVersion   = "v1.18.4"
-	certmanagerChart     = "oci://quay.io/jetstack/charts/cert-manager"
-	certmanagerNamespace = "cert-manager"
+	"github.com/moreh-dev/mif/test/utils/settings"
 )
 
 // InstallCertManager installs cert-manager using Helm
 func InstallCertManager() error {
 	helmArgs := []string{
 		"upgrade", "--install", "cert-manager",
-		certmanagerChart,
-		"--version", certmanagerVersion,
-		"--namespace", certmanagerNamespace,
+		settings.CertManagerHelmRepoURL,
+		"--version", settings.CertManagerVersion,
+		"--namespace", settings.CertManagerNamespace,
 		"--create-namespace",
 		"--set", "crds.enabled=true",
 		"--wait",
-		"--timeout", "5m",
+		fmt.Sprintf("--timeout=%v", settings.TimeoutMedium),
 	}
+
 	cmd := exec.Command("helm", helmArgs...)
 	if _, err := Run(cmd); err != nil {
 		return err
 	}
-
-	cmd = exec.Command("kubectl", "wait", "deployment.apps/cert-manager-webhook",
-		"--for", "condition=Available",
-		"--namespace", certmanagerNamespace,
-		"--timeout", "5m",
-	)
-
-	_, err := Run(cmd)
-	return err
+	return nil
 }
 
 // UninstallCertManager uninstalls the cert manager using Helm
 func UninstallCertManager() {
 	cmd := exec.Command("helm", "uninstall", "cert-manager",
-		"--namespace", certmanagerNamespace,
+		"--namespace", settings.CertManagerNamespace,
 		"--ignore-not-found")
 	if _, err := Run(cmd); err != nil {
 		warnError(err)
@@ -57,4 +50,27 @@ func UninstallCertManager() {
 			warnError(err)
 		}
 	}
+}
+
+// IsCertManagerCRDsInstalled checks if any Cert Manager CRDs are installed
+// by verifying the existence of key CRDs related to Cert Manager.
+func IsCertManagerCRDsInstalled() bool {
+	// List of common Cert Manager CRDs
+	certManagerCRDs := []string{
+		"certificates.cert-manager.io",
+		"issuers.cert-manager.io",
+		"clusterissuers.cert-manager.io",
+		"certificaterequests.cert-manager.io",
+		"orders.acme.cert-manager.io",
+		"challenges.acme.cert-manager.io",
+	}
+
+	// Execute the kubectl command to get all CRDs
+	cmd := exec.Command("kubectl", "get", "crds")
+	output, err := Run(cmd)
+	if err != nil {
+		return false
+	}
+
+	return hasAllCRDs(output, certManagerCRDs)
 }

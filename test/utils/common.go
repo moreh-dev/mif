@@ -1,11 +1,16 @@
+//go:build e2e
+// +build e2e
+
 package utils
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"text/template"
 
 	. "github.com/onsi/ginkgo/v2"
 )
@@ -34,39 +39,108 @@ func Run(cmd *exec.Cmd) (string, error) {
 	return string(output), nil
 }
 
-// GetNonEmptyLines splits output into lines and returns non-empty lines.
-func GetNonEmptyLines(output string) []string {
-	var res []string
-	elements := strings.Split(output, "\n")
-	for _, element := range elements {
-		if element != "" {
-			res = append(res, element)
-		}
+// RunWithGinkgoWriter runs a command with the Ginkgo writer.
+func RunWithGinkgoWriter(cmd *exec.Cmd) error {
+	dir, _ := GetProjectDir()
+	cmd.Dir = dir
+
+	if err := os.Chdir(cmd.Dir); err != nil {
+		_, _ = fmt.Fprintf(GinkgoWriter, "chdir dir: %q\n", err)
 	}
 
-	return res
+	cmd.Env = append(os.Environ(), "GO111MODULE=on")
+	command := strings.Join(cmd.Args, " ")
+	_, _ = fmt.Fprintf(GinkgoWriter, "running: %q\n", command)
+	cmd.Stdout = GinkgoWriter
+	cmd.Stderr = GinkgoWriter
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("%q failed with error: %w", command, err)
+	}
+
+	return nil
 }
 
-// GetProjectDir returns the project root directory by searching for go.mod.
+// DeleteNamespace deletes a Kubernetes namespace, ignoring errors if it doesn't exist.
+func DeleteNamespace(namespace string) {
+	cmd := exec.Command("kubectl", "delete", "ns", namespace, "--timeout=60s", "--ignore-not-found=true")
+	if _, err := Run(cmd); err != nil {
+		warnError(err)
+	}
+}
+
+// RenderTemplate renders a template file with the given data.
+func RenderTemplate(filename string, data any) (string, error) {
+	templateText, err := loadTemplateFile(filename)
+	if err != nil {
+		return "", err
+	}
+
+	return renderTextTemplate(templateText, data)
+}
+
+// GetProjectDir returns the directory where the project is.
 func GetProjectDir() (string, error) {
 	wd, err := os.Getwd()
 	if err != nil {
-		return wd, fmt.Errorf("failed to get current working directory: %w", err)
+		return "", fmt.Errorf("failed to get current working directory: %w", err)
 	}
 
-	dir := wd
 	for {
-		if _, err := os.Stat(dir + "/go.mod"); err == nil {
-			return dir, nil
+		if _, err := os.Stat(filepath.Join(wd, "go.mod")); err == nil {
+			return wd, nil
 		}
-		parent := dir + "/.."
-		parentAbs, err := filepath.Abs(parent)
-		if err != nil {
-			return wd, fmt.Errorf("failed to resolve parent directory: %w", err)
+
+		parent := filepath.Dir(wd)
+		if parent == wd {
+			return "", fmt.Errorf("project root (go.mod) not found")
 		}
-		if parentAbs == dir {
-			return wd, fmt.Errorf("go.mod not found in any parent directory")
-		}
-		dir = parentAbs
+		wd = parent
 	}
+}
+
+// ParseResourceName extracts only the resource name from kubectl's "-o name" output.
+// It converts "kind.group/name" into just "name".
+func ParseResourceName(output string) string {
+	trimmed := strings.TrimSpace(output)
+	if parts := strings.Split(trimmed, "/"); len(parts) > 1 {
+		return parts[len(parts)-1]
+	}
+	return trimmed
+}
+
+func renderTextTemplate(templateText string, data any) (string, error) {
+	t, err := template.New("manifest").Parse(templateText)
+	if err != nil {
+		return "", err
+	}
+
+	var buf bytes.Buffer
+	if err := t.Execute(&buf, data); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
+
+func loadTemplateFile(filename string) (string, error) {
+	projectDir, err := GetProjectDir()
+	if err != nil {
+		return "", fmt.Errorf("failed to get project directory: %w", err)
+	}
+
+	templatePath := filepath.Join(projectDir, filename)
+	content, err := os.ReadFile(templatePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read template file %s: %w", templatePath, err)
+	}
+
+	return string(content), nil
+}
+
+func hasAllCRDs(output string, required []string) bool {
+	for _, crd := range required {
+		if !strings.Contains(output, crd) {
+			return false
+		}
+	}
+	return true
 }

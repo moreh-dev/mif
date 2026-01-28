@@ -1,56 +1,81 @@
+//go:build e2e
+// +build e2e
+
 package utils
 
 import (
 	"fmt"
 	"os/exec"
-	"path/filepath"
 	"strings"
+
+	"github.com/moreh-dev/mif/test/utils/settings"
 )
 
 // InstallGatewayAPI installs Gateway API.
 func InstallGatewayAPI() error {
 	cmd := exec.Command("kubectl", "apply", "--server-side",
-		"-f", "https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.3.0/standard-install.yaml")
+		"-f", settings.GatewayAPIYAML)
 	_, err := Run(cmd)
 	return err
 }
 
 // UninstallGatewayAPI uninstalls Gateway API.
-func UninstallGatewayAPI() error {
+func UninstallGatewayAPI() {
 	cmd := exec.Command("kubectl", "delete",
-		"-f", "https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.3.0/standard-install.yaml",
+		"-f", settings.GatewayAPIYAML,
 		"--ignore-not-found=true")
-	_, err := Run(cmd)
-	return err
+	if _, err := Run(cmd); err != nil {
+		warnError(err)
+	}
 }
 
 // InstallGatewayInferenceExtension installs Gateway Inference Extension.
 func InstallGatewayInferenceExtension() error {
 	cmd := exec.Command("kubectl", "apply",
-		"-f", "https://github.com/kubernetes-sigs/gateway-api-inference-extension/releases/download/v1.1.0/manifests.yaml")
+		"-f", settings.GatewayAPIInferenceExtensionYAML)
 	_, err := Run(cmd)
 	return err
 }
 
 // UninstallGatewayInferenceExtension uninstalls Gateway Inference Extension.
-func UninstallGatewayInferenceExtension() error {
+func UninstallGatewayInferenceExtension() {
 	cmd := exec.Command("kubectl", "delete",
-		"-f", "https://github.com/kubernetes-sigs/gateway-api-inference-extension/releases/download/v1.1.0/manifests.yaml",
+		"-f", settings.GatewayAPIInferenceExtensionYAML,
 		"--ignore-not-found=true")
-	_, err := Run(cmd)
-	return err
+	if _, err := Run(cmd); err != nil {
+		warnError(err)
+	}
+}
+
+// IsGatewayAPICRDsInstalled checks if any Gateway API CRDs are installed
+// by verifying the existence of key CRDs related to Gateway API.
+func IsGatewayAPICRDsInstalled() bool {
+	// List of common Gateway API CRDs
+	gatewayAPICRDs := []string{
+		"gatewayclasses.gateway.networking.k8s.io",
+		"gateways.gateway.networking.k8s.io",
+		"grpcroutes.gateway.networking.k8s.io",
+		"httproutes.gateway.networking.k8s.io",
+		"inferencepools.inference.networking.k8s.io",
+		"referencegrants.gateway.networking.k8s.io",
+	}
+
+	// Execute the kubectl command to get all CRDs
+	cmd := exec.Command("kubectl", "get", "crds")
+	output, err := Run(cmd)
+	if err != nil {
+		return false
+	}
+
+	// Check if any of the Gateway API CRDs are present
+	return hasAllCRDs(output, gatewayAPICRDs)
 }
 
 // InstallGatewayController installs the gateway controller for the given gateway class.
 func InstallGatewayController(gatewayClass string) error {
-	projectDir, err := GetProjectDir()
-	if err != nil {
-		return fmt.Errorf("failed to get project directory: %w", err)
-	}
-
 	switch gatewayClass {
 	case "istio":
-		cmd := exec.Command("helm", "repo", "add", "istio", "https://istio-release.storage.googleapis.com/charts")
+		cmd := exec.Command("helm", "repo", "add", "istio", settings.IstioHelmRepoURL)
 		if _, err := Run(cmd); err != nil && !strings.Contains(err.Error(), "already exists") {
 			return fmt.Errorf("failed to add istio helm repo: %w", err)
 		}
@@ -61,65 +86,145 @@ func InstallGatewayController(gatewayClass string) error {
 		}
 
 		cmd = exec.Command("helm", "upgrade", "-i", "istio-base", "istio/base",
-			"--version", "1.28.1",
-			"-n", "istio-system",
-			"--create-namespace")
+			"--version", settings.IstioVersion,
+			"-n", settings.IstioNamespace,
+			"--create-namespace",
+			"--wait",
+			fmt.Sprintf("--timeout=%v", settings.TimeoutLong),
+		)
 		if _, err := Run(cmd); err != nil {
-			return err
+			return fmt.Errorf("failed to install istio-base: %w", err)
 		}
 
 		cmd = exec.Command("helm", "upgrade", "-i", "istiod", "istio/istiod",
-			"--version", "1.28.1",
-			"-n", "istio-system",
-			"-f", filepath.Join(projectDir, "test/e2e/scripts/base/istiod-values.yaml"))
-		_, err := Run(cmd)
-		return err
+			"--version", settings.IstioVersion,
+			"-n", settings.IstioNamespace,
+			"-f", settings.IstiodValuesFile,
+			"--wait",
+			fmt.Sprintf("--timeout=%v", settings.TimeoutLong),
+		)
+		if _, err := Run(cmd); err != nil {
+			return fmt.Errorf("failed to install istiod: %w", err)
+		}
 
 	case "kgateway":
 		cmd := exec.Command("helm", "upgrade", "-i", "kgateway-crds",
-			"oci://cr.kgateway.dev/kgateway-dev/charts/kgateway-crds",
-			"--version", "v2.1.1",
-			"-n", "kgateway-system",
-			"--create-namespace")
+			settings.KgatewayCrdsHelmRepoURL,
+			"--version", settings.KgatewayCrdsVersion,
+			"-n", settings.KgatewayNamespace,
+			"--create-namespace",
+			"--wait",
+			fmt.Sprintf("--timeout=%v", settings.TimeoutLong),
+		)
 		if _, err := Run(cmd); err != nil {
-			return err
+			return fmt.Errorf("failed to install kgateway crds: %w", err)
 		}
 
 		cmd = exec.Command("helm", "upgrade", "-i", "kgateway",
-			"oci://cr.kgateway.dev/kgateway-dev/charts/kgateway",
-			"--version", "v2.1.1",
-			"-n", "kgateway-system",
-			"-f", filepath.Join(projectDir, "test/e2e/scripts/base/kgateway-values.yaml"))
-		_, err = Run(cmd)
-		return err
+			settings.KgatewayHelmRepoURL,
+			"--version", settings.KgatewayVersion,
+			"-n", settings.KgatewayNamespace,
+			"-f", settings.KgatewayValuesFile,
+			"--wait",
+			fmt.Sprintf("--timeout=%v", settings.TimeoutLong),
+		)
+		if _, err := Run(cmd); err != nil {
+			return fmt.Errorf("failed to install kgateway: %w", err)
+		}
 
 	default:
 		return fmt.Errorf("unsupported gateway class: %s", gatewayClass)
 	}
+
+	return nil
 }
 
 // UninstallGatewayController uninstalls the gateway controller for the given gateway class.
-func UninstallGatewayController(gatewayClass string) error {
+func UninstallGatewayController(gatewayClass string) {
 	switch gatewayClass {
 	case "istio":
-		cmd := exec.Command("helm", "uninstall", "istiod", "-n", "istio-system", "--ignore-not-found=true")
+		cmd := exec.Command("helm", "uninstall", "istiod", "-n", settings.IstioNamespace, "--ignore-not-found=true")
 		if _, err := Run(cmd); err != nil {
-			return err
+			warnError(err)
 		}
 
-		cmd = exec.Command("helm", "uninstall", "istio-base", "-n", "istio-system", "--ignore-not-found=true")
-		_, err := Run(cmd)
-		return err
+		cmd = exec.Command("helm", "uninstall", "istio-base", "-n", settings.IstioNamespace, "--ignore-not-found=true")
+		if _, err := Run(cmd); err != nil {
+			warnError(err)
+		}
 	case "kgateway":
-		cmd := exec.Command("helm", "uninstall", "kgateway", "-n", "kgateway-system", "--ignore-not-found=true")
+		cmd := exec.Command("helm", "uninstall", "kgateway", "-n", settings.KgatewayNamespace, "--ignore-not-found=true")
 		if _, err := Run(cmd); err != nil {
-			return err
+			warnError(err)
 		}
 
-		cmd = exec.Command("helm", "uninstall", "kgateway-crds", "-n", "kgateway-system", "--ignore-not-found=true")
-		_, err := Run(cmd)
-		return err
+		cmd = exec.Command("helm", "uninstall", "kgateway-crds", "-n", settings.KgatewayNamespace, "--ignore-not-found=true")
+		if _, err := Run(cmd); err != nil {
+			warnError(err)
+		}
+	default:
+		warnError(fmt.Errorf("unsupported gateway class: %s", gatewayClass))
+	}
+}
+
+// CreateGatewayResource creates Gateway resources in the workload namespace.
+func CreateGatewayResource(namespace string, gatewayClass string) error {
+	var templatePath string
+	switch gatewayClass {
+	case "istio":
+		templatePath = settings.IstioGatewayTemplate
+	case "kgateway":
+		templatePath = settings.KgatewayGatewayTemplate
 	default:
 		return fmt.Errorf("unsupported gateway class: %s", gatewayClass)
+	}
+
+	data := struct {
+		GatewayName string
+	}{
+		GatewayName: settings.GatewayName,
+	}
+	rendered, err := RenderTemplate(templatePath, data)
+	if err != nil {
+		return fmt.Errorf("failed to render gateway template: %w", err)
+	}
+
+	cmd := exec.Command("kubectl", "apply", "-f", "-", "-n", namespace, "--request-timeout=60s")
+	cmd.Stdin = strings.NewReader(rendered)
+	if _, err := Run(cmd); err != nil {
+		return fmt.Errorf("failed to apply Gateway resources: %w", err)
+	}
+
+	cmd = exec.Command("kubectl", "wait", "gateway", settings.GatewayName,
+		"--for=condition=Programmed",
+		"-n", namespace,
+		fmt.Sprintf("--timeout=%v", settings.TimeoutLong))
+	if _, err := Run(cmd); err != nil {
+		return fmt.Errorf("failed to wait for Gateway to be programmed: %w", err)
+	}
+	return nil
+}
+
+// DeleteGatewayResource deletes Gateway resources from the given namespace.
+func DeleteGatewayResource(namespace, gatewayClass string) {
+	cmd := exec.Command("kubectl", "delete", "gateway", settings.GatewayName,
+		"-n", namespace, "--ignore-not-found=true")
+	if _, err := Run(cmd); err != nil {
+		warnError(fmt.Errorf("failed to delete Gateway: %w", err))
+	}
+
+	switch gatewayClass {
+	case "istio":
+		cmd := exec.Command("kubectl", "delete", "configmap", "mif-gateway-infrastructure",
+			"-n", namespace, "--ignore-not-found=true")
+		if _, err := Run(cmd); err != nil {
+			warnError(fmt.Errorf("failed to delete Gateway ConfigMap: %w", err))
+		}
+	case "kgateway":
+		cmd := exec.Command("kubectl", "delete", "gatewayparameters", "mif-gateway-infrastructure",
+			"-n", namespace, "--ignore-not-found=true")
+		if _, err := Run(cmd); err != nil {
+			warnError(fmt.Errorf("failed to delete Gateway GatewayParameters: %w", err))
+		}
 	}
 }

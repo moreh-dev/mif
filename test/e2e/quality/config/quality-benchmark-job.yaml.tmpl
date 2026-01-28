@@ -1,0 +1,44 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  generateName: quality-benchmark-
+  labels:
+    app: quality-benchmark
+  namespace: {{.Namespace}}
+spec:
+  template:
+    metadata:
+      labels:
+        app: quality-benchmark
+        sidecar.istio.io/inject: "false"
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+        - name: {{ .ImagePullSecret }}
+      containers:
+      - name: quality-benchmark
+        image: {{ .QualityBenchmarkImage }}
+        args:
+        - --eval
+        - "{{.Benchmarks}}"
+        - --model
+        - "{{.ModelName}}"
+        - --host
+        - "{{.GatewayHost}}"
+        - --port
+        - "{{.GatewayPort}}"
+        {{- if or .HFToken .HFEndpoint .Limit }}
+        env:
+        {{- if .HFToken }}
+          - name: HF_TOKEN
+            value: "{{ .HFToken }}"
+        {{- end }}
+        {{- if .HFEndpoint }}
+          - name: HF_ENDPOINT
+            value: "{{ .HFEndpoint }}"
+        {{- end }}
+        {{- if .Limit }}
+          - name: LIMIT
+            value: "{{.Limit}}"
+        {{- end }}
+        {{- end }}

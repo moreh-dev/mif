@@ -1,112 +1,87 @@
+//go:build e2e
+// +build e2e
+
 package utils
 
 import (
 	"fmt"
 	"os/exec"
+	"strings"
 
-	. "github.com/onsi/ginkgo/v2"
+	"github.com/moreh-dev/mif/test/utils/settings"
 )
 
-// CreateInferenceService creates an InferenceService CR in the given namespace.
-func CreateInferenceService(namespace, valuesPath string) error {
-	if valuesPath == "" {
-		return fmt.Errorf("inference service manifest path is required (e.g., path/to/manifest.yaml)")
+func renderMIFValues(awsAccessKeyID, awsSecretAccessKey string) (string, error) {
+	data := struct {
+		AWSAccessKeyID     string
+		AWSSecretAccessKey string
+	}{
+		AWSAccessKeyID:     awsAccessKeyID,
+		AWSSecretAccessKey: awsSecretAccessKey,
 	}
 
-	kubectlArgs := []string{
-		"apply",
-		"-f", valuesPath,
-	}
-
-	if namespace != "" {
-		kubectlArgs = append(kubectlArgs, "-n", namespace)
-	}
-
-	cmd := exec.Command("kubectl", kubectlArgs...)
-	_, err := Run(cmd)
-	return err
+	return RenderTemplate(settings.MIFValuesTemplate, data)
 }
 
-// CreateInferenceServiceTemplate creates an InferenceServiceTemplate CR in the given namespace.
-func CreateInferenceServiceTemplate(namespace, manifestPath string) error {
-	if manifestPath == "" {
-		return fmt.Errorf("inference service template manifest path is required (e.g., path/to/template.yaml)")
+// InstallMIF installs MIF infrastructure if not already installed.
+func InstallMIF(namespace string, awsAccessKeyID, awsSecretAccessKey string) error {
+	if awsAccessKeyID == "" || awsSecretAccessKey == "" {
+		return fmt.Errorf("AWS access key ID and secret access key are required")
 	}
 
-	kubectlArgs := []string{
-		"apply",
-		"-f", manifestPath,
+	values, err := renderMIFValues(awsAccessKeyID, awsSecretAccessKey)
+	if err != nil {
+		return fmt.Errorf("failed to create moai-inference-framework values file: %w", err)
 	}
 
-	if namespace != "" {
-		kubectlArgs = append(kubectlArgs, "-n", namespace)
-	}
-
-	cmd := exec.Command("kubectl", kubectlArgs...)
-	_, err := Run(cmd)
-	return err
-}
-
-// DeleteInferenceService deletes an InferenceService from the given namespace.
-func DeleteInferenceService(namespace, inferenceServiceName string) error {
-	By("deleting InferenceService")
-	cmd := exec.Command("kubectl", "delete", "inferenceservice", inferenceServiceName,
-		"-n", namespace, "--ignore-not-found=true")
-	_, err := Run(cmd)
-	return err
-}
-
-// DeleteInferenceServiceTemplate deletes an InferenceServiceTemplate from the given namespace.
-func DeleteInferenceServiceTemplate(namespace, templateName string) error {
-	By(fmt.Sprintf("deleting InferenceServiceTemplate %s", templateName))
-	cmd := exec.Command("kubectl", "delete", "inferenceservicetemplate", templateName,
-		"-n", namespace, "--ignore-not-found=true")
-	_, err := Run(cmd)
-	return err
-}
-
-// InstallHeimdall installs Heimdall in the given namespace.
-func InstallHeimdall(namespace string, valuesPath string) error {
-	By("installing Heimdall")
 	helmArgs := []string{
-		"upgrade", "--install", "heimdall",
-		"moreh/heimdall",
-		"--version", "v0.6.0",
+		"upgrade", "--install", "mif",
+		"deploy/helm/moai-inference-framework",
 		"--namespace", namespace,
 		"--create-namespace",
+		"--wait",
+		"-f", "-",
+		fmt.Sprintf("--timeout=%v", settings.TimeoutVeryLong),
 	}
-	if valuesPath != "" {
-		helmArgs = append(helmArgs, "-f", valuesPath)
-	}
+
 	cmd := exec.Command("helm", helmArgs...)
-	_, err := Run(cmd)
-	return err
+	cmd.Stdin = strings.NewReader(values)
+	if _, err := Run(cmd); err != nil {
+		return fmt.Errorf("failed to deploy MIF via Helm: %w", err)
+	}
+	return nil
 }
 
-// UninstallHeimdall uninstalls Heimdall from the given namespace.
-func UninstallHeimdall(namespace string) error {
-	cmd := exec.Command("helm", "uninstall", "heimdall", "-n", namespace, "--ignore-not-found=true")
-	_, err := Run(cmd)
-	return err
+// UninstallMIF uninstalls MIF from the given namespace.
+func UninstallMIF(namespace string) {
+	cmd := exec.Command("helm", "uninstall", "mif", "-n", namespace, "--ignore-not-found=true")
+	if _, err := Run(cmd); err != nil {
+		warnError(err)
+	}
 }
 
-// DeployMIFPreset deploys moai-inference-preset in the given namespace.
-func DeployMIFPreset(namespace string, chartPath string) error {
+// InstallMIFPreset deploys moai-inference-preset in the given namespace.
+func InstallMIFPreset(namespace string) error {
 	helmArgs := []string{
 		"upgrade", "--install", "moai-inference-preset",
-		chartPath,
+		"deploy/helm/moai-inference-preset",
 		"--namespace", namespace,
+		"--create-namespace",
 		"--wait",
-		"--timeout", "10m",
+		fmt.Sprintf("--timeout=%v", settings.TimeoutLong),
 	}
+
 	cmd := exec.Command("helm", helmArgs...)
-	_, err := Run(cmd)
-	return err
+	if _, err := Run(cmd); err != nil {
+		return fmt.Errorf("failed to deploy MIF preset via Helm: %w", err)
+	}
+	return nil
 }
 
 // UninstallMIFPreset uninstalls moai-inference-preset from the given namespace.
-func UninstallMIFPreset(namespace string) error {
+func UninstallMIFPreset(namespace string) {
 	cmd := exec.Command("helm", "uninstall", "moai-inference-preset", "-n", namespace, "--ignore-not-found=true")
-	_, err := Run(cmd)
-	return err
+	if _, err := Run(cmd); err != nil {
+		warnError(err)
+	}
 }

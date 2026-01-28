@@ -1,0 +1,27 @@
+global:
+  imagePullSecrets:
+    - name: {{ .MorehRegistrySecretName }}
+
+config:
+  apiVersion: inference.networking.x-k8s.io/v1alpha1
+  kind: EndpointPickerConfig
+  plugins:
+    - type: single-profile-handler
+    - type: queue-scorer
+    - type: max-score-picker
+  schedulingProfiles:
+    - name: default
+      plugins:
+        - pluginRef: queue-scorer
+        - pluginRef: max-score-picker
+
+gateway:
+  name: {{ .GatewayName }}
+  gatewayClassName: {{ .GatewayClass }}
+
+inferencePool:
+  targetPorts:
+    - number: 8000
+
+serviceMonitor:
+  enabled: false

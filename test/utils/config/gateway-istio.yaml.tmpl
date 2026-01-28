@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mif-gateway-infrastructure
+data:
+  service: |
+    spec:
+      type: ClusterIP
+  deployment: |
+    spec:
+      template:
+        metadata:
+          annotations:
+            proxy.istio.io/config: |
+              accessLogFile: /dev/stdout
+              accessLogEncoding: JSON
+        spec:
+          containers:
+            - name: istio-proxy
+              resources:
+                limits: null
+
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: {{ .GatewayName }}
+spec:
+  gatewayClassName: istio
+  infrastructure:
+    parametersRef:
+      group: ""
+      kind: ConfigMap
+      name: mif-gateway-infrastructure
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+      allowedRoutes:
+        namespaces:
+          from: All

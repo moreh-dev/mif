@@ -1,12 +1,10 @@
-name: E2E PD-Disaggregation Test on Product Cluster
+name: Quality Benchmark on Product Cluster
 
 # Required GitHub Secrets for Product Cluster Testing:
 # - KUBECONFIG_BASE64: Base64-encoded kubeconfig file for the Product cluster
 #   To create: kubectl config view --flatten | base64 -w 0
 # - HF_TOKEN: HuggingFace token for model download (optional)
 # - HF_ENDPOINT: HuggingFace endpoint URL (optional)
-# - AWS_S3_ACCESS_KEY: AWS access key ID for S3 results upload (optional, mapped to env var S3_ACCESS_KEY_ID)
-# - AWS_S3_SECRET_KEY: AWS secret access key for S3 results upload (optional, mapped to env var S3_SECRET_ACCESS_KEY)
 #
 # Note: For Product cluster testing (SKIP_PREREQUISITE=true), setupPrerequisites() returns early
 # without installing or validating any components. All required components must be pre-installed:
@@ -27,11 +25,11 @@ permissions:
   checks: write
 
 jobs:
-  e2e-test:
-    name: E2E PD-Disaggregation Test
+  quality-benchmark:
+    name: Quality Benchmark E2E Test
     runs-on: [self-hosted, github-runner]
     concurrency:
-      group: e2e-pd-test
+      group: quality-benchmark
       cancel-in-progress: false
 
     container:
@@ -47,8 +45,6 @@ jobs:
       TEST_MODEL: "Qwen/Qwen3-0.6B"
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
       HF_ENDPOINT: ${{ secrets.HF_ENDPOINT }}
-      S3_ACCESS_KEY_ID: ${{ secrets.AWS_S3_ACCESS_KEY }}
-      S3_SECRET_ACCESS_KEY: ${{ secrets.AWS_S3_SECRET_KEY }}
       SKIP_KIND: "true"
       SKIP_PREREQUISITE: "true"
 
@@ -72,17 +68,11 @@ jobs:
       - name: Set workload namespace
         run: |
           COMMIT_HASH_SHORT=$(echo "${{ github.sha }}" | cut -c1-7)
-          echo "WORKLOAD_NAMESPACE=mif-e2e-${COMMIT_HASH_SHORT}" >> "$GITHUB_ENV"
+          echo "WORKLOAD_NAMESPACE=mif-quality-${COMMIT_HASH_SHORT}" >> "$GITHUB_ENV"
 
       - name: Set up kubeconfig
         run: |
           mkdir -p ~/.kube
-          # KUBECONFIG_BASE64 secret must be set in repository secrets
-          # It should contain a base64-encoded kubeconfig file for the target cluster
-          # To create this secret:
-          # 1. Get your kubeconfig file: kubectl config view --flatten > kubeconfig.yaml
-          # 2. Encode it: cat kubeconfig.yaml | base64 -w 0
-          # 3. Add it as a repository secret named KUBECONFIG_BASE64
           echo "${{ secrets.KUBECONFIG_BASE64 }}" | base64 --decode > ${{ env.KUBECONFIG }}
           chmod 600 ${{ env.KUBECONFIG }}
           kubectl cluster-info
@@ -100,10 +90,10 @@ jobs:
       - name: Download dependencies
         run: go mod download
 
-      - name: Run performance E2E test
+      - name: Run quality E2E test
         id: validate
         run: |
-          if make test-e2e-performance; then
+          if make test-e2e-quality; then
             echo "test_passed=true" >> "$GITHUB_OUTPUT"
           else
             echo "test_passed=false" >> "$GITHUB_OUTPUT"
@@ -127,7 +117,7 @@ jobs:
         with:
           files: |
             test-reports/*.xml
-          check_name: E2E Test Results
+          check_name: Quality Benchmark E2E Test Results
           comment_mode: off
           report_individual_runs: false
           check_run_annotations: all tests, skipped tests
@@ -138,25 +128,25 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: mif-e2e-test-reports-${{ github.run_id }}
+          name: quality-benchmark-e2e-test-reports-${{ github.run_id }}
           path: test-reports
-          retention-days: 7
+          retention-days: 30
           if-no-files-found: warn
 
   test-summary:
-    name: Test Summary
+    name: Quality Benchmark Summary
     runs-on: ubuntu-latest
-    needs: [e2e-test]
+    needs: [quality-benchmark]
     if: always()
 
     steps:
       - name: Check test result
         run: |
-          if [ "${{ needs.e2e-test.outputs.test_passed }}" == "true" ]; then
-            echo "✅ E2E tests passed. Ready for production release."
-            echo "::notice::E2E tests passed. You can now create a production tag."
+          if [ "${{ needs.quality-benchmark.outputs.test_passed }}" == "true" ]; then
+            echo "✅ Quality benchmark E2E tests passed."
+            echo "::notice::Quality benchmark E2E tests passed."
           else
-            echo "❌ E2E tests failed. Please check the logs and fix issues before releasing."
-            echo "::error::E2E tests failed. Production release blocked."
+            echo "❌ Quality benchmark E2E tests failed. Please check the logs and fix issues."
+            echo "::error::Quality benchmark E2E tests failed."
             exit 1
           fi
