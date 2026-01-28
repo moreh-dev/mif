@@ -68,16 +68,7 @@ func IsGatewayAPICRDsInstalled() bool {
 	}
 
 	// Check if any of the Gateway API CRDs are present
-	crdList := GetNonEmptyLines(output)
-	for _, crd := range gatewayAPICRDs {
-		for _, line := range crdList {
-			if strings.Contains(line, crd) {
-				return true
-			}
-		}
-	}
-
-	return false
+	return hasAllCRDs(output, gatewayAPICRDs)
 }
 
 // InstallGatewayController installs the gateway controller for the given gateway class.
@@ -97,7 +88,10 @@ func InstallGatewayController(gatewayClass string) error {
 		cmd = exec.Command("helm", "upgrade", "-i", "istio-base", "istio/base",
 			"--version", settings.IstioVersion,
 			"-n", settings.IstioNamespace,
-			"--create-namespace")
+			"--create-namespace",
+			"--wait",
+			fmt.Sprintf("--timeout=%v", settings.TimeoutLong),
+		)
 		if _, err := Run(cmd); err != nil {
 			return fmt.Errorf("failed to install istio-base: %w", err)
 		}
@@ -105,7 +99,10 @@ func InstallGatewayController(gatewayClass string) error {
 		cmd = exec.Command("helm", "upgrade", "-i", "istiod", "istio/istiod",
 			"--version", settings.IstioVersion,
 			"-n", settings.IstioNamespace,
-			"-f", settings.IstiodValuesFile)
+			"-f", settings.IstiodValuesFile,
+			"--wait",
+			fmt.Sprintf("--timeout=%v", settings.TimeoutLong),
+		)
 		if _, err := Run(cmd); err != nil {
 			return fmt.Errorf("failed to install istiod: %w", err)
 		}
@@ -115,7 +112,10 @@ func InstallGatewayController(gatewayClass string) error {
 			settings.KgatewayCrdsHelmRepoURL,
 			"--version", settings.KgatewayCrdsVersion,
 			"-n", settings.KgatewayNamespace,
-			"--create-namespace")
+			"--create-namespace",
+			"--wait",
+			fmt.Sprintf("--timeout=%v", settings.TimeoutLong),
+		)
 		if _, err := Run(cmd); err != nil {
 			return fmt.Errorf("failed to install kgateway crds: %w", err)
 		}
@@ -124,7 +124,10 @@ func InstallGatewayController(gatewayClass string) error {
 			settings.KgatewayHelmRepoURL,
 			"--version", settings.KgatewayVersion,
 			"-n", settings.KgatewayNamespace,
-			"-f", settings.KgatewayValuesFile)
+			"-f", settings.KgatewayValuesFile,
+			"--wait",
+			fmt.Sprintf("--timeout=%v", settings.TimeoutLong),
+		)
 		if _, err := Run(cmd); err != nil {
 			return fmt.Errorf("failed to install kgateway: %w", err)
 		}

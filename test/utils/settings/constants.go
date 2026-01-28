@@ -36,7 +36,7 @@ const (
 const (
 	KgatewayCrdsHelmRepoURL = "oci://cr.kgateway.dev/kgateway-dev/charts/kgateway-crds"
 	KgatewayHelmRepoURL     = "oci://cr.kgateway.dev/kgateway-dev/charts/kgateway"
-	KgatewayCrdsVersion     = "v1.1.0"
+	KgatewayCrdsVersion     = "v2.1.1"
 	KgatewayVersion         = "v2.1.1"
 	KgatewayNamespace       = "kgateway-system"
 	KgatewayValuesFile      = "test/config/base/values/kgateway-values.yaml"

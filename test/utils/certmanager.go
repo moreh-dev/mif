@@ -6,7 +6,6 @@ package utils
 import (
 	"fmt"
 	"os/exec"
-	"strings"
 
 	"github.com/moreh-dev/mif/test/utils/settings"
 )
@@ -73,15 +72,5 @@ func IsCertManagerCRDsInstalled() bool {
 		return false
 	}
 
-	// Check if any of the Cert Manager CRDs are present
-	crdList := GetNonEmptyLines(output)
-	for _, crd := range certManagerCRDs {
-		for _, line := range crdList {
-			if strings.Contains(line, crd) {
-				return true
-			}
-		}
-	}
-
-	return false
+	return hasAllCRDs(output, certManagerCRDs)
 }

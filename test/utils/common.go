@@ -96,20 +96,6 @@ func GetProjectDir() (string, error) {
 	}
 }
 
-// GetNonEmptyLines converts given command output string into individual objects
-// according to line breakers, and ignores the empty elements in it.
-func GetNonEmptyLines(output string) []string {
-	var res []string
-	elements := strings.Split(output, "\n")
-	for _, element := range elements {
-		if element != "" {
-			res = append(res, element)
-		}
-	}
-
-	return res
-}
-
 // ParseResourceName extracts only the resource name from kubectl's "-o name" output.
 // It converts "kind.group/name" into just "name".
 func ParseResourceName(output string) string {
@@ -146,4 +132,14 @@ func loadTemplateFile(filename string) (string, error) {
 	}
 
 	return string(content), nil
+}
+
+// hasAllCRDs verifies that every CRD in the required list exists within the command output.
+func hasAllCRDs(output string, required []string) bool {
+	for _, crd := range required {
+		if !strings.Contains(output, crd) {
+			return false
+		}
+	}
+	return true
 }
