@@ -39,6 +39,7 @@ func Run(cmd *exec.Cmd) (string, error) {
 	return string(output), nil
 }
 
+// RunWithGinkgoWriter runs a command with the Ginkgo writer.
 func RunWithGinkgoWriter(cmd *exec.Cmd) error {
 	dir, _ := GetProjectDir()
 	cmd.Dir = dir
@@ -59,7 +60,7 @@ func RunWithGinkgoWriter(cmd *exec.Cmd) error {
 	return nil
 }
 
-// deleteNamespace deletes a Kubernetes namespace, ignoring errors if it doesn't exist.
+// DeleteNamespace deletes a Kubernetes namespace, ignoring errors if it doesn't exist.
 func DeleteNamespace(namespace string) {
 	cmd := exec.Command("kubectl", "delete", "ns", namespace, "--timeout=60s", "--ignore-not-found=true")
 	if _, err := Run(cmd); err != nil {
@@ -67,6 +68,7 @@ func DeleteNamespace(namespace string) {
 	}
 }
 
+// RenderTemplate renders a template file with the given data.
 func RenderTemplate(filename string, data any) (string, error) {
 	templateText, err := loadTemplateFile(filename)
 	if err != nil {
@@ -76,7 +78,7 @@ func RenderTemplate(filename string, data any) (string, error) {
 	return renderTextTemplate(templateText, data)
 }
 
-// GetProjectDir will return the directory where the project is
+// GetProjectDir returns the directory where the project is.
 func GetProjectDir() (string, error) {
 	wd, err := os.Getwd()
 	if err != nil {
@@ -134,7 +136,6 @@ func loadTemplateFile(filename string) (string, error) {
 	return string(content), nil
 }
 
-// hasAllCRDs verifies that every CRD in the required list exists within the command output.
 func hasAllCRDs(output string, required []string) bool {
 	for _, crd := range required {
 		if !strings.Contains(output, crd) {
