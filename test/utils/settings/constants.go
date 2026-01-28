@@ -57,7 +57,6 @@ const (
 
 // Inference service
 const (
-	InferenceServiceTemplate            = "test/config/base/resources/inference-service.yaml.tmpl"
 	InferenceServiceName                = "pd"
 	InferenceServicePrefill             = "test/config/base/resources/inference-service-prefill.yaml.tmpl"
 	InferenceServiceDecode              = "test/config/base/resources/inference-service-decode.yaml.tmpl"

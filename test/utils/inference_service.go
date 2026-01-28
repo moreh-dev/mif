@@ -50,18 +50,19 @@ func GetInferenceServiceData(namespace string, model string, hfToken string, hfE
 }
 
 // CreateInferenceService creates an InferenceService CR in the given namespace.
-func CreateInferenceService(namespace string, manifestPath string, data InferenceServiceData) error {
+func CreateInferenceService(namespace string, manifestPath string, data InferenceServiceData) (string, error) {
 	rendered, err := RenderTemplate(manifestPath, data)
 	if err != nil {
-		return fmt.Errorf("failed to render InferenceService manifest: %w", err)
+		return "", fmt.Errorf("failed to render InferenceService manifest: %w", err)
 	}
 
-	cmd := exec.Command("kubectl", "apply", "-f", "-", "-n", namespace)
+	cmd := exec.Command("kubectl", "apply", "-f", "-", "-n", namespace, "-o", "name")
 	cmd.Stdin = strings.NewReader(rendered)
-	if _, err := Run(cmd); err != nil {
-		return fmt.Errorf("failed to create InferenceService: %w", err)
+	output, err := Run(cmd)
+	if err != nil {
+		return "", fmt.Errorf("failed to create InferenceService: %w", err)
 	}
-	return nil
+	return output, nil
 }
 
 // DeleteInferenceService deletes an InferenceService from the given namespace.
@@ -74,18 +75,19 @@ func DeleteInferenceService(namespace string, name string) {
 }
 
 // CreateInferenceServiceTemplate creates an InferenceServiceTemplate CR in the given namespace.
-func CreateInferenceServiceTemplate(namespace string, manifestPath string, data InferenceServiceData) error {
+func CreateInferenceServiceTemplate(namespace string, manifestPath string, data InferenceServiceData) (string, error) {
 	rendered, err := RenderTemplate(manifestPath, data)
 	if err != nil {
-		return fmt.Errorf("failed to render InferenceServiceTemplate manifest: %w", err)
+		return "", fmt.Errorf("failed to render InferenceServiceTemplate manifest: %w", err)
 	}
 
-	cmd := exec.Command("kubectl", "apply", "-f", "-", "-n", namespace)
+	cmd := exec.Command("kubectl", "apply", "-f", "-", "-n", namespace, "-o", "name")
 	cmd.Stdin = strings.NewReader(rendered)
-	if _, err := Run(cmd); err != nil {
-		return fmt.Errorf("failed to create InferenceServiceTemplate: %w", err)
+	output, err := Run(cmd)
+	if err != nil {
+		return "", fmt.Errorf("failed to create InferenceServiceTemplate: %w", err)
 	}
-	return nil
+	return output, nil
 }
 
 // DeleteInferenceServiceTemplate deletes an InferenceServiceTemplate from the given namespace.

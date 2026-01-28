@@ -67,7 +67,7 @@ func IsGatewayAPICRDsInstalled() bool {
 		return false
 	}
 
-	// Check if any of the Cert Manager CRDs are present
+	// Check if any of the Gateway API CRDs are present
 	crdList := GetNonEmptyLines(output)
 	for _, crd := range gatewayAPICRDs {
 		for _, line := range crdList {

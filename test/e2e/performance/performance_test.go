@@ -15,6 +15,15 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+var (
+	commonTemplateName      string
+	prefillMetaTemplateName string
+	decodeMetaTemplateName  string
+	decodeProxyTemplateName string
+	prefillServiceName      string
+	decodeServiceName       string
+)
+
 var _ = Describe("Inference Performance", Label("performance"), Ordered, func() {
 	SetDefaultEventuallyTimeout(settings.TimeoutShort)
 	SetDefaultEventuallyPollingInterval(settings.IntervalShort)
@@ -30,22 +39,29 @@ var _ = Describe("Inference Performance", Label("performance"), Ordered, func() 
 		Expect(utils.InstallHeimdall(envs.WorkloadNamespace, envs.GatewayClassName)).To(Succeed())
 
 		By("creating InferenceServiceTemplates")
+		var err error
 		isKind := !envs.SkipKind
 		inferenceServiceData := utils.GetInferenceServiceData(envs.WorkloadNamespace, envs.TestModel, envs.HFToken, envs.HFEndpoint, isKind)
-		Expect(utils.CreateInferenceServiceTemplate(envs.WorkloadNamespace, settings.InferenceServiceTemplateCommon, inferenceServiceData)).To(Succeed())
-		Expect(utils.CreateInferenceServiceTemplate(envs.WorkloadNamespace, settings.InferenceServiceTemplatePrefillMeta, inferenceServiceData)).To(Succeed())
-		Expect(utils.CreateInferenceServiceTemplate(envs.WorkloadNamespace, settings.InferenceServiceTemplateDecodeMeta, inferenceServiceData)).To(Succeed())
-		Expect(utils.CreateInferenceServiceTemplate(envs.WorkloadNamespace, settings.InferenceServiceTemplateDecodeProxy, inferenceServiceData)).To(Succeed())
+		commonTemplateName, err = utils.CreateInferenceServiceTemplate(envs.WorkloadNamespace, settings.InferenceServiceTemplateCommon, inferenceServiceData)
+		Expect(err).NotTo(HaveOccurred(), "failed to create common InferenceServiceTemplate")
+		prefillMetaTemplateName, err = utils.CreateInferenceServiceTemplate(envs.WorkloadNamespace, settings.InferenceServiceTemplatePrefillMeta, inferenceServiceData)
+		Expect(err).NotTo(HaveOccurred(), "failed to create prefill meta InferenceServiceTemplate")
+		decodeMetaTemplateName, err = utils.CreateInferenceServiceTemplate(envs.WorkloadNamespace, settings.InferenceServiceTemplateDecodeMeta, inferenceServiceData)
+		Expect(err).NotTo(HaveOccurred(), "failed to create decode meta InferenceServiceTemplate")
+		decodeProxyTemplateName, err = utils.CreateInferenceServiceTemplate(envs.WorkloadNamespace, settings.InferenceServiceTemplateDecodeProxy, inferenceServiceData)
+		Expect(err).NotTo(HaveOccurred(), "failed to create decode proxy InferenceServiceTemplate")
 
 		By("creating InferenceServices")
-		Expect(utils.CreateInferenceService(envs.WorkloadNamespace, settings.InferenceServicePrefill, inferenceServiceData)).To(Succeed())
-		Expect(utils.CreateInferenceService(envs.WorkloadNamespace, settings.InferenceServiceDecode, inferenceServiceData)).To(Succeed())
+		prefillServiceName, err = utils.CreateInferenceService(envs.WorkloadNamespace, settings.InferenceServicePrefill, inferenceServiceData)
+		Expect(err).NotTo(HaveOccurred(), "failed to create prefill InferenceService")
+		decodeServiceName, err = utils.CreateInferenceService(envs.WorkloadNamespace, settings.InferenceServiceDecode, inferenceServiceData)
+		Expect(err).NotTo(HaveOccurred(), "failed to create decode InferenceService")
 
 		By("waiting for prefill InferenceService to be ready")
-		Expect(waitForInferenceService(envs.WorkloadNamespace, settings.InferenceServiceName+"-prefill")).To(Succeed())
+		Expect(waitForInferenceService(envs.WorkloadNamespace, prefillServiceName)).To(Succeed())
 
 		By("waiting for decode InferenceService to be ready")
-		Expect(waitForInferenceService(envs.WorkloadNamespace, settings.InferenceServiceName+"-decode")).To(Succeed())
+		Expect(waitForInferenceService(envs.WorkloadNamespace, decodeServiceName)).To(Succeed())
 	})
 
 	AfterAll(func() {
@@ -54,14 +70,14 @@ var _ = Describe("Inference Performance", Label("performance"), Ordered, func() 
 		}
 
 		By("deleting InferenceServices")
-		utils.DeleteInferenceService(envs.WorkloadNamespace, settings.InferenceServicePrefill)
-		utils.DeleteInferenceService(envs.WorkloadNamespace, settings.InferenceServiceDecode)
+		utils.DeleteInferenceService(envs.WorkloadNamespace, prefillServiceName)
+		utils.DeleteInferenceService(envs.WorkloadNamespace, decodeServiceName)
 
 		By("deleting InferenceServiceTemplates")
-		utils.DeleteInferenceServiceTemplate(envs.WorkloadNamespace, settings.InferenceServiceTemplateCommon)
-		utils.DeleteInferenceServiceTemplate(envs.WorkloadNamespace, settings.InferenceServiceTemplatePrefillMeta)
-		utils.DeleteInferenceServiceTemplate(envs.WorkloadNamespace, settings.InferenceServiceTemplateDecodeMeta)
-		utils.DeleteInferenceServiceTemplate(envs.WorkloadNamespace, settings.InferenceServiceTemplateDecodeProxy)
+		utils.DeleteInferenceServiceTemplate(envs.WorkloadNamespace, commonTemplateName)
+		utils.DeleteInferenceServiceTemplate(envs.WorkloadNamespace, prefillMetaTemplateName)
+		utils.DeleteInferenceServiceTemplate(envs.WorkloadNamespace, decodeMetaTemplateName)
+		utils.DeleteInferenceServiceTemplate(envs.WorkloadNamespace, decodeProxyTemplateName)
 
 		By("deleting Heimdall")
 		utils.UninstallHeimdall(envs.WorkloadNamespace)
