@@ -17,6 +17,12 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+// Quality benchmark
+const (
+	QualityBenchmarkImage = "255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/moreh-llm-eval:v0.0.1"
+	MinMMLUScore          = 0.37
+)
+
 var (
 	commonTemplateName      string
 	prefillMetaTemplateName string
@@ -38,10 +44,21 @@ var _ = Describe("Quality Benchmark", Label("quality"), Ordered, func() {
 		Expect(utils.CreateGatewayResource(envs.WorkloadNamespace, envs.GatewayClassName)).To(Succeed())
 
 		By("installing Heimdall")
-		Expect(utils.InstallHeimdall(envs.WorkloadNamespace, envs.GatewayClassName)).To(Succeed())
+		data := struct {
+			MorehRegistrySecretName string
+			GatewayName             string
+			GatewayClass            string
+		}{
+			MorehRegistrySecretName: settings.MorehRegistrySecretName,
+			GatewayName:             settings.GatewayName,
+			GatewayClass:            envs.GatewayClassName,
+		}
+
+		values, err := utils.RenderTemplate("./config/heimdall-values.yaml.tmpl", data)
+		Expect(err).NotTo(HaveOccurred(), "failed to render Heimdall values template")
+		Expect(utils.InstallHeimdall(envs.WorkloadNamespace, values)).To(Succeed())
 
 		By("creating InferenceServiceTemplates")
-		var err error
 		isKind := !envs.SkipKind
 		inferenceServiceData := utils.GetInferenceServiceData(envs.WorkloadNamespace, envs.TestModel, envs.HFToken, envs.HFEndpoint, isKind)
 		commonTemplateName, err = utils.CreateInferenceServiceTemplate(envs.WorkloadNamespace, settings.InferenceServiceTemplateCommon, inferenceServiceData)
@@ -152,10 +169,10 @@ func createQualityBenchmarkJob(namespace string, serviceName string) (string, er
 		Benchmarks:            envs.QualityBenchmarks,
 		Limit:                 envs.QualityBenchmarkLimit,
 		ImagePullSecret:       settings.MorehRegistrySecretName,
-		QualityBenchmarkImage: settings.QualityBenchmarkImage,
+		QualityBenchmarkImage: QualityBenchmarkImage,
 	}
 
-	jobYAML, err := utils.RenderTemplate(settings.QualityBenchmarkJobTemplate, data)
+	jobYAML, err := utils.RenderTemplate("./config/quality-benchmark-job.yaml.tmpl", data)
 	if err != nil {
 		return "", fmt.Errorf("failed to render job template: %w", err)
 	}
@@ -278,8 +295,8 @@ func validateMMLUResults(logs string) error {
 		return fmt.Errorf("failed to extract MMLU score: %w", err)
 	}
 
-	if score < settings.MinMMLUScore {
-		return fmt.Errorf("MMLU score %.4f is below minimum threshold %.2f", score, settings.MinMMLUScore)
+	if score < MinMMLUScore {
+		return fmt.Errorf("MMLU score %.4f is below minimum threshold %.2f", score, MinMMLUScore)
 	}
 
 	return nil

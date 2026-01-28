@@ -28,8 +28,8 @@ const (
 	IstioHelmRepoURL     = "https://istio-release.storage.googleapis.com/charts"
 	IstioVersion         = "1.28.1"
 	IstioNamespace       = "istio-system"
-	IstiodValuesFile     = "test/config/base/values/istiod-values.yaml"
-	IstioGatewayTemplate = "test/config/base/resources/gateway-istio.yaml.tmpl"
+	IstiodValuesFile     = "test/utils/config/istiod-values.yaml"
+	IstioGatewayTemplate = "test/utils/config/gateway-istio.yaml.tmpl"
 )
 
 // Kgateway
@@ -39,20 +39,19 @@ const (
 	KgatewayCrdsVersion     = "v2.1.1"
 	KgatewayVersion         = "v2.1.1"
 	KgatewayNamespace       = "kgateway-system"
-	KgatewayValuesFile      = "test/config/base/values/kgateway-values.yaml"
-	KgatewayGatewayTemplate = "test/config/base/resources/gateway-kgateway.yaml.tmpl"
+	KgatewayValuesFile      = "test/utils/config/kgateway-values.yaml"
+	KgatewayGatewayTemplate = "test/utils/config/gateway-kgateway.yaml.tmpl"
 )
 
 // MIF
 const (
 	MorehHelmRepoURL  = "https://moreh-dev.github.io/helm-charts"
-	MIFValuesTemplate = "test/config/base/values/mif-values.yaml.tmpl"
+	MIFValuesTemplate = "test/utils/config/mif-values.yaml.tmpl"
 )
 
 // Heimdall
 const (
-	HeimdallValuesTemplate = "test/config/base/values/heimdall-values.yaml.tmpl"
-	HeimdallVersion        = "v0.6.1"
+	HeimdallVersion = "v0.6.1"
 )
 
 // Inference service
@@ -70,22 +69,6 @@ const (
 	ImageTagKindDefault                 = "v0.6.1"
 	ImageRepoDefault                    = "255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/quickstart/moreh-vllm"
 	ImageTagDefault                     = "20250915.1"
-)
-
-// Inference perf experiment defaults
-const (
-	InferencePerfJobTemplate  = "test/config/pd-performance/inference-perf-job.yaml.tmpl"
-	InferencePerfS3PrefixBase = "vllm"
-	InferencePerfPreset       = "workertemplate-vllm-common"
-	InferencePerfExpType      = "performance"
-	InferencePerfExpName      = "synthetic_random_i1024_o1024_c64"
-)
-
-// Quality benchmark
-const (
-	QualityBenchmarkJobTemplate = "test/config/pd-quality/quality-benchmark-job.yaml.tmpl"
-	QualityBenchmarkImage       = "255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/moreh-llm-eval:v0.0.1"
-	MinMMLUScore                = 0.37
 )
 
 // Timeout and interval constants for E2E tests

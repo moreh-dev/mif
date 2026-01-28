@@ -15,6 +15,13 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+const (
+	InferencePerfS3PrefixBase = "vllm"
+	InferencePerfPreset       = "workertemplate-vllm-common"
+	InferencePerfExpType      = "performance"
+	InferencePerfExpName      = "synthetic_random_i1024_o1024_c64"
+)
+
 var (
 	commonTemplateName      string
 	prefillMetaTemplateName string
@@ -36,10 +43,21 @@ var _ = Describe("Inference Performance", Label("performance"), Ordered, func() 
 		Expect(utils.CreateGatewayResource(envs.WorkloadNamespace, envs.GatewayClassName)).To(Succeed())
 
 		By("installing Heimdall")
-		Expect(utils.InstallHeimdall(envs.WorkloadNamespace, envs.GatewayClassName)).To(Succeed())
+		data := struct {
+			MorehRegistrySecretName string
+			GatewayName             string
+			GatewayClass            string
+		}{
+			MorehRegistrySecretName: settings.MorehRegistrySecretName,
+			GatewayName:             settings.GatewayName,
+			GatewayClass:            envs.GatewayClassName,
+		}
+
+		values, err := utils.RenderTemplate("./config/heimdall-values.yaml.tmpl", data)
+		Expect(err).NotTo(HaveOccurred(), "failed to render Heimdall values template")
+		Expect(utils.InstallHeimdall(envs.WorkloadNamespace, values)).To(Succeed())
 
 		By("creating InferenceServiceTemplates")
-		var err error
 		isKind := !envs.SkipKind
 		inferenceServiceData := utils.GetInferenceServiceData(envs.WorkloadNamespace, envs.TestModel, envs.HFToken, envs.HFEndpoint, isKind)
 		commonTemplateName, err = utils.CreateInferenceServiceTemplate(envs.WorkloadNamespace, settings.InferenceServiceTemplateCommon, inferenceServiceData)
@@ -146,14 +164,14 @@ func createInferencePerfJob(namespace string, baseURL string) (string, error) {
 		S3SecretAccessKey: envs.S3SecretAccessKey,
 		S3Region:          envs.S3Region,
 		S3Bucket:          envs.S3Bucket,
-		S3PrefixBase:      settings.InferencePerfS3PrefixBase,
+		S3PrefixBase:      InferencePerfS3PrefixBase,
 		VLLMTag:           imageTag,
-		Preset:            settings.InferencePerfPreset,
-		ExpType:           settings.InferencePerfExpType,
-		ExpName:           settings.InferencePerfExpName,
+		Preset:            InferencePerfPreset,
+		ExpType:           InferencePerfExpType,
+		ExpName:           InferencePerfExpName,
 	}
 
-	jobYAML, err := utils.RenderTemplate(settings.InferencePerfJobTemplate, data)
+	jobYAML, err := utils.RenderTemplate("./config/inference-perf-job.yaml.tmpl", data)
 	if err != nil {
 		return "", fmt.Errorf("failed to render job template: %w", err)
 	}
