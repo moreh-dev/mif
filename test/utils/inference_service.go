@@ -62,7 +62,7 @@ func CreateInferenceService(namespace string, manifestPath string, data Inferenc
 	if err != nil {
 		return "", fmt.Errorf("failed to create InferenceService: %w", err)
 	}
-	return output, nil
+	return ParseResourceName(output), nil
 }
 
 // DeleteInferenceService deletes an InferenceService from the given namespace.
@@ -87,7 +87,7 @@ func CreateInferenceServiceTemplate(namespace string, manifestPath string, data 
 	if err != nil {
 		return "", fmt.Errorf("failed to create InferenceServiceTemplate: %w", err)
 	}
-	return output, nil
+	return ParseResourceName(output), nil
 }
 
 // DeleteInferenceServiceTemplate deletes an InferenceServiceTemplate from the given namespace.

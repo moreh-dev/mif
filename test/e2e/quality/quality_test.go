@@ -166,9 +166,7 @@ func createQualityBenchmarkJob(namespace string, serviceName string) (string, er
 	if err != nil {
 		return "", fmt.Errorf("failed to create job: %w", err)
 	}
-
-	jobName := strings.TrimPrefix(strings.TrimSpace(output), "job.batch/")
-	return jobName, nil
+	return utils.ParseResourceName(output), nil
 }
 
 func deleteQualityBenchmarkJob(namespace string, jobName string) {

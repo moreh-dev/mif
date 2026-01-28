@@ -110,6 +110,16 @@ func GetNonEmptyLines(output string) []string {
 	return res
 }
 
+// ParseResourceName extracts only the resource name from kubectl's "-o name" output.
+// It converts "kind.group/name" into just "name".
+func ParseResourceName(output string) string {
+	trimmed := strings.TrimSpace(output)
+	if parts := strings.Split(trimmed, "/"); len(parts) > 1 {
+		return parts[len(parts)-1]
+	}
+	return trimmed
+}
+
 func renderTextTemplate(templateText string, data any) (string, error) {
 	t, err := template.New("manifest").Parse(templateText)
 	if err != nil {
