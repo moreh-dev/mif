@@ -202,6 +202,18 @@ func getQualityBenchmarkJobLogs(namespace string, jobName string) (string, error
 	return logs, nil
 }
 
+// extractMMLUScore extracts the MMLU score from the logs.
+// MMLU score table example:
+// ```
+// |      Groups      |Version|Filter|n-shot|Metric|   |Value |   |Stderr|
+// |------------------|------:|------|------|------|---|-----:|---|-----:|
+// |mmlu              |      2|none  |      |acc   |↑  |0.2295|±  |0.0035|
+// | - humanities     |      2|none  |      |acc   |↑  |0.2421|±  |0.0062|
+// | - other          |      2|none  |      |acc   |↑  |0.2398|±  |0.0076|
+// | - social sciences|      2|none  |      |acc   |↑  |0.2171|±  |0.0074|
+// | - stem           |      2|none  |      |acc   |↑  |0.2125|±  |0.0073|
+// ```
+// The MMLU score is in the 8th column (index 7) of the "mmlu" row.
 func extractMMLUScore(logs string) (float64, error) {
 	scanner := bufio.NewScanner(strings.NewReader(logs))
 	inGroups := false
