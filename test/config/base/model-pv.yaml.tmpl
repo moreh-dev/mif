@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mif-e2e-model-pv
+  annotations:
+    pv.kubernetes.io/provisioned-by: rook-ceph.cephfs.csi.ceph.com
+spec:
+  storageClassName: ceph-filesystem
+  accessModes:
+    - ReadOnlyMany
+  capacity:
+    storage: 10Ti
+  persistentVolumeReclaimPolicy: Retain
+  csi:
+    driver: rook-ceph.cephfs.csi.ceph.com
+    volumeHandle: mif-e2e-model-pv
+    volumeAttributes:
+      clusterID: rook-ceph
+      fsName: ceph-filesystem
+      staticVolume: "true"
+      rootPath: /volumes/csi/csi-vol-8d26876c-56a9-43eb-a048-37f4ec154091/21df91ef-ee0c-42de-ad26-d3c45cf046a9
+    nodeStageSecretRef:
+      name: rook-csi-cephfs-node-user
+      namespace: rook-ceph

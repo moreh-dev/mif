@@ -27,25 +27,31 @@ spec:
         - "{{.GatewayHost}}"
         - --port
         - "{{.GatewayPort}}"
-        resources:
-          requests:
-            cpu: "500m"
-            memory: "512Mi"
-          limits:
-            cpu: "2"
-            memory: "2Gi"
-        {{- if or .HFToken .HFEndpoint .Limit }}
+        {{- if not .IsKind }}
+        volumeMounts:
+          - name: model
+            mountPath: /mnt/models
+        {{- end }}
         env:
-        {{- if .HFToken }}
+          {{- if not .IsKind }}
+          - name: HF_HOME
+            value: /mnt/models
+          {{- end }}
+          {{- if .HFToken }}
           - name: HF_TOKEN
             value: "{{ .HFToken }}"
-        {{- end }}
-        {{- if .HFEndpoint }}
+          {{- end }}
+          {{- if .HFEndpoint }}
           - name: HF_ENDPOINT
             value: "{{ .HFEndpoint }}"
-        {{- end }}
-        {{- if .Limit }}
+          {{- end }}
+          {{- if .Limit }}
           - name: LIMIT
             value: "{{.Limit}}"
-        {{- end }}
-        {{- end }}
+          {{- end }}
+      {{- if not .IsKind }}
+      volumes:
+        - name: model
+          persistentVolumeClaim:
+            claimName: model
+      {{- end }}

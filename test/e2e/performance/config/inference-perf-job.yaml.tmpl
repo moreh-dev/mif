@@ -85,7 +85,6 @@ spec:
             --log-level INFO
 
           cat reports*/*.json
-        {{- if or .HFToken .HFEndpoint (and (not .IsKind) .S3AccessKeyID .S3SecretAccessKey) }}
         env:
           {{- if .HFToken }}
           - name: HF_TOKEN
@@ -103,4 +102,3 @@ spec:
           - name: AWS_DEFAULT_REGION
             value: "{{ .S3Region }}"
           {{- end }}
-        {{- end }}
