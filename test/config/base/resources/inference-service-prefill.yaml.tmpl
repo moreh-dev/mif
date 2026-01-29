@@ -17,7 +17,6 @@ spec:
     spec:
       containers:
         - name: main
-          {{- if or (not .IsKind) .HFToken .HFEndpoint }}
           env:
             {{- if not .IsKind }}
             - name: ISVC_MODEL_NAME
@@ -31,7 +30,6 @@ spec:
             - name: HF_ENDPOINT
               value: "{{ .HFEndpoint }}"
             {{- end }}
-          {{- end }}
           readinessProbe:
             httpGet:
               path: /health

@@ -112,6 +112,18 @@ var _ = Describe("Quality Benchmark", Label("quality"), Ordered, func() {
 		serviceName, err := utils.GetGatewayServiceName(envs.WorkloadNamespace)
 		Expect(err).NotTo(HaveOccurred(), "failed to get Gateway service name")
 
+		if envs.SkipKind {
+			By("creating model PV")
+			pvName, err := createModelPV()
+			Expect(err).NotTo(HaveOccurred(), "failed to create model PV")
+			defer deleteModelPV(pvName)
+
+			By("creating model PVC")
+			pvcName, err := createModelPVC(envs.WorkloadNamespace)
+			Expect(err).NotTo(HaveOccurred(), "failed to create model PVC")
+			defer deleteModelPVC(envs.WorkloadNamespace, pvcName)
+		}
+
 		By("creating quality benchmark job")
 		jobName, err := createQualityBenchmarkJob(envs.WorkloadNamespace, serviceName)
 		Expect(err).NotTo(HaveOccurred(), "failed to create quality benchmark job")
@@ -142,6 +154,53 @@ func waitForInferenceService(namespace string, name string) error {
 		fmt.Sprintf("--timeout=%v", settings.TimeoutVeryLong))
 	_, err := utils.Run(cmd)
 	return err
+}
+
+func createModelPV() (string, error) {
+	rendered, err := utils.RenderTemplate("test/config/base/model-pv.yaml.tmpl", nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to render model PV template: %w", err)
+	}
+	cmd := exec.Command("kubectl", "apply", "-f", "-")
+	cmd.Stdin = strings.NewReader(rendered)
+	output, err := utils.Run(cmd)
+	if err != nil {
+		return "", fmt.Errorf("failed to create model PV: %w", err)
+	}
+	return utils.ParseResourceName(output), nil
+}
+
+func deleteModelPV(pvName string) {
+	cmd := exec.Command("kubectl", "delete", "pv", pvName,
+		"--ignore-not-found=true")
+	_, _ = utils.Run(cmd)
+}
+
+func createModelPVC(namespace string) (string, error) {
+	data := struct {
+		Namespace string
+	}{
+		Namespace: namespace,
+	}
+
+	rendered, err := utils.RenderTemplate("test/config/base/model-pvc.yaml.tmpl", data)
+	if err != nil {
+		return "", fmt.Errorf("failed to render model PVC template: %w", err)
+	}
+
+	cmd := exec.Command("kubectl", "apply", "-f", "-")
+	cmd.Stdin = strings.NewReader(rendered)
+	output, err := utils.Run(cmd)
+	if err != nil {
+		return "", fmt.Errorf("failed to create model PVC: %w", err)
+	}
+	return utils.ParseResourceName(output), nil
+}
+
+func deleteModelPVC(namespace string, pvcName string) {
+	cmd := exec.Command("kubectl", "delete", "pvc", pvcName,
+		"-n", namespace, "--ignore-not-found=true")
+	_, _ = utils.Run(cmd)
 }
 
 func createQualityBenchmarkJob(namespace string, serviceName string) (string, error) {
