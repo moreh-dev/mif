@@ -369,5 +369,7 @@ func validateMMLUResults(logs string) error {
 		return fmt.Errorf("MMLU score %.4f is below minimum threshold %.2f", score, MinMMLUScore)
 	}
 
+	_, _ = fmt.Fprintf(GinkgoWriter, "MMLU score %.4f is above minimum threshold %.2f\n", score, MinMMLUScore)
+
 	return nil
 }
