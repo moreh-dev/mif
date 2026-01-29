@@ -17,7 +17,7 @@ spec:
         - name: {{ .ImagePullSecret }}
       containers:
       - name: quality-benchmark
-        image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/moreh-llm-eval:v0.0.1
+        image: {{ .QualityBenchmarkImage }}
         command: ["/bin/bash", "-c"]
         args:
           - |
