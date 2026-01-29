@@ -47,10 +47,12 @@ var _ = Describe("Inference Performance", Label("performance"), Ordered, func() 
 			MorehRegistrySecretName string
 			GatewayName             string
 			GatewayClass            string
+			IstioRev                string
 		}{
 			MorehRegistrySecretName: settings.MorehRegistrySecretName,
 			GatewayName:             settings.GatewayName,
 			GatewayClass:            envs.GatewayClassName,
+			IstioRev:                envs.IstioRev,
 		}
 
 		values, err := utils.RenderTemplate("test/e2e/performance/config/heimdall-values.yaml.tmpl", data)

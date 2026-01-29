@@ -46,10 +46,12 @@ var _ = Describe("Quality Benchmark", Label("quality"), Ordered, func() {
 			MorehRegistrySecretName string
 			GatewayName             string
 			GatewayClass            string
+			IstioRev                string
 		}{
 			MorehRegistrySecretName: settings.MorehRegistrySecretName,
 			GatewayName:             settings.GatewayName,
 			GatewayClass:            envs.GatewayClassName,
+			IstioRev:                envs.IstioRev,
 		}
 
 		values, err := utils.RenderTemplate("test/e2e/quality/config/heimdall-values.yaml.tmpl", data)
