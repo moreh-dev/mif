@@ -52,6 +52,7 @@ spec:
                 --max-num-batched-tokens 8192
                 {{- if .IsQualityBenchmark }}
                 --enable-tokenizer-info-endpoint
+                --tokenizer-mode auto
                 {{- end }}
             - name: VLLM_NIXL_SIDE_CHANNEL_HOST
               valueFrom:
