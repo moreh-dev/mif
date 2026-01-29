@@ -25,6 +25,10 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
   name: {{ .GatewayName }}
+  {{- if .IstioRev }}
+  labels:
+    istio.io/rev: {{ .IstioRev }}
+  {{- end }}
 spec:
   gatewayClassName: istio
   infrastructure:

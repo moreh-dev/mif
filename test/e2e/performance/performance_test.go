@@ -37,20 +37,22 @@ var _ = Describe("Inference Performance", Label("performance"), Ordered, func() 
 
 	BeforeAll(func() {
 		By("creating workload namespace")
-		Expect(utils.CreateWorkloadNamespace(envs.WorkloadNamespace, envs.MIFNamespace, envs.IstioRev)).To(Succeed())
+		Expect(utils.CreateWorkloadNamespace(envs.WorkloadNamespace, envs.MIFNamespace)).To(Succeed())
 
 		By("creating Gateway resources")
-		Expect(utils.CreateGatewayResource(envs.WorkloadNamespace, envs.GatewayClassName)).To(Succeed())
+		Expect(utils.CreateGatewayResource(envs.WorkloadNamespace, envs.GatewayClassName, envs.IstioRev)).To(Succeed())
 
 		By("installing Heimdall")
 		data := struct {
 			MorehRegistrySecretName string
 			GatewayName             string
 			GatewayClass            string
+			IstioRev                string
 		}{
 			MorehRegistrySecretName: settings.MorehRegistrySecretName,
 			GatewayName:             settings.GatewayName,
 			GatewayClass:            envs.GatewayClassName,
+			IstioRev:                envs.IstioRev,
 		}
 
 		values, err := utils.RenderTemplate("test/e2e/performance/config/heimdall-values.yaml.tmpl", data)
@@ -59,7 +61,7 @@ var _ = Describe("Inference Performance", Label("performance"), Ordered, func() 
 
 		By("creating InferenceServiceTemplates")
 		isKind := !envs.SkipKind
-		inferenceServiceData := utils.GetInferenceServiceData(envs.WorkloadNamespace, envs.TestModel, envs.HFToken, envs.HFEndpoint, isKind)
+		inferenceServiceData := utils.GetInferenceServiceData(envs.WorkloadNamespace, envs.TestModel, envs.HFToken, envs.HFEndpoint, isKind, false)
 		commonTemplateName, err = utils.CreateInferenceServiceTemplate(envs.WorkloadNamespace, settings.InferenceServiceTemplateCommon, inferenceServiceData)
 		Expect(err).NotTo(HaveOccurred(), "failed to create common InferenceServiceTemplate")
 		prefillMetaTemplateName, err = utils.CreateInferenceServiceTemplate(envs.WorkloadNamespace, settings.InferenceServiceTemplatePrefillMeta, inferenceServiceData)

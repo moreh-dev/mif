@@ -77,6 +77,7 @@ const (
 	TimeoutMedium   = 5 * time.Minute
 	TimeoutLong     = 10 * time.Minute
 	TimeoutVeryLong = 15 * time.Minute
+	Timeout30Min    = 30 * time.Minute
 
 	IntervalShort  = 2 * time.Second
 	IntervalMedium = 5 * time.Second

@@ -18,8 +18,7 @@ import (
 )
 
 const (
-	QualityBenchmarkImage = "255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/moreh-llm-eval:v0.0.1"
-	MinMMLUScore          = 0.37
+	MinMMLUScore = 0.37
 )
 
 var (
@@ -37,20 +36,22 @@ var _ = Describe("Quality Benchmark", Label("quality"), Ordered, func() {
 
 	BeforeAll(func() {
 		By("creating workload namespace")
-		Expect(utils.CreateWorkloadNamespace(envs.WorkloadNamespace, envs.MIFNamespace, envs.IstioRev)).To(Succeed())
+		Expect(utils.CreateWorkloadNamespace(envs.WorkloadNamespace, envs.MIFNamespace)).To(Succeed())
 
 		By("creating Gateway resources")
-		Expect(utils.CreateGatewayResource(envs.WorkloadNamespace, envs.GatewayClassName)).To(Succeed())
+		Expect(utils.CreateGatewayResource(envs.WorkloadNamespace, envs.GatewayClassName, envs.IstioRev)).To(Succeed())
 
 		By("installing Heimdall")
 		data := struct {
 			MorehRegistrySecretName string
 			GatewayName             string
 			GatewayClass            string
+			IstioRev                string
 		}{
 			MorehRegistrySecretName: settings.MorehRegistrySecretName,
 			GatewayName:             settings.GatewayName,
 			GatewayClass:            envs.GatewayClassName,
+			IstioRev:                envs.IstioRev,
 		}
 
 		values, err := utils.RenderTemplate("test/e2e/quality/config/heimdall-values.yaml.tmpl", data)
@@ -59,7 +60,7 @@ var _ = Describe("Quality Benchmark", Label("quality"), Ordered, func() {
 
 		By("creating InferenceServiceTemplates")
 		isKind := !envs.SkipKind
-		inferenceServiceData := utils.GetInferenceServiceData(envs.WorkloadNamespace, envs.TestModel, envs.HFToken, envs.HFEndpoint, isKind)
+		inferenceServiceData := utils.GetInferenceServiceData(envs.WorkloadNamespace, envs.TestModel, envs.HFToken, envs.HFEndpoint, isKind, true)
 		commonTemplateName, err = utils.CreateInferenceServiceTemplate(envs.WorkloadNamespace, settings.InferenceServiceTemplateCommon, inferenceServiceData)
 		Expect(err).NotTo(HaveOccurred(), "failed to create common InferenceServiceTemplate")
 		prefillMetaTemplateName, err = utils.CreateInferenceServiceTemplate(envs.WorkloadNamespace, settings.InferenceServiceTemplatePrefillMeta, inferenceServiceData)
@@ -112,8 +113,21 @@ var _ = Describe("Quality Benchmark", Label("quality"), Ordered, func() {
 		serviceName, err := utils.GetGatewayServiceName(envs.WorkloadNamespace)
 		Expect(err).NotTo(HaveOccurred(), "failed to get Gateway service name")
 
+		var pvcName string
+		if envs.SkipKind {
+			By("creating model PV")
+			pvName, err := createModelPV()
+			Expect(err).NotTo(HaveOccurred(), "failed to create model PV")
+			defer deleteModelPV(pvName)
+
+			By("creating model PVC")
+			pvcName, err = createModelPVC(envs.WorkloadNamespace)
+			Expect(err).NotTo(HaveOccurred(), "failed to create model PVC")
+			defer deleteModelPVC(envs.WorkloadNamespace, pvcName)
+		}
+
 		By("creating quality benchmark job")
-		jobName, err := createQualityBenchmarkJob(envs.WorkloadNamespace, serviceName)
+		jobName, err := createQualityBenchmarkJob(envs.WorkloadNamespace, serviceName, pvcName)
 		Expect(err).NotTo(HaveOccurred(), "failed to create quality benchmark job")
 		defer deleteQualityBenchmarkJob(envs.WorkloadNamespace, jobName)
 
@@ -144,31 +158,88 @@ func waitForInferenceService(namespace string, name string) error {
 	return err
 }
 
-func createQualityBenchmarkJob(namespace string, serviceName string) (string, error) {
-	type jobTemplateData struct {
-		Namespace             string
-		ModelName             string
-		GatewayHost           string
-		GatewayPort           string
-		HFToken               string
-		HFEndpoint            string
-		Benchmarks            string
-		Limit                 string
-		ImagePullSecret       string
-		QualityBenchmarkImage string
+func createModelPV() (string, error) {
+	rendered, err := utils.RenderTemplate("test/config/base/model-pv.yaml.tmpl", nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to render model PV template: %w", err)
+	}
+	cmd := exec.Command("kubectl", "apply", "-f", "-", "-o", "name")
+	cmd.Stdin = strings.NewReader(rendered)
+	output, err := utils.Run(cmd)
+	if err != nil {
+		return "", fmt.Errorf("failed to create model PV: %w", err)
 	}
 
+	pvName := utils.ParseResourceName(output)
+
+	cmd = exec.Command("kubectl", "patch", "pv", pvName, "-p", `{"spec":{"claimRef":null}}`)
+	if _, err := utils.Run(cmd); err != nil {
+		return "", fmt.Errorf("failed to patch model PV: %w", err)
+	}
+	return pvName, nil
+}
+
+func deleteModelPV(pvName string) {
+	cmd := exec.Command("kubectl", "delete", "pv", pvName,
+		"--ignore-not-found=true")
+	_, _ = utils.Run(cmd)
+}
+
+func createModelPVC(namespace string) (string, error) {
+	data := struct {
+		Namespace string
+	}{
+		Namespace: namespace,
+	}
+
+	rendered, err := utils.RenderTemplate("test/config/base/model-pvc.yaml.tmpl", data)
+	if err != nil {
+		return "", fmt.Errorf("failed to render model PVC template: %w", err)
+	}
+
+	cmd := exec.Command("kubectl", "apply", "-f", "-", "-o", "name")
+	cmd.Stdin = strings.NewReader(rendered)
+	output, err := utils.Run(cmd)
+	if err != nil {
+		return "", fmt.Errorf("failed to create model PVC: %w", err)
+	}
+	return utils.ParseResourceName(output), nil
+}
+
+func deleteModelPVC(namespace string, pvcName string) {
+	cmd := exec.Command("kubectl", "delete", "pvc", pvcName,
+		"-n", namespace, "--ignore-not-found=true")
+	_, _ = utils.Run(cmd)
+}
+
+func createQualityBenchmarkJob(namespace string, serviceName string, pvcName string) (string, error) {
+	type jobTemplateData struct {
+		Namespace       string
+		ModelName       string
+		GatewayHost     string
+		GatewayPort     string
+		HFToken         string
+		HFEndpoint      string
+		Benchmarks      string
+		Limit           string
+		ImagePullSecret string
+		IsKind          bool
+		PVCName         string
+	}
+
+	isKind := !envs.SkipKind
 	data := jobTemplateData{
-		Namespace:             namespace,
-		ModelName:             envs.TestModel,
-		GatewayHost:           serviceName,
-		GatewayPort:           "80",
-		HFToken:               envs.HFToken,
-		HFEndpoint:            envs.HFEndpoint,
-		Benchmarks:            envs.QualityBenchmarks,
-		Limit:                 envs.QualityBenchmarkLimit,
-		ImagePullSecret:       settings.MorehRegistrySecretName,
-		QualityBenchmarkImage: QualityBenchmarkImage,
+		Namespace:       namespace,
+		ModelName:       envs.TestModel,
+		GatewayHost:     serviceName,
+		GatewayPort:     "80",
+		HFToken:         envs.HFToken,
+		HFEndpoint:      envs.HFEndpoint,
+		Benchmarks:      envs.QualityBenchmarks,
+		Limit:           envs.QualityBenchmarkLimit,
+		ImagePullSecret: settings.MorehRegistrySecretName,
+		IsKind:          isKind,
+		PVCName:         pvcName,
 	}
 
 	jobYAML, err := utils.RenderTemplate("test/e2e/quality/config/quality-benchmark-job.yaml.tmpl", data)
@@ -195,7 +266,7 @@ func waitForQualityBenchmarkJob(namespace string, jobName string) error {
 	cmd := exec.Command("kubectl", "wait", "job", jobName,
 		"--for=condition=complete",
 		"-n", namespace,
-		fmt.Sprintf("--timeout=%v", settings.TimeoutVeryLong))
+		fmt.Sprintf("--timeout=%v", settings.Timeout30Min))
 	_, err := utils.Run(cmd)
 	if err != nil {
 		logCmd := exec.Command("kubectl", "logs", "-l", "app=quality-benchmark",
