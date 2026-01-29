@@ -36,11 +36,7 @@ spec:
             {{- end }}
             
             # 원래 Entrypoint가 하려던 작업 수행
-            exec /usr/local/bin/run \
-              --eval "{{.Benchmarks}}" \
-              --model "{{.ModelName}}" \
-              --host "{{.GatewayHost}}" \
-              --port "{{.GatewayPort}}" \
+            sleep infinity
         {{- if not .IsKind }}
         volumeMounts:
           - name: model
