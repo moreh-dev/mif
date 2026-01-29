@@ -61,7 +61,7 @@ var envVars = []envVarInfo{
 	{envSkipCleanup, boolDefaultString(false), "Skip cleanup after tests", "Skip", "bool"},
 
 	// Test Model
-	{envTestModel, "Qwen/Qwen3-0.6B", "Test model name", "Configuration", "string"},
+	{envTestModel, "Qwen/Qwen2.5-0.5B", "Test model name", "Configuration", "string"},
 
 	// AWS Credentials
 	{envAWSAccessKeyID, "", "AWS access key ID", "AWS Credentials (for ECR)", "string"},

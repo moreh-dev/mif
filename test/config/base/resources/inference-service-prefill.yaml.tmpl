@@ -11,7 +11,7 @@ spec:
     - name: workertemplate-vllm-common
     - name: workertemplate-pd-prefill-meta
   parallelism:
-    tensor: 4
+    tensor: 2
     data: 1
   workerTemplate:
     spec:
@@ -43,10 +43,10 @@ spec:
           {{- if not .IsKind }}
           resources:
             requests:
-              amd.com/gpu: "4"
+              amd.com/gpu: "2"
               mellanox/hca: "1"
             limits:
-              amd.com/gpu: "4"
+              amd.com/gpu: "2"
               mellanox/hca: "1"
       tolerations:
         - key: amd.com/gpu
