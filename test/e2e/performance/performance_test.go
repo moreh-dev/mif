@@ -59,7 +59,7 @@ var _ = Describe("Inference Performance", Label("performance"), Ordered, func() 
 
 		By("creating InferenceServiceTemplates")
 		isKind := !envs.SkipKind
-		inferenceServiceData := utils.GetInferenceServiceData(envs.WorkloadNamespace, envs.TestModel, envs.HFToken, envs.HFEndpoint, isKind)
+		inferenceServiceData := utils.GetInferenceServiceData(envs.WorkloadNamespace, envs.TestModel, envs.HFToken, envs.HFEndpoint, isKind, false)
 		commonTemplateName, err = utils.CreateInferenceServiceTemplate(envs.WorkloadNamespace, settings.InferenceServiceTemplateCommon, inferenceServiceData)
 		Expect(err).NotTo(HaveOccurred(), "failed to create common InferenceServiceTemplate")
 		prefillMetaTemplateName, err = utils.CreateInferenceServiceTemplate(envs.WorkloadNamespace, settings.InferenceServiceTemplatePrefillMeta, inferenceServiceData)
