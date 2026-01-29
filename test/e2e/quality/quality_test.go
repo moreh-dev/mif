@@ -267,7 +267,7 @@ func waitForQualityBenchmarkJob(namespace string, jobName string) error {
 	cmd := exec.Command("kubectl", "wait", "job", jobName,
 		"--for=condition=complete",
 		"-n", namespace,
-		fmt.Sprintf("--timeout=%v", settings.Timeout1Hour))
+		fmt.Sprintf("--timeout=%v", settings.Timeout30Min))
 	_, err := utils.Run(cmd)
 	if err != nil {
 		logCmd := exec.Command("kubectl", "logs", "-l", "app=quality-benchmark",
