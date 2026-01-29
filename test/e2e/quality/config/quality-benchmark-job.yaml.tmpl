@@ -18,24 +18,40 @@ spec:
       containers:
       - name: quality-benchmark
         image: {{ .QualityBenchmarkImage }}
+        command: ["/bin/bash", "-c"]
         args:
-        - --eval
-        - "{{.Benchmarks}}"
-        - --model
-        - "{{.ModelName}}"
-        - --host
-        - "{{.GatewayHost}}"
-        - --port
-        - "{{.GatewayPort}}"
+          - |
+            set -e
+            {{- if not .IsKind }}
+            echo "Setting up writeable cache layer..."
+            mkdir -p /tmp/hf_cache
+            # PVC의 내용을 /tmp/hf_cache로 '심볼릭 링크 구조' 복사
+            # 실제 파일은 PVC에 있고, 링크만 /tmp에 생성됨 (Read-Only 에러 회피 핵심)
+            if [ -d "/mnt/models/hub" ]; then
+              cp -as /mnt/models/* /tmp/hf_cache/ 2>/dev/null || true
+            fi
+            export HF_HOME=/tmp/hf_cache
+            export HF_DATASETS_OFFLINE=1
+            export HF_HUB_OFFLINE=1
+            {{- end }}
+            
+            # 원래 Entrypoint가 하려던 작업 수행
+            exec /usr/local/bin/run \
+              --eval "{{.Benchmarks}}" \
+              --model "{{.ModelName}}" \
+              --host "{{.GatewayHost}}" \
+              --port "{{.GatewayPort}}" \
         {{- if not .IsKind }}
         volumeMounts:
           - name: model
             mountPath: /mnt/models
+          - name: writable-cache
+            mountPath: /tmp/hf_cache
         {{- end }}
         env:
           {{- if not .IsKind }}
-          - name: HF_HOME
-            value: /mnt/models
+          - name: HF_DATASETS_OFFLINE
+            value: "1"
           {{- end }}
           {{- if .HFToken }}
           - name: HF_TOKEN
@@ -54,4 +70,6 @@ spec:
         - name: model
           persistentVolumeClaim:
             claimName: {{ .PVCName }}
+        - name: writable-cache
+          emptyDir: {}
       {{- end }}
