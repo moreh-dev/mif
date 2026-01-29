@@ -162,7 +162,7 @@ func createModelPV() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to render model PV template: %w", err)
 	}
-	cmd := exec.Command("kubectl", "apply", "-f", "-")
+	cmd := exec.Command("kubectl", "apply", "-f", "-", "-o", "name")
 	cmd.Stdin = strings.NewReader(rendered)
 	output, err := utils.Run(cmd)
 	if err != nil {
@@ -189,7 +189,7 @@ func createModelPVC(namespace string) (string, error) {
 		return "", fmt.Errorf("failed to render model PVC template: %w", err)
 	}
 
-	cmd := exec.Command("kubectl", "apply", "-f", "-")
+	cmd := exec.Command("kubectl", "apply", "-f", "-", "-o", "name")
 	cmd.Stdin = strings.NewReader(rendered)
 	output, err := utils.Run(cmd)
 	if err != nil {

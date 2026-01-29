@@ -1,11 +1,11 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: mif-e2e-model-pvc
+  name: model-mif-e2e
   namespace: {{.Namespace}}
 spec:
   storageClassName: ceph-filesystem
-  volumeName: mif-e2e-model-pv
+  volumeName: model-mif-e2e
   accessModes:
     - ReadOnlyMany
   resources:
