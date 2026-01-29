@@ -112,6 +112,7 @@ var _ = Describe("Quality Benchmark", Label("quality"), Ordered, func() {
 		serviceName, err := utils.GetGatewayServiceName(envs.WorkloadNamespace)
 		Expect(err).NotTo(HaveOccurred(), "failed to get Gateway service name")
 
+		var pvcName string
 		if envs.SkipKind {
 			By("creating model PV")
 			pvName, err := createModelPV()
@@ -119,13 +120,13 @@ var _ = Describe("Quality Benchmark", Label("quality"), Ordered, func() {
 			defer deleteModelPV(pvName)
 
 			By("creating model PVC")
-			pvcName, err := createModelPVC(envs.WorkloadNamespace)
+			pvcName, err = createModelPVC(envs.WorkloadNamespace)
 			Expect(err).NotTo(HaveOccurred(), "failed to create model PVC")
 			defer deleteModelPVC(envs.WorkloadNamespace, pvcName)
 		}
 
 		By("creating quality benchmark job")
-		jobName, err := createQualityBenchmarkJob(envs.WorkloadNamespace, serviceName)
+		jobName, err := createQualityBenchmarkJob(envs.WorkloadNamespace, serviceName, pvcName)
 		Expect(err).NotTo(HaveOccurred(), "failed to create quality benchmark job")
 		defer deleteQualityBenchmarkJob(envs.WorkloadNamespace, jobName)
 
@@ -203,7 +204,7 @@ func deleteModelPVC(namespace string, pvcName string) {
 	_, _ = utils.Run(cmd)
 }
 
-func createQualityBenchmarkJob(namespace string, serviceName string) (string, error) {
+func createQualityBenchmarkJob(namespace string, serviceName string, pvcName string) (string, error) {
 	type jobTemplateData struct {
 		Namespace             string
 		ModelName             string
@@ -216,6 +217,7 @@ func createQualityBenchmarkJob(namespace string, serviceName string) (string, er
 		ImagePullSecret       string
 		QualityBenchmarkImage string
 		IsKind                bool
+		PVCName               string
 	}
 
 	isKind := !envs.SkipKind
@@ -231,6 +233,7 @@ func createQualityBenchmarkJob(namespace string, serviceName string) (string, er
 		ImagePullSecret:       settings.MorehRegistrySecretName,
 		QualityBenchmarkImage: QualityBenchmarkImage,
 		IsKind:                isKind,
+		PVCName:               pvcName,
 	}
 
 	jobYAML, err := utils.RenderTemplate("test/e2e/quality/config/quality-benchmark-job.yaml.tmpl", data)
