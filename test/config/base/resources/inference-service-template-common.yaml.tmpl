@@ -50,9 +50,6 @@ spec:
                 --kv-transfer-config {"kv_connector":"NixlConnector","kv_role":"kv_both"}
                 --no-enable-prefix-caching
                 --max-num-batched-tokens 8192
-                {{- if .IsQualityBenchmark }}
-                --override-generation-config {"chat_template_kwargs":{"enable_thinking":false}}
-                {{- end }}
             - name: VLLM_NIXL_SIDE_CHANNEL_HOST
               valueFrom:
                 fieldRef:

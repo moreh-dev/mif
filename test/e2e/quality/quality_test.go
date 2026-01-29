@@ -18,7 +18,8 @@ import (
 )
 
 const (
-	MinMMLUScore = 0.37
+	QualityBenchmarkImage = "255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/moreh-llm-eval:v0.0.1"
+	MinMMLUScore          = 0.37
 )
 
 var (
@@ -214,32 +215,34 @@ func deleteModelPVC(namespace string, pvcName string) {
 
 func createQualityBenchmarkJob(namespace string, serviceName string, pvcName string) (string, error) {
 	type jobTemplateData struct {
-		Namespace       string
-		ModelName       string
-		GatewayHost     string
-		GatewayPort     string
-		HFToken         string
-		HFEndpoint      string
-		Benchmarks      string
-		Limit           string
-		ImagePullSecret string
-		IsKind          bool
-		PVCName         string
+		Namespace             string
+		ModelName             string
+		GatewayHost           string
+		GatewayPort           string
+		HFToken               string
+		HFEndpoint            string
+		Benchmarks            string
+		Limit                 string
+		ImagePullSecret       string
+		IsKind                bool
+		QualityBenchmarkImage string
+		PVCName               string
 	}
 
 	isKind := !envs.SkipKind
 	data := jobTemplateData{
-		Namespace:       namespace,
-		ModelName:       envs.TestModel,
-		GatewayHost:     serviceName,
-		GatewayPort:     "80",
-		HFToken:         envs.HFToken,
-		HFEndpoint:      envs.HFEndpoint,
-		Benchmarks:      envs.QualityBenchmarks,
-		Limit:           envs.QualityBenchmarkLimit,
-		ImagePullSecret: settings.MorehRegistrySecretName,
-		IsKind:          isKind,
-		PVCName:         pvcName,
+		Namespace:             namespace,
+		ModelName:             envs.TestModel,
+		GatewayHost:           serviceName,
+		GatewayPort:           "80",
+		HFToken:               envs.HFToken,
+		HFEndpoint:            envs.HFEndpoint,
+		Benchmarks:            envs.QualityBenchmarks,
+		Limit:                 envs.QualityBenchmarkLimit,
+		ImagePullSecret:       settings.MorehRegistrySecretName,
+		IsKind:                isKind,
+		QualityBenchmarkImage: QualityBenchmarkImage,
+		PVCName:               pvcName,
 	}
 
 	jobYAML, err := utils.RenderTemplate("test/e2e/quality/config/quality-benchmark-job.yaml.tmpl", data)
