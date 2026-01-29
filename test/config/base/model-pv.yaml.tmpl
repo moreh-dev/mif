@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: mif-e2e-model-pv
+  name: model-mif-e2e
   annotations:
     pv.kubernetes.io/provisioned-by: rook-ceph.cephfs.csi.ceph.com
 spec:
@@ -13,7 +13,7 @@ spec:
   persistentVolumeReclaimPolicy: Retain
   csi:
     driver: rook-ceph.cephfs.csi.ceph.com
-    volumeHandle: mif-e2e-model-pv
+    volumeHandle: model-mif-e2e
     volumeAttributes:
       clusterID: rook-ceph
       fsName: ceph-filesystem
