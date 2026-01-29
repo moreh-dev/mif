@@ -69,17 +69,17 @@ var _ = Describe("Quality Benchmark", Label("quality"), Ordered, func() {
 		decodeProxyTemplateName, err = utils.CreateInferenceServiceTemplate(envs.WorkloadNamespace, settings.InferenceServiceTemplateDecodeProxy, inferenceServiceData)
 		Expect(err).NotTo(HaveOccurred(), "failed to create decode proxy InferenceServiceTemplate")
 
-		// By("creating InferenceServices")
-		// prefillServiceName, err = utils.CreateInferenceService(envs.WorkloadNamespace, settings.InferenceServicePrefill, inferenceServiceData)
-		// Expect(err).NotTo(HaveOccurred(), "failed to create prefill InferenceService")
-		// decodeServiceName, err = utils.CreateInferenceService(envs.WorkloadNamespace, settings.InferenceServiceDecode, inferenceServiceData)
-		// Expect(err).NotTo(HaveOccurred(), "failed to create decode InferenceService")
+		By("creating InferenceServices")
+		prefillServiceName, err = utils.CreateInferenceService(envs.WorkloadNamespace, settings.InferenceServicePrefill, inferenceServiceData)
+		Expect(err).NotTo(HaveOccurred(), "failed to create prefill InferenceService")
+		decodeServiceName, err = utils.CreateInferenceService(envs.WorkloadNamespace, settings.InferenceServiceDecode, inferenceServiceData)
+		Expect(err).NotTo(HaveOccurred(), "failed to create decode InferenceService")
 
-		// By("waiting for prefill InferenceService to be ready")
-		// Expect(waitForInferenceService(envs.WorkloadNamespace, prefillServiceName)).To(Succeed())
+		By("waiting for prefill InferenceService to be ready")
+		Expect(waitForInferenceService(envs.WorkloadNamespace, prefillServiceName)).To(Succeed())
 
-		// By("waiting for decode InferenceService to be ready")
-		// Expect(waitForInferenceService(envs.WorkloadNamespace, decodeServiceName)).To(Succeed())
+		By("waiting for decode InferenceService to be ready")
+		Expect(waitForInferenceService(envs.WorkloadNamespace, decodeServiceName)).To(Succeed())
 	})
 
 	AfterAll(func() {
@@ -168,7 +168,14 @@ func createModelPV() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to create model PV: %w", err)
 	}
-	return utils.ParseResourceName(output), nil
+
+	pvName := utils.ParseResourceName(output)
+
+	cmd = exec.Command("kubectl", "patch", "pv", pvName, "-p", `{"spec":{"claimRef":null}}`)
+	if _, err := utils.Run(cmd); err != nil {
+		return "", fmt.Errorf("failed to patch model PV: %w", err)
+	}
+	return pvName, nil
 }
 
 func deleteModelPV(pvName string) {
