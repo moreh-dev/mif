@@ -33,6 +33,8 @@ spec:
               --model "{{.ModelName}}" \
               --host "{{.GatewayHost}}" \
               --port "{{.GatewayPort}}" \
+            
+            sleep 300
         {{- if not .IsKind }}
         volumeMounts:
           - name: model
