@@ -12,14 +12,15 @@ import (
 )
 
 type InferenceServiceData struct {
-	Name            string
-	Namespace       string
-	ImagePullSecret string
-	Image           string
-	Model           string
-	HFToken         string
-	HFEndpoint      string
-	IsKind          bool
+	Name               string
+	Namespace          string
+	ImagePullSecret    string
+	Image              string
+	Model              string
+	HFToken            string
+	HFEndpoint         string
+	IsKind             bool
+	IsQualityBenchmark bool
 }
 
 func GetInferenceImageInfo(isKind bool) (repo, tag string) {
@@ -33,19 +34,20 @@ func GetInferenceImageInfo(isKind bool) (repo, tag string) {
 	return repo, tag
 }
 
-func GetInferenceServiceData(namespace string, model string, hfToken string, hfEndpoint string, isKind bool) InferenceServiceData {
+func GetInferenceServiceData(namespace string, model string, hfToken string, hfEndpoint string, isKind bool, isQualityBenchmark bool) InferenceServiceData {
 	imageRepo, imageTag := GetInferenceImageInfo(isKind)
 	image := fmt.Sprintf("%s:%s", imageRepo, imageTag)
 
 	return InferenceServiceData{
-		Name:            settings.InferenceServiceName,
-		Namespace:       namespace,
-		ImagePullSecret: settings.MorehRegistrySecretName,
-		Image:           image,
-		Model:           model,
-		HFToken:         hfToken,
-		HFEndpoint:      hfEndpoint,
-		IsKind:          isKind,
+		Name:               settings.InferenceServiceName,
+		Namespace:          namespace,
+		ImagePullSecret:    settings.MorehRegistrySecretName,
+		Image:              image,
+		Model:              model,
+		HFToken:            hfToken,
+		HFEndpoint:         hfEndpoint,
+		IsKind:             isKind,
+		IsQualityBenchmark: isQualityBenchmark,
 	}
 }
 

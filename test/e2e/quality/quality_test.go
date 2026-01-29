@@ -18,8 +18,7 @@ import (
 )
 
 const (
-	QualityBenchmarkImage = "255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/moreh-llm-eval:v0.0.1"
-	MinMMLUScore          = 0.37
+	MinMMLUScore = 0.37
 )
 
 var (
@@ -59,7 +58,7 @@ var _ = Describe("Quality Benchmark", Label("quality"), Ordered, func() {
 
 		By("creating InferenceServiceTemplates")
 		isKind := !envs.SkipKind
-		inferenceServiceData := utils.GetInferenceServiceData(envs.WorkloadNamespace, envs.TestModel, envs.HFToken, envs.HFEndpoint, isKind)
+		inferenceServiceData := utils.GetInferenceServiceData(envs.WorkloadNamespace, envs.TestModel, envs.HFToken, envs.HFEndpoint, isKind, true)
 		commonTemplateName, err = utils.CreateInferenceServiceTemplate(envs.WorkloadNamespace, settings.InferenceServiceTemplateCommon, inferenceServiceData)
 		Expect(err).NotTo(HaveOccurred(), "failed to create common InferenceServiceTemplate")
 		prefillMetaTemplateName, err = utils.CreateInferenceServiceTemplate(envs.WorkloadNamespace, settings.InferenceServiceTemplatePrefillMeta, inferenceServiceData)
@@ -213,34 +212,32 @@ func deleteModelPVC(namespace string, pvcName string) {
 
 func createQualityBenchmarkJob(namespace string, serviceName string, pvcName string) (string, error) {
 	type jobTemplateData struct {
-		Namespace             string
-		ModelName             string
-		GatewayHost           string
-		GatewayPort           string
-		HFToken               string
-		HFEndpoint            string
-		Benchmarks            string
-		Limit                 string
-		ImagePullSecret       string
-		QualityBenchmarkImage string
-		IsKind                bool
-		PVCName               string
+		Namespace       string
+		ModelName       string
+		GatewayHost     string
+		GatewayPort     string
+		HFToken         string
+		HFEndpoint      string
+		Benchmarks      string
+		Limit           string
+		ImagePullSecret string
+		IsKind          bool
+		PVCName         string
 	}
 
 	isKind := !envs.SkipKind
 	data := jobTemplateData{
-		Namespace:             namespace,
-		ModelName:             envs.TestModel,
-		GatewayHost:           serviceName,
-		GatewayPort:           "80",
-		HFToken:               envs.HFToken,
-		HFEndpoint:            envs.HFEndpoint,
-		Benchmarks:            envs.QualityBenchmarks,
-		Limit:                 envs.QualityBenchmarkLimit,
-		ImagePullSecret:       settings.MorehRegistrySecretName,
-		QualityBenchmarkImage: QualityBenchmarkImage,
-		IsKind:                isKind,
-		PVCName:               pvcName,
+		Namespace:       namespace,
+		ModelName:       envs.TestModel,
+		GatewayHost:     serviceName,
+		GatewayPort:     "80",
+		HFToken:         envs.HFToken,
+		HFEndpoint:      envs.HFEndpoint,
+		Benchmarks:      envs.QualityBenchmarks,
+		Limit:           envs.QualityBenchmarkLimit,
+		ImagePullSecret: settings.MorehRegistrySecretName,
+		IsKind:          isKind,
+		PVCName:         pvcName,
 	}
 
 	jobYAML, err := utils.RenderTemplate("test/e2e/quality/config/quality-benchmark-job.yaml.tmpl", data)
