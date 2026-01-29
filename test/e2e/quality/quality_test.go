@@ -215,8 +215,10 @@ func createQualityBenchmarkJob(namespace string, serviceName string) (string, er
 		Limit                 string
 		ImagePullSecret       string
 		QualityBenchmarkImage string
+		IsKind                bool
 	}
 
+	isKind := !envs.SkipKind
 	data := jobTemplateData{
 		Namespace:             namespace,
 		ModelName:             envs.TestModel,
@@ -228,6 +230,7 @@ func createQualityBenchmarkJob(namespace string, serviceName string) (string, er
 		Limit:                 envs.QualityBenchmarkLimit,
 		ImagePullSecret:       settings.MorehRegistrySecretName,
 		QualityBenchmarkImage: QualityBenchmarkImage,
+		IsKind:                isKind,
 	}
 
 	jobYAML, err := utils.RenderTemplate("test/e2e/quality/config/quality-benchmark-job.yaml.tmpl", data)
