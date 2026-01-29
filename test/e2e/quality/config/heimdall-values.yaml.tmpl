@@ -18,6 +18,10 @@ config:
 gateway:
   name: {{ .GatewayName }}
   gatewayClassName: {{ .GatewayClass }}
+  {{- if .IstioRev }}
+  labels:
+    istio.io/rev: {{ .IstioRev }}
+  {{- end }}
 
 inferencePool:
   targetPorts:
