@@ -136,8 +136,15 @@ var _ = Describe("Quality Benchmark", Label("quality"), Ordered, func() {
 		Expect(waitForQualityBenchmarkJob(envs.WorkloadNamespace, jobName)).To(Succeed())
 
 		By("getting quality benchmark job logs")
-		logs, err := getQualityBenchmarkJobLogs(envs.WorkloadNamespace, jobName)
-		Expect(err).NotTo(HaveOccurred(), "failed to get job logs")
+		var logs string
+		Eventually(func() bool {
+			var err error
+			logs, err = getQualityBenchmarkJobLogs(envs.WorkloadNamespace, jobName)
+			if err != nil {
+				return false
+			}
+			return checkQualityBenchmarkJobLogs(envs.QualityBenchmarks, logs) == nil
+		}, settings.TimeoutShort, settings.IntervalShort).Should(BeTrue(), "failed to find job logs")
 
 		isKind := !envs.SkipKind
 		if isKind {
@@ -284,12 +291,36 @@ func waitForQualityBenchmarkJob(namespace string, jobName string) error {
 
 func getQualityBenchmarkJobLogs(namespace string, jobName string) (string, error) {
 	logCmd := exec.Command("kubectl", "logs", "-l", fmt.Sprintf("job-name=%s", jobName),
-		"-n", namespace, "--tail=100")
+		"-n", namespace, "--tail=20")
 	logs, err := utils.Run(logCmd)
 	if err != nil {
 		return "", fmt.Errorf("failed to get job logs: %w", err)
 	}
 	return logs, nil
+}
+
+func checkQualityBenchmarkJobLogs(benchmark string, logs string) error {
+	switch benchmark {
+	case "mmlu":
+		return checkMMLULogs(logs)
+	default:
+		return nil
+	}
+}
+
+func checkMMLULogs(logs string) error {
+	requiredHeaders := []string{"Groups", "Version", "Metric"}
+	for _, header := range requiredHeaders {
+		if !strings.Contains(logs, header) {
+			return fmt.Errorf("expected table header %q not found in logs", header)
+		}
+	}
+
+	if !(strings.Contains(logs, "|") && strings.Contains(logs, "mmlu")) {
+		return fmt.Errorf("MMLU result row not found in logs")
+	}
+
+	return nil
 }
 
 // extractMMLUScore extracts the MMLU score from the logs.
@@ -336,7 +367,7 @@ func extractMMLUScore(logs string) (float64, error) {
 		}
 	}
 
-	return 0, fmt.Errorf("MMLU score not found in summary table logs. Expected Groups summary table with |mmlu| row:\n%s", logs)
+	return 0, fmt.Errorf("MMLU score not found in summary table logs. Expected Groups summary table with |mmlu row:\n%s", logs)
 }
 
 func validateQualityBenchmarkResults(benchmark string, logs string) error {
@@ -352,17 +383,6 @@ func validateQualityBenchmarkResults(benchmark string, logs string) error {
 }
 
 func validateMMLUResults(logs string) error {
-	requiredHeaders := []string{"Groups", "Version", "Metric"}
-	for _, header := range requiredHeaders {
-		if !strings.Contains(logs, header) {
-			return fmt.Errorf("expected table header %q not found in logs", header)
-		}
-	}
-
-	if !strings.Contains(logs, "|mmlu") {
-		return fmt.Errorf("MMLU result row not found in logs")
-	}
-
 	score, err := extractMMLUScore(logs)
 	if err != nil {
 		return fmt.Errorf("failed to extract MMLU score: %w", err)
