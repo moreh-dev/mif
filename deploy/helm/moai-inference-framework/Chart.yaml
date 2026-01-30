@@ -21,11 +21,11 @@ dependencies:
     repository: oci://registry.k8s.io/lws/charts
     condition: lws.enabled
   - name: odin
-    version: v0.5.1
+    version: v0.6.0
     repository: https://moreh-dev.github.io/helm-charts
     condition: odin.enabled
   - name: odin-crd
-    version: v0.5.1
+    version: v0.6.0
     repository: https://moreh-dev.github.io/helm-charts
     condition: odin-crd.enabled
   - name: keda
