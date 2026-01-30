@@ -336,7 +336,7 @@ func extractMMLUScore(logs string) (float64, error) {
 		}
 	}
 
-	return 0, fmt.Errorf("MMLU score not found in summary table logs. Expected Groups summary table with |mmlu| row.")
+	return 0, fmt.Errorf("MMLU score not found in summary table logs. Expected Groups summary table with |mmlu| row:\n%s", logs)
 }
 
 func validateQualityBenchmarkResults(benchmark string, logs string) error {
