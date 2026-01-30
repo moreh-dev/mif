@@ -4,7 +4,7 @@ metadata:
   name: vllm-deepseek-r1-prefill-mi300x-dp8ep
   namespace: {{ include "common.names.namespace" . }}
   labels:
-    {{- include "common.labels.standard" . | nindent 4 }}
+    {{- include "mif.preset.labels" . | nindent 4 }}
 spec:
   parallelism:
     data: 8

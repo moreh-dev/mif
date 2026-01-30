@@ -1,55 +1,18 @@
 apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceServiceTemplate
 metadata:
-  name: vllm-decode-pp
+  name: vllm-pp
   namespace: {{ include "common.names.namespace" . }}
   labels:
-    {{- include "common.labels.standard" . | nindent 4 }}
+    {{- include "mif.runtimeBase.labels" . | nindent 4 }}
 spec:
   template:
     metadata:
       labels:
-        heimdall.moreh.io/role: decode # DEPRECATED
-        mif.moreh.io/role: decode
+        heimdall.moreh.io/dummy: dummy # DEPRECATED
     spec:
       imagePullSecrets:
         - name: moreh-registry
-      initContainers:
-        - name: proxy
-          image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/heimdall-proxy:v0.6.1
-          restartPolicy: Always
-          command:
-            - /bin/bash
-            - -c
-          args:
-            - |
-              set -ex
-
-              exec /app/proxy \
-                --port 8000 \
-                --decoder-ip $(POD_IP) \
-                --decoder-port 8200 \
-                $(ISVC_EXTRA_ARGS)
-          env:
-            - name: ISVC_EXTRA_ARGS
-              value: >-
-                --pd-coordinator vllm/nixl
-                --log-format json
-                --log-level warn
-            - name: POD_IP
-              valueFrom:
-                fieldRef:
-                  fieldPath: status.podIP
-          readinessProbe:
-            httpGet:
-              path: /health-proxy
-              port: 8000
-              scheme: HTTP
-            initialDelaySeconds: 10
-            periodSeconds: 10
-            timeoutSeconds: 5
-            successThreshold: 1
-            failureThreshold: 3
       containers:
         - name: main
           image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/quickstart/moreh-vllm:20250915.1
@@ -63,6 +26,19 @@ spec:
           args:
             - |
               set -ex
+
+              if [ -e "$ISVC_PRESET_PATH" ]; then
+                eval "$(python3 -c '
+              import os, yaml
+              with open(os.environ["ISVC_PRESET_PATH"]) as f:
+                  p = yaml.safe_load(f) or {}
+              if p.get("engine_args"):
+                  with open("preset_engine_args.yaml", "w") as f: yaml.dump(p["engine_args"], f)
+                  print("export _config_arg=\"--config preset_engine_args.yaml\"")
+              for k, v in p.get("env_vars", {}).items():
+                  if k not in os.environ: print(f"export {k}=\"{v}\"")
+              ')"
+              fi
 
               # Clear /dev/shm on start to prevent running out of space when crashes occur
               # https://github.com/llm-d/llm-d/issues/352
@@ -105,16 +81,19 @@ spec:
               exec vllm serve \
                 "${ISVC_MODEL_PATH}" \
                 --served-model-name "${ISVC_MODEL_NAME}" \
-                --port 8200 \
+                --port 8000 \
                 --pipeline-parallel-size ${_pp_size} \
                 --master-addr $(LWS_LEADER_ADDRESS) \
                 --nnodes ${_pp_size} \
                 --node-rank $(LWS_WORKER_INDEX) \
                 --tensor-parallel-size {{ "{{" }} or .Spec.Parallelism.Tensor 1 {{ "}}" }} \
                 {{ "{{" }} if .Spec.Parallelism.Expert {{ "}}" }}--enable-expert-parallel{{ "{{" }} end {{ "}}" }} \
+                ${_config_arg} \
                 "${_kv_events_args[@]}" \
                 $(ISVC_EXTRA_ARGS)
           env:
+            - name: ISVC_PRESET_PATH
+              value: ""
             - name: ISVC_PRE_PROCESS_SCRIPT
               value: ""
             - name: ISVC_USE_KV_EVENTS
@@ -127,10 +106,6 @@ spec:
               value: >-
                 --disable-uvicorn-access-log
                 --no-enable-log-requests
-                --quantization None
-                --max-model-len 8192
-                --no-enable-prefix-caching
-                --kv-transfer-config '{"kv_connector":"NixlConnector","kv_role":"kv_both"}'
             - name: UCX_TLS
               value: rocm_copy,rocm_ipc,self,sm,rc_x
             - name: VLLM_NIXL_SIDE_CHANNEL_HOST
@@ -147,7 +122,7 @@ spec:
           readinessProbe:
             httpGet:
               path: /health
-              port: 8200
+              port: 8000
               scheme: HTTP
             initialDelaySeconds: 10
             periodSeconds: 10
@@ -179,6 +154,19 @@ spec:
           args:
             - |
               set -ex
+
+              if [ -e "$ISVC_PRESET_PATH" ]; then
+                eval "$(python3 -c '
+              import os, yaml
+              with open(os.environ["ISVC_PRESET_PATH"]) as f:
+                  p = yaml.safe_load(f) or {}
+              if p.get("engine_args"):
+                  with open("preset_engine_args.yaml", "w") as f: yaml.dump(p["engine_args"], f)
+                  print("export _config_arg=\"--config preset_engine_args.yaml\"")
+              for k, v in p.get("env_vars", {}).items():
+                  if k not in os.environ: print(f"export {k}=\"{v}\"")
+              ')"
+              fi
 
               # Clear /dev/shm on start to prevent running out of space when crashes occur
               # https://github.com/llm-d/llm-d/issues/352
@@ -228,9 +216,12 @@ spec:
                 --node-rank $(LWS_WORKER_INDEX) \
                 --tensor-parallel-size {{ "{{" }} or .Spec.Parallelism.Tensor 1 {{ "}}" }} \
                 {{ "{{" }} if .Spec.Parallelism.Expert {{ "}}" }}--enable-expert-parallel{{ "{{" }} end {{ "}}" }} \
+                ${_config_arg} \
                 "${_kv_events_args[@]}" \
                 $(ISVC_EXTRA_ARGS)
           env:
+            - name: ISVC_PRESET_PATH
+              value: ""
             - name: ISVC_PRE_PROCESS_SCRIPT
               value: ""
             - name: ISVC_USE_KV_EVENTS
@@ -243,10 +234,6 @@ spec:
               value: >-
                 --disable-uvicorn-access-log
                 --no-enable-log-requests
-                --quantization None
-                --max-model-len 8192
-                --no-enable-prefix-caching
-                --kv-transfer-config '{"kv_connector":"NixlConnector","kv_role":"kv_both"}'
             - name: UCX_TLS
               value: rocm_copy,rocm_ipc,self,sm,rc_x
             - name: VLLM_NIXL_SIDE_CHANNEL_HOST

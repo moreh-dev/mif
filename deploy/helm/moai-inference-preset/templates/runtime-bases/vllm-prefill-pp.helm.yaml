@@ -1,15 +1,16 @@
 apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceServiceTemplate
 metadata:
-  name: vllm-pp
+  name: vllm-prefill-pp
   namespace: {{ include "common.names.namespace" . }}
   labels:
-    {{- include "common.labels.standard" . | nindent 4 }}
+    {{- include "mif.runtimeBase.labels" . | nindent 4 }}
 spec:
   template:
     metadata:
       labels:
-        heimdall.moreh.io/dummy: dummy # DEPRECATED
+        heimdall.moreh.io/role: prefill # DEPRECATED
+        mif.moreh.io/role: prefill
     spec:
       imagePullSecrets:
         - name: moreh-registry
@@ -26,6 +27,19 @@ spec:
           args:
             - |
               set -ex
+
+              if [ -e "$ISVC_PRESET_PATH" ]; then
+                eval "$(python3 -c '
+              import os, yaml
+              with open(os.environ["ISVC_PRESET_PATH"]) as f:
+                  p = yaml.safe_load(f) or {}
+              if p.get("engine_args"):
+                  with open("preset_engine_args.yaml", "w") as f: yaml.dump(p["engine_args"], f)
+                  print("export _config_arg=\"--config preset_engine_args.yaml\"")
+              for k, v in p.get("env_vars", {}).items():
+                  if k not in os.environ: print(f"export {k}=\"{v}\"")
+              ')"
+              fi
 
               # Clear /dev/shm on start to prevent running out of space when crashes occur
               # https://github.com/llm-d/llm-d/issues/352
@@ -75,9 +89,12 @@ spec:
                 --node-rank $(LWS_WORKER_INDEX) \
                 --tensor-parallel-size {{ "{{" }} or .Spec.Parallelism.Tensor 1 {{ "}}" }} \
                 {{ "{{" }} if .Spec.Parallelism.Expert {{ "}}" }}--enable-expert-parallel{{ "{{" }} end {{ "}}" }} \
+                ${_config_arg} \
                 "${_kv_events_args[@]}" \
                 $(ISVC_EXTRA_ARGS)
           env:
+            - name: ISVC_PRESET_PATH
+              value: ""
             - name: ISVC_PRE_PROCESS_SCRIPT
               value: ""
             - name: ISVC_USE_KV_EVENTS
@@ -90,10 +107,6 @@ spec:
               value: >-
                 --disable-uvicorn-access-log
                 --no-enable-log-requests
-                --quantization None
-                --max-model-len 8192
-                --no-enable-prefix-caching
-                --kv-transfer-config '{"kv_connector":"NixlConnector","kv_role":"kv_both"}'
             - name: UCX_TLS
               value: rocm_copy,rocm_ipc,self,sm,rc_x
             - name: VLLM_NIXL_SIDE_CHANNEL_HOST
@@ -143,6 +156,19 @@ spec:
             - |
               set -ex
 
+              if [ -e "$ISVC_PRESET_PATH" ]; then
+                eval "$(python3 -c '
+              import os, yaml
+              with open(os.environ["ISVC_PRESET_PATH"]) as f:
+                  p = yaml.safe_load(f) or {}
+              if p.get("engine_args"):
+                  with open("preset_engine_args.yaml", "w") as f: yaml.dump(p["engine_args"], f)
+                  print("export _config_arg=\"--config preset_engine_args.yaml\"")
+              for k, v in p.get("env_vars", {}).items():
+                  if k not in os.environ: print(f"export {k}=\"{v}\"")
+              ')"
+              fi
+
               # Clear /dev/shm on start to prevent running out of space when crashes occur
               # https://github.com/llm-d/llm-d/issues/352
               find /dev/shm -type f -delete
@@ -191,9 +217,12 @@ spec:
                 --node-rank $(LWS_WORKER_INDEX) \
                 --tensor-parallel-size {{ "{{" }} or .Spec.Parallelism.Tensor 1 {{ "}}" }} \
                 {{ "{{" }} if .Spec.Parallelism.Expert {{ "}}" }}--enable-expert-parallel{{ "{{" }} end {{ "}}" }} \
+                ${_config_arg} \
                 "${_kv_events_args[@]}" \
                 $(ISVC_EXTRA_ARGS)
           env:
+            - name: ISVC_PRESET_PATH
+              value: ""
             - name: ISVC_PRE_PROCESS_SCRIPT
               value: ""
             - name: ISVC_USE_KV_EVENTS
@@ -206,10 +235,6 @@ spec:
               value: >-
                 --disable-uvicorn-access-log
                 --no-enable-log-requests
-                --quantization None
-                --max-model-len 8192
-                --no-enable-prefix-caching
-                --kv-transfer-config '{"kv_connector":"NixlConnector","kv_role":"kv_both"}'
             - name: UCX_TLS
               value: rocm_copy,rocm_ipc,self,sm,rc_x
             - name: VLLM_NIXL_SIDE_CHANNEL_HOST

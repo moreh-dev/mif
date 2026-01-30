@@ -4,7 +4,7 @@ metadata:
   name: vllm-prefill-dp
   namespace: {{ include "common.names.namespace" . }}
   labels:
-    {{- include "common.labels.standard" . | nindent 4 }}
+    {{- include "mif.runtimeBase.labels" . | nindent 4 }}
 spec:
   workerTemplate:
     metadata:
@@ -27,6 +27,19 @@ spec:
           args:
             - |
               set -ex
+
+              if [ -e "$ISVC_PRESET_PATH" ]; then
+                eval "$(python3 -c '
+              import os, yaml
+              with open(os.environ["ISVC_PRESET_PATH"]) as f:
+                  p = yaml.safe_load(f) or {}
+              if p.get("engine_args"):
+                  with open("preset_engine_args.yaml", "w") as f: yaml.dump(p["engine_args"], f)
+                  print("export _config_arg=\"--config preset_engine_args.yaml\"")
+              for k, v in p.get("env_vars", {}).items():
+                  if k not in os.environ: print(f"export {k}=\"{v}\"")
+              ')"
+              fi
 
               # Clear /dev/shm on start to prevent running out of space when crashes occur
               # https://github.com/llm-d/llm-d/issues/352
@@ -83,6 +96,7 @@ spec:
                   --data-parallel-address $(LWS_LEADER_ADDRESS) \
                   --data-parallel-rpc-port {{ "{{" }} or .Spec.Parallelism.DataRPCPort 13345 {{ "}}" }} \
                   {{ "{{" }} if .Spec.Parallelism.Expert {{ "}}" }}--enable-expert-parallel{{ "{{" }} end {{ "}}" }} \
+                  ${_config_arg} \
                   "${_kv_events_args[@]}" \
                   $(ISVC_EXTRA_ARGS) \
                   &
@@ -90,6 +104,8 @@ spec:
 
               wait
           env:
+            - name: ISVC_PRESET_PATH
+              value: ""
             - name: ISVC_PRE_PROCESS_SCRIPT
               value: ""
             - name: ISVC_USE_KV_EVENTS
@@ -102,10 +118,6 @@ spec:
               value: >-
                 --disable-uvicorn-access-log
                 --no-enable-log-requests
-                --quantization None
-                --max-model-len 8192
-                --no-enable-prefix-caching
-                --kv-transfer-config '{"kv_connector":"NixlConnector","kv_role":"kv_both"}'
             - name: UCX_TLS
               value: rocm_copy,rocm_ipc,self,sm,rc_x
             - name: VLLM_NIXL_SIDE_CHANNEL_HOST

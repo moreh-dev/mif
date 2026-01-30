@@ -1,12 +1,12 @@
 apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceServiceTemplate
 metadata:
-  name: vllm-decode
+  name: vllm-decode-dp
   namespace: {{ include "common.names.namespace" . }}
   labels:
-    {{- include "common.labels.standard" . | nindent 4 }}
+    {{- include "mif.runtimeBase.labels" . | nindent 4 }}
 spec:
-  template:
+  workerTemplate:
     metadata:
       labels:
         heimdall.moreh.io/role: decode # DEPRECATED
@@ -29,6 +29,7 @@ spec:
                 --port 8000 \
                 --decoder-ip $(POD_IP) \
                 --decoder-port 8200 \
+                --data-parallel-size {{ "{{" }} or .Spec.Parallelism.DataLocal 1 {{ "}}" }} \
                 $(ISVC_EXTRA_ARGS)
           env:
             - name: ISVC_EXTRA_ARGS
@@ -64,6 +65,19 @@ spec:
             - |
               set -ex
 
+              if [ -e "$ISVC_PRESET_PATH" ]; then
+                eval "$(python3 -c '
+              import os, yaml
+              with open(os.environ["ISVC_PRESET_PATH"]) as f:
+                  p = yaml.safe_load(f) or {}
+              if p.get("engine_args"):
+                  with open("preset_engine_args.yaml", "w") as f: yaml.dump(p["engine_args"], f)
+                  print("export _config_arg=\"--config preset_engine_args.yaml\"")
+              for k, v in p.get("env_vars", {}).items():
+                  if k not in os.environ: print(f"export {k}=\"{v}\"")
+              ')"
+              fi
+
               # Clear /dev/shm on start to prevent running out of space when crashes occur
               # https://github.com/llm-d/llm-d/issues/352
               find /dev/shm -type f -delete
@@ -80,35 +94,55 @@ spec:
                 eval "$ISVC_PRE_PROCESS_SCRIPT"
               fi
 
-              _kv_events_args=()
-              if [ "${ISVC_USE_KV_EVENTS:-false}" = "true" ]; then
-                _inference_pool_name="{{ "{{" }} if .Spec.InferencePoolRefs {{ "}}" }}{{ "{{" }} (index .Spec.InferencePoolRefs 0).Name {{ "}}" }}{{ "{{" }} end {{ "}}" }}"
-                if [ -z "$_inference_pool_name" ]; then
-                  echo "Set inferencePoolRefs in InferenceService"
-                  exit 1
-                fi
-                if [ -z "$ISVC_MODEL_NAME" ]; then
-                  echo "Set ISVC_MODEL_NAME in InferenceService"
-                  exit 1
-                fi
-                _kv_events_args=(--kv-events-config "{ \
-                  \"enable_kv_cache_events\": true, \
-                  \"publisher\": \"zmq\", \
-                  \"endpoint\": \"tcp://${_inference_pool_name}:5557\", \
-                  \"topic\": \"kv@${POD_IP}:8000@${ISVC_MODEL_NAME}\" \
-                }")
-              fi
+              _dp_size={{ "{{" }} or .Spec.Parallelism.Data 1 {{ "}}" }}
+              _dp_local_size={{ "{{" }} or .Spec.Parallelism.DataLocal 1 {{ "}}" }}
+              _start_rank=$(( ${LWS_WORKER_INDEX:-0} * _dp_local_size ))
 
-              VLLM_NIXL_SIDE_CHANNEL_PORT=30020 \
-              exec vllm serve \
-                "${ISVC_MODEL_PATH}" \
-                --served-model-name "${ISVC_MODEL_NAME}" \
-                --port 8200 \
-                --tensor-parallel-size {{ "{{" }} or .Spec.Parallelism.Tensor 1 {{ "}}" }} \
-                {{ "{{" }} if .Spec.Parallelism.Expert {{ "}}" }}--enable-expert-parallel{{ "{{" }} end {{ "}}" }} \
-                "${_kv_events_args[@]}" \
-                $(ISVC_EXTRA_ARGS)
+              for ((_index=0; _index<_dp_local_size; _index++)); do
+
+                _dp_rank_port=$((8200 + _index))
+
+                _kv_events_args=()
+                if [ "${ISVC_USE_KV_EVENTS:-false}" = "true" ]; then
+                  _inference_pool_name="{{ "{{" }} if .Spec.InferencePoolRefs {{ "}}" }}{{ "{{" }} (index .Spec.InferencePoolRefs 0).Name {{ "}}" }}{{ "{{" }} end {{ "}}" }}"
+                  if [ -z "$_inference_pool_name" ]; then
+                    echo "Set inferencePoolRefs in InferenceService"
+                    exit 1
+                  fi
+                  if [ -z "$ISVC_MODEL_NAME" ]; then
+                    echo "Set ISVC_MODEL_NAME in InferenceService"
+                    exit 1
+                  fi
+                  _kv_events_args=(--kv-events-config "{ \
+                    \"enable_kv_cache_events\": true, \
+                    \"publisher\": \"zmq\", \
+                    \"endpoint\": \"tcp://${_inference_pool_name}:5557\", \
+                    \"topic\": \"kv@${POD_IP}:$((_dp_rank_port - 200))@${ISVC_MODEL_NAME}\" \
+                  }")
+                fi
+
+                VLLM_NIXL_SIDE_CHANNEL_PORT=$((30020 + _index * 2)) \
+                CUDA_VISIBLE_DEVICES=$_index \
+                vllm serve \
+                  "${ISVC_MODEL_PATH}" \
+                  --served-model-name "${ISVC_MODEL_NAME}" \
+                  --port ${_dp_rank_port} \
+                  --tensor-parallel-size {{ "{{" }} or .Spec.Parallelism.Tensor 1 {{ "}}" }} \
+                  --data-parallel-size ${_dp_size} \
+                  --data-parallel-rank $((_start_rank + _index)) \
+                  --data-parallel-address $(LWS_LEADER_ADDRESS) \
+                  --data-parallel-rpc-port {{ "{{" }} or .Spec.Parallelism.DataRPCPort 13345 {{ "}}" }} \
+                  {{ "{{" }} if .Spec.Parallelism.Expert {{ "}}" }}--enable-expert-parallel{{ "{{" }} end {{ "}}" }} \
+                  ${_config_arg} \
+                  "${_kv_events_args[@]}" \
+                  $(ISVC_EXTRA_ARGS) \
+                  &
+              done
+
+              wait
           env:
+            - name: ISVC_PRESET_PATH
+              value: ""
             - name: ISVC_PRE_PROCESS_SCRIPT
               value: ""
             - name: ISVC_USE_KV_EVENTS
@@ -121,10 +155,6 @@ spec:
               value: >-
                 --disable-uvicorn-access-log
                 --no-enable-log-requests
-                --quantization None
-                --max-model-len 8192
-                --no-enable-prefix-caching
-                --kv-transfer-config '{"kv_connector":"NixlConnector","kv_role":"kv_both"}'
             - name: UCX_TLS
               value: rocm_copy,rocm_ipc,self,sm,rc_x
             - name: VLLM_NIXL_SIDE_CHANNEL_HOST
@@ -138,6 +168,20 @@ spec:
           ports:
             - name: http
               containerPort: 8000
+            - name: http1
+              containerPort: 8001
+            - name: http2
+              containerPort: 8002
+            - name: http3
+              containerPort: 8003
+            - name: http4
+              containerPort: 8004
+            - name: http5
+              containerPort: 8005
+            - name: http6
+              containerPort: 8006
+            - name: http7
+              containerPort: 8007
           readinessProbe:
             httpGet:
               path: /health
