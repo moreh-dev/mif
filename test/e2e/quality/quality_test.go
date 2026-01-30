@@ -29,6 +29,9 @@ var (
 	decodeProxyTemplateName string
 	prefillServiceName      string
 	decodeServiceName       string
+
+	pvName  string
+	pvcName string
 )
 
 var _ = Describe("Quality Benchmark", Label("quality"), Ordered, func() {
@@ -82,11 +85,29 @@ var _ = Describe("Quality Benchmark", Label("quality"), Ordered, func() {
 
 		By("waiting for decode InferenceService to be ready")
 		Expect(waitForInferenceService(envs.WorkloadNamespace, decodeServiceName)).To(Succeed())
+
+		if envs.SkipKind {
+			By("creating model PV")
+			pvName, err = createModelPV(envs.WorkloadNamespace)
+			Expect(err).NotTo(HaveOccurred(), "failed to create model PV")
+
+			By("creating model PVC")
+			pvcName, err = createModelPVC(envs.WorkloadNamespace)
+			Expect(err).NotTo(HaveOccurred(), "failed to create model PVC")
+		}
 	})
 
 	AfterAll(func() {
 		if envs.SkipCleanup {
 			return
+		}
+
+		if envs.SkipKind {
+			By("deleting model PVC")
+			deleteModelPVC(envs.WorkloadNamespace, pvcName)
+
+			By("deleting model PV")
+			deleteModelPV(pvName)
 		}
 
 		By("deleting InferenceServices")
@@ -113,19 +134,6 @@ var _ = Describe("Quality Benchmark", Label("quality"), Ordered, func() {
 		By("getting Gateway service name")
 		serviceName, err := utils.GetGatewayServiceName(envs.WorkloadNamespace)
 		Expect(err).NotTo(HaveOccurred(), "failed to get Gateway service name")
-
-		var pvcName string
-		if envs.SkipKind {
-			By("creating model PV")
-			pvName, err := createModelPV()
-			Expect(err).NotTo(HaveOccurred(), "failed to create model PV")
-			defer deleteModelPV(pvName)
-
-			By("creating model PVC")
-			pvcName, err = createModelPVC(envs.WorkloadNamespace)
-			Expect(err).NotTo(HaveOccurred(), "failed to create model PVC")
-			defer deleteModelPVC(envs.WorkloadNamespace, pvcName)
-		}
 
 		By("creating quality benchmark job")
 		jobName, err := createQualityBenchmarkJob(envs.WorkloadNamespace, serviceName, pvcName)
@@ -166,8 +174,14 @@ func waitForInferenceService(namespace string, name string) error {
 	return err
 }
 
-func createModelPV() (string, error) {
-	rendered, err := utils.RenderTemplate("test/config/base/model-pv.yaml.tmpl", nil)
+func createModelPV(namespace string) (string, error) {
+	data := struct {
+		Namespace string
+	}{
+		Namespace: namespace,
+	}
+
+	rendered, err := utils.RenderTemplate("test/config/base/model-pv.yaml.tmpl", data)
 	if err != nil {
 		return "", fmt.Errorf("failed to render model PV template: %w", err)
 	}
