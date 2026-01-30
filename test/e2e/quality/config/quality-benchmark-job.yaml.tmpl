@@ -28,13 +28,11 @@ spec:
             cp -as /mnt/models/. /tmp/hf_cache/
             {{- end }}
             
-            /usr/local/bin/run \
+            exec /usr/local/bin/run \
               --eval "{{.Benchmarks}}" \
               --model "{{.ModelName}}" \
               --host "{{.GatewayHost}}" \
               --port "{{.GatewayPort}}" \
-            
-            sleep 300
         {{- if not .IsKind }}
         volumeMounts:
           - name: model
