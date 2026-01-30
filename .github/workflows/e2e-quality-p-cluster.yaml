@@ -42,7 +42,7 @@ jobs:
       KUBECONFIG: "/tmp/kubeconfig"
       MIF_NAMESPACE: "mif"
       ISTIO_REV: "1-28-1"
-      TEST_MODEL: "Qwen/Qwen3-0.6B"
+      TEST_MODEL: "Qwen/Qwen2.5-0.5B"
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
       HF_ENDPOINT: ${{ secrets.HF_ENDPOINT }}
       SKIP_KIND: "true"
