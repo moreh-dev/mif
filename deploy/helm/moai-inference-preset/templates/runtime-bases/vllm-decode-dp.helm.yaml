@@ -66,9 +66,8 @@ spec:
               set -ex
 
               if [ -e "$ISVC_PRESET_PATH" ]; then
-                eval "$(python3 '
-              {{- .Files.Get "files/convert_preset.py.nofmt" | nindent 14 -}}
-              ')"
+                eval "$(
+              {{- .Files.Get "files/convert_preset.sh" | nindent 14 -}})"
               fi
 
               # Clear /dev/shm on start to prevent running out of space when crashes occur
