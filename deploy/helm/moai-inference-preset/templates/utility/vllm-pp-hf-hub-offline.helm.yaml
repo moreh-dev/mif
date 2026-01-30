@@ -1,0 +1,40 @@
+apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceServiceTemplate
+metadata:
+  name: vllm-pp-hf-hub-offline
+  namespace: {{ include "common.names.namespace" . }}
+  labels:
+    {{- include "common.labels.standard" . | nindent 4 }}
+spec:
+  template:
+    spec:
+      containers:
+        - name: main
+          env:
+            - name: HF_HOME
+              value: /mnt/models
+            - name: HF_HUB_OFFLINE
+              value: "1"
+          volumeMounts:
+            - name: models
+              mountPath: /mnt/models
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: models
+  workerTemplate:
+    spec:
+      containers:
+        - name: main
+          env:
+            - name: HF_HOME
+              value: /mnt/models
+            - name: HF_HUB_OFFLINE
+              value: "1"
+          volumeMounts:
+            - name: models
+              mountPath: /mnt/models
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: models

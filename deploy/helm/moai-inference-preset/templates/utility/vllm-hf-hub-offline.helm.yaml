@@ -12,13 +12,13 @@ spec:
         - name: main
           env:
             - name: HF_HOME
-              value: /mnt/model
+              value: /mnt/models
             - name: HF_HUB_OFFLINE
               value: "1"
           volumeMounts:
-            - name: model
-              mountPath: /mnt/model
+            - name: models
+              mountPath: /mnt/models
       volumes:
-        - name: model
+        - name: models
           persistentVolumeClaim:
-            claimName: model
+            claimName: models
