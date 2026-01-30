@@ -23,12 +23,12 @@ spec:
           - |
             set -e
             {{- if not .IsKind }}
-            echo "Setting up writeable cache layer..."
+            echo "Setting up writable cache layer..."
             mkdir -p /tmp/hf_cache
             cp -as /mnt/models/. /tmp/hf_cache/
             {{- end }}
             
-            exec /usr/local/bin/run \
+            /usr/local/bin/run \
               --eval "{{.Benchmarks}}" \
               --model "{{.ModelName}}" \
               --host "{{.GatewayHost}}" \
