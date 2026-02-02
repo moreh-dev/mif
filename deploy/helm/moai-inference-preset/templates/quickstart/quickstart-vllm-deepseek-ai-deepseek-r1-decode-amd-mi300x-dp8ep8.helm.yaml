@@ -1,0 +1,88 @@
+apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceServiceTemplate
+metadata:
+  name: quickstart-vllm-deepseek-ai-deepseek-r1-decode-amd-mi300x-dp8ep8
+  namespace: {{ include "common.names.namespace" . }}
+  labels:
+    {{- include "mif.preset.labels" . | nindent 4 }}
+spec:
+  parallelism:
+    data: 8
+    expert: true
+  workerTemplate:
+    spec:
+      containers:
+        - name: main
+          image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/quickstart/moreh-vllm:vllm_251212
+          env:
+            - name: VLLM_MOE_DP_CHUNK_SIZE
+              value: "512"
+            - name: VLLM_V1_OUTPUT_PROC_CHUNK_SIZE
+              value: "512"
+            - name: VLLM_MORI_DISPATCH_BLK_NO
+              value: "128"
+            - name: VLLM_MORI_DISPATCH_WARP_PER_BLK
+              value: "16"
+            - name: VLLM_MORI_COMBINE_BLK_NO
+              value: "64"
+            - name: VLLM_MORI_COMBINE_WARP_PER_BLK
+              value: "8"
+            - name: VLLM_IS_DECODE_WORKER
+              value: "decode"
+            - name: UCX_IB_PCI_RELAXED_ORDERING
+              value: "on"
+            - name: NCCL_IB_PCI_RELAXED_ORDERING
+              value: "1"
+            - name: NCCL_NET_GDR_LEVEL
+              value: "3"
+            - name: NCCL_MIN_NCHANNELS
+              value: "112"
+            - name: VLLM_RANDOMIZE_DP_DUMMY_INPUTS
+              value: "1"
+            - name: VLLM_ROCM_USE_AITER
+              value: "1"
+            - name: VLLM_ROCM_USE_AITER_FP8BMM
+              value: "0"
+            - name: VLLM_ALL2ALL_BACKEND
+              value: "mori"
+            - name: VLLM_HTTP_TIMEOUT_KEEP_ALIVE
+              value: "1000000000"
+            - name: VLLM_NIXL_ABORT_REQUEST_TIMEOUT
+              value: "1000000000"
+            - name: VLLM_LOG_STATS_INTERVAL
+              value: "10"
+            - name: VLLM_SERVERSIDE_LOGGING
+              value: "1"
+            - name: VLLM_SERVERSIDE_LOG_INTERVAL
+              value: "10"
+            - name: ISVC_MODEL_NAME
+              value: "deepseek-ai/DeepSeek-R1"
+            - name: ISVC_EXTRA_ARGS
+              value: >-
+                --trust-remote-code
+                --kv-transfer-config '{"kv_connector":"NixlConnector","kv_role":"kv_both"}'
+                --disable-uvicorn-access-log
+                --no-enable-log-requests
+                --disable-log-stats
+                --no-enable-prefix-caching
+                --no-enable-chunked-prefill
+                --enforce-eager
+                --kv-cache-dtype fp8_e4m3
+                --quantization ds_fp8_per_token
+                --max-num-batched-token 16384
+                --gpu-memory-utilization 0.92
+                --block-size 16
+                --max-model-len 8192
+                --max-num-seqs 2048
+          resources:
+            requests:
+              amd.com/gpu: "8"
+            limits:
+              amd.com/gpu: "8"
+      nodeSelector:
+        moai.moreh.io/accelerator.vendor: amd
+        moai.moreh.io/accelerator.model: mi300x
+      tolerations:
+        - key: amd.com/gpu
+          operator: Exists
+          effect: NoSchedule
