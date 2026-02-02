@@ -1,10 +1,10 @@
 apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceServiceTemplate
 metadata:
-  name: vllm-deepseek-r1-prefill-mi300x-dp8ep-maxthroughput
+  name: quickstart-vllm-deepseek-ai-deepseek-r1-prefill-amd-mi300x-dp8ep8
   namespace: {{ include "common.names.namespace" . }}
   labels:
-    {{- include "common.labels.standard" . | nindent 4 }}
+    {{- include "mif.preset.labels" . | nindent 4 }}
 spec:
   parallelism:
     data: 8
@@ -57,8 +57,6 @@ spec:
               value: "10"
             - name: ISVC_MODEL_NAME
               value: "deepseek-ai/DeepSeek-R1"
-#            - name: ISVC_MODEL_PATH
-#              value: "/app/model/DeepSeek-R1"
             - name: ISVC_EXTRA_ARGS
               value: >-
                 --trust-remote-code
