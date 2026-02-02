@@ -4,7 +4,7 @@ metadata:
   name: quickstart-vllm-meta-llama-llama-3.2-1b-instruct-amd-mi300x-tp2
   namespace: {{ include "common.names.namespace" . }}
   labels:
-    {{- include "common.labels.standard" . | nindent 4 }}
+    {{- include "mif.preset.labels" . | nindent 4 }}
 spec:
   parallelism:
     tensor: 2
