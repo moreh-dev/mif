@@ -1,0 +1,65 @@
+apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceServiceTemplate
+metadata:
+  name: sim-prefill
+  namespace: {{ include "common.names.namespace" . }}
+  labels:
+    {{- include "mif.utils.labels" . | nindent 4 }}
+spec:
+  template:
+    metadata:
+      labels:
+        heimdall.moreh.io/role: prefill # DEPRECATED
+        mif.moreh.io/role: prefill
+    spec:
+      containers:
+        - name: main
+          image: ghcr.io/llm-d/llm-d-inference-sim:v0.7.1
+          command:
+            - /bin/bash
+            - -c
+          args:
+            - |
+              set -ex
+
+              cleanup() {
+                echo "Received SIGTERM, killing child processes..."
+                pkill -P $$
+                wait
+              }
+              trap cleanup SIGTERM SIGINT
+
+              if [ -n "$ISVC_PRE_PROCESS_SCRIPT" ]; then
+                echo "Running pre-process script..."
+                eval "$ISVC_PRE_PROCESS_SCRIPT"
+              fi
+
+              exec /app/llm-d-inference-sim \
+                --model "${ISVC_MODEL_PATH}" \
+                --served-model-name "${ISVC_MODEL_NAME}" \
+                --port 8000 \
+                $(ISVC_EXTRA_ARGS)
+          env:
+            - name: ISVC_MODEL_NAME
+              value: "meta-llama/Llama-3.2-1B-Instruct"
+            - name: ISVC_MODEL_PATH
+              value: "$(ISVC_MODEL_NAME)" # use "fake-model" to avoid the time and network overhead of tokenization
+            - name: ISVC_EXTRA_ARGS
+              value: >-
+                --max-model-len 8192
+                --max-num-seqs 128
+                --time-to-first-token 500ms
+                --time-to-first-token-std-dev 50ms
+          ports:
+            - name: http
+              containerPort: 8000
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
