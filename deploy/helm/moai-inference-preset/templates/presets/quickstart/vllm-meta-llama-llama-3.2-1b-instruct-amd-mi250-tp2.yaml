@@ -1,7 +1,7 @@
 apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceServiceTemplate
 metadata:
-  name: vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2
+  name: quickstart-vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2
   namespace: {{ include "common.names.namespace" . }}
   labels:
     {{- include "mif.preset.labels" . | nindent 4 }}
