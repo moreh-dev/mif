@@ -74,3 +74,15 @@ spec:
                 --block-size 16
                 --max-model-len 8192
                 --max-num-seqs 2048
+          resources:
+            requests:
+              amd.com/gpu: "8"
+            limits:
+              amd.com/gpu: "8"
+      nodeSelector:
+        moai.moreh.io/accelerator.vendor: amd
+        moai.moreh.io/accelerator.model: mi300x
+      tolerations:
+        - key: amd.com/gpu
+          operator: Exists
+          effect: NoSchedule
