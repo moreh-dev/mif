@@ -29,6 +29,9 @@ var (
 	decodeProxyTemplateName string
 	prefillServiceName      string
 	decodeServiceName       string
+
+	pvName  string
+	pvcName string
 )
 
 var _ = Describe("Quality Benchmark", Label("quality"), Ordered, func() {
@@ -37,20 +40,22 @@ var _ = Describe("Quality Benchmark", Label("quality"), Ordered, func() {
 
 	BeforeAll(func() {
 		By("creating workload namespace")
-		Expect(utils.CreateWorkloadNamespace(envs.WorkloadNamespace, envs.MIFNamespace, envs.IstioRev)).To(Succeed())
+		Expect(utils.CreateWorkloadNamespace(envs.WorkloadNamespace, envs.MIFNamespace)).To(Succeed())
 
 		By("creating Gateway resources")
-		Expect(utils.CreateGatewayResource(envs.WorkloadNamespace, envs.GatewayClassName)).To(Succeed())
+		Expect(utils.CreateGatewayResource(envs.WorkloadNamespace, envs.GatewayClassName, envs.IstioRev)).To(Succeed())
 
 		By("installing Heimdall")
 		data := struct {
 			MorehRegistrySecretName string
 			GatewayName             string
 			GatewayClass            string
+			IstioRev                string
 		}{
 			MorehRegistrySecretName: settings.MorehRegistrySecretName,
 			GatewayName:             settings.GatewayName,
 			GatewayClass:            envs.GatewayClassName,
+			IstioRev:                envs.IstioRev,
 		}
 
 		values, err := utils.RenderTemplate("test/e2e/quality/config/heimdall-values.yaml.tmpl", data)
@@ -59,7 +64,7 @@ var _ = Describe("Quality Benchmark", Label("quality"), Ordered, func() {
 
 		By("creating InferenceServiceTemplates")
 		isKind := !envs.SkipKind
-		inferenceServiceData := utils.GetInferenceServiceData(envs.WorkloadNamespace, envs.TestModel, envs.HFToken, envs.HFEndpoint, isKind)
+		inferenceServiceData := utils.GetInferenceServiceData(envs.WorkloadNamespace, envs.TestModel, envs.HFToken, envs.HFEndpoint, isKind, true)
 		commonTemplateName, err = utils.CreateInferenceServiceTemplate(envs.WorkloadNamespace, settings.InferenceServiceTemplateCommon, inferenceServiceData)
 		Expect(err).NotTo(HaveOccurred(), "failed to create common InferenceServiceTemplate")
 		prefillMetaTemplateName, err = utils.CreateInferenceServiceTemplate(envs.WorkloadNamespace, settings.InferenceServiceTemplatePrefillMeta, inferenceServiceData)
@@ -80,11 +85,29 @@ var _ = Describe("Quality Benchmark", Label("quality"), Ordered, func() {
 
 		By("waiting for decode InferenceService to be ready")
 		Expect(waitForInferenceService(envs.WorkloadNamespace, decodeServiceName)).To(Succeed())
+
+		if envs.SkipKind {
+			By("creating model PV")
+			pvName, err = createModelPV(envs.WorkloadNamespace)
+			Expect(err).NotTo(HaveOccurred(), "failed to create model PV")
+
+			By("creating model PVC")
+			pvcName, err = createModelPVC(envs.WorkloadNamespace)
+			Expect(err).NotTo(HaveOccurred(), "failed to create model PVC")
+		}
 	})
 
 	AfterAll(func() {
 		if envs.SkipCleanup {
 			return
+		}
+
+		if envs.SkipKind {
+			By("deleting model PVC")
+			deleteModelPVC(envs.WorkloadNamespace, pvcName)
+
+			By("deleting model PV")
+			deleteModelPV(pvName)
 		}
 
 		By("deleting InferenceServices")
@@ -113,7 +136,7 @@ var _ = Describe("Quality Benchmark", Label("quality"), Ordered, func() {
 		Expect(err).NotTo(HaveOccurred(), "failed to get Gateway service name")
 
 		By("creating quality benchmark job")
-		jobName, err := createQualityBenchmarkJob(envs.WorkloadNamespace, serviceName)
+		jobName, err := createQualityBenchmarkJob(envs.WorkloadNamespace, serviceName, pvcName)
 		Expect(err).NotTo(HaveOccurred(), "failed to create quality benchmark job")
 		defer deleteQualityBenchmarkJob(envs.WorkloadNamespace, jobName)
 
@@ -121,8 +144,15 @@ var _ = Describe("Quality Benchmark", Label("quality"), Ordered, func() {
 		Expect(waitForQualityBenchmarkJob(envs.WorkloadNamespace, jobName)).To(Succeed())
 
 		By("getting quality benchmark job logs")
-		logs, err := getQualityBenchmarkJobLogs(envs.WorkloadNamespace, jobName)
-		Expect(err).NotTo(HaveOccurred(), "failed to get job logs")
+		var logs string
+		Eventually(func() bool {
+			var err error
+			logs, err = getQualityBenchmarkJobLogs(envs.WorkloadNamespace, jobName)
+			if err != nil {
+				return false
+			}
+			return checkQualityBenchmarkJobLogs(envs.QualityBenchmarks, logs) == nil
+		}, settings.TimeoutShort, settings.IntervalShort).Should(BeTrue(), "failed to find job logs")
 
 		isKind := !envs.SkipKind
 		if isKind {
@@ -144,7 +174,67 @@ func waitForInferenceService(namespace string, name string) error {
 	return err
 }
 
-func createQualityBenchmarkJob(namespace string, serviceName string) (string, error) {
+func createModelPV(namespace string) (string, error) {
+	data := struct {
+		Namespace string
+	}{
+		Namespace: namespace,
+	}
+
+	rendered, err := utils.RenderTemplate("test/config/base/model-pv.yaml.tmpl", data)
+	if err != nil {
+		return "", fmt.Errorf("failed to render model PV template: %w", err)
+	}
+	cmd := exec.Command("kubectl", "apply", "-f", "-", "-o", "name")
+	cmd.Stdin = strings.NewReader(rendered)
+	output, err := utils.Run(cmd)
+	if err != nil {
+		return "", fmt.Errorf("failed to create model PV: %w", err)
+	}
+
+	pvName := utils.ParseResourceName(output)
+
+	cmd = exec.Command("kubectl", "patch", "pv", pvName, "-p", `{"spec":{"claimRef":null}}`)
+	if _, err := utils.Run(cmd); err != nil {
+		return "", fmt.Errorf("failed to patch model PV: %w", err)
+	}
+	return pvName, nil
+}
+
+func deleteModelPV(pvName string) {
+	cmd := exec.Command("kubectl", "delete", "pv", pvName,
+		"--ignore-not-found=true")
+	_, _ = utils.Run(cmd)
+}
+
+func createModelPVC(namespace string) (string, error) {
+	data := struct {
+		Namespace string
+	}{
+		Namespace: namespace,
+	}
+
+	rendered, err := utils.RenderTemplate("test/config/base/model-pvc.yaml.tmpl", data)
+	if err != nil {
+		return "", fmt.Errorf("failed to render model PVC template: %w", err)
+	}
+
+	cmd := exec.Command("kubectl", "apply", "-f", "-", "-o", "name")
+	cmd.Stdin = strings.NewReader(rendered)
+	output, err := utils.Run(cmd)
+	if err != nil {
+		return "", fmt.Errorf("failed to create model PVC: %w", err)
+	}
+	return utils.ParseResourceName(output), nil
+}
+
+func deleteModelPVC(namespace string, pvcName string) {
+	cmd := exec.Command("kubectl", "delete", "pvc", pvcName,
+		"-n", namespace, "--ignore-not-found=true")
+	_, _ = utils.Run(cmd)
+}
+
+func createQualityBenchmarkJob(namespace string, serviceName string, pvcName string) (string, error) {
 	type jobTemplateData struct {
 		Namespace             string
 		ModelName             string
@@ -155,9 +245,12 @@ func createQualityBenchmarkJob(namespace string, serviceName string) (string, er
 		Benchmarks            string
 		Limit                 string
 		ImagePullSecret       string
+		IsKind                bool
 		QualityBenchmarkImage string
+		PVCName               string
 	}
 
+	isKind := !envs.SkipKind
 	data := jobTemplateData{
 		Namespace:             namespace,
 		ModelName:             envs.TestModel,
@@ -168,7 +261,9 @@ func createQualityBenchmarkJob(namespace string, serviceName string) (string, er
 		Benchmarks:            envs.QualityBenchmarks,
 		Limit:                 envs.QualityBenchmarkLimit,
 		ImagePullSecret:       settings.MorehRegistrySecretName,
+		IsKind:                isKind,
 		QualityBenchmarkImage: QualityBenchmarkImage,
+		PVCName:               pvcName,
 	}
 
 	jobYAML, err := utils.RenderTemplate("test/e2e/quality/config/quality-benchmark-job.yaml.tmpl", data)
@@ -195,7 +290,7 @@ func waitForQualityBenchmarkJob(namespace string, jobName string) error {
 	cmd := exec.Command("kubectl", "wait", "job", jobName,
 		"--for=condition=complete",
 		"-n", namespace,
-		fmt.Sprintf("--timeout=%v", settings.TimeoutVeryLong))
+		fmt.Sprintf("--timeout=%v", settings.Timeout30Min))
 	_, err := utils.Run(cmd)
 	if err != nil {
 		logCmd := exec.Command("kubectl", "logs", "-l", "app=quality-benchmark",
@@ -210,12 +305,36 @@ func waitForQualityBenchmarkJob(namespace string, jobName string) error {
 
 func getQualityBenchmarkJobLogs(namespace string, jobName string) (string, error) {
 	logCmd := exec.Command("kubectl", "logs", "-l", fmt.Sprintf("job-name=%s", jobName),
-		"-n", namespace, "--tail=100")
+		"-n", namespace, "--tail=20")
 	logs, err := utils.Run(logCmd)
 	if err != nil {
 		return "", fmt.Errorf("failed to get job logs: %w", err)
 	}
 	return logs, nil
+}
+
+func checkQualityBenchmarkJobLogs(benchmark string, logs string) error {
+	switch benchmark {
+	case "mmlu":
+		return checkMMLULogs(logs)
+	default:
+		return nil
+	}
+}
+
+func checkMMLULogs(logs string) error {
+	requiredHeaders := []string{"Groups", "Version", "Metric"}
+	for _, header := range requiredHeaders {
+		if !strings.Contains(logs, header) {
+			return fmt.Errorf("expected table header %q not found in logs", header)
+		}
+	}
+
+	if !(strings.Contains(logs, "|") && strings.Contains(logs, "mmlu")) {
+		return fmt.Errorf("MMLU result row not found in logs")
+	}
+
+	return nil
 }
 
 // extractMMLUScore extracts the MMLU score from the logs.
@@ -262,7 +381,7 @@ func extractMMLUScore(logs string) (float64, error) {
 		}
 	}
 
-	return 0, fmt.Errorf("MMLU score not found in summary table logs. Expected Groups summary table with |mmlu| row.")
+	return 0, fmt.Errorf("MMLU score not found in summary table logs. Expected Groups summary table with |mmlu row:\n%s", logs)
 }
 
 func validateQualityBenchmarkResults(benchmark string, logs string) error {
@@ -278,17 +397,6 @@ func validateQualityBenchmarkResults(benchmark string, logs string) error {
 }
 
 func validateMMLUResults(logs string) error {
-	requiredHeaders := []string{"Groups", "Version", "Metric"}
-	for _, header := range requiredHeaders {
-		if !strings.Contains(logs, header) {
-			return fmt.Errorf("expected table header %q not found in logs", header)
-		}
-	}
-
-	if !strings.Contains(logs, "|mmlu") {
-		return fmt.Errorf("MMLU result row not found in logs")
-	}
-
 	score, err := extractMMLUScore(logs)
 	if err != nil {
 		return fmt.Errorf("failed to extract MMLU score: %w", err)
@@ -297,6 +405,8 @@ func validateMMLUResults(logs string) error {
 	if score < MinMMLUScore {
 		return fmt.Errorf("MMLU score %.4f is below minimum threshold %.2f", score, MinMMLUScore)
 	}
+
+	_, _ = fmt.Fprintf(GinkgoWriter, "MMLU score %.4f is above minimum threshold %.2f\n", score, MinMMLUScore)
 
 	return nil
 }

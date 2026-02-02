@@ -18,27 +18,54 @@ spec:
       containers:
       - name: quality-benchmark
         image: {{ .QualityBenchmarkImage }}
+        command: ["/bin/bash", "-c"]
         args:
-        - --eval
-        - "{{.Benchmarks}}"
-        - --model
-        - "{{.ModelName}}"
-        - --host
-        - "{{.GatewayHost}}"
-        - --port
-        - "{{.GatewayPort}}"
-        {{- if or .HFToken .HFEndpoint .Limit }}
+          - |
+            set -e
+            {{- if not .IsKind }}
+            echo "Setting up writable cache layer..."
+            mkdir -p /tmp/hf_cache
+            cp -as /mnt/models/. /tmp/hf_cache/
+            {{- end }}
+            
+            exec /usr/local/bin/run \
+              --eval "{{.Benchmarks}}" \
+              --model "{{.ModelName}}" \
+              --host "{{.GatewayHost}}" \
+              --port "{{.GatewayPort}}" \
+        {{- if not .IsKind }}
+        volumeMounts:
+          - name: model
+            mountPath: /mnt/models
+          - name: writable-cache
+            mountPath: /tmp/hf_cache
+        {{- end }}
         env:
-        {{- if .HFToken }}
+          {{- if not .IsKind }}
+          - name: HF_HUB_OFFLINE
+            value: "1"
+          - name: HF_DATASETS_OFFLINE
+            value: "1"
+          - name: HF_HOME
+            value: /tmp/hf_cache
+          {{- end }}
+          {{- if .HFToken }}
           - name: HF_TOKEN
             value: "{{ .HFToken }}"
-        {{- end }}
-        {{- if .HFEndpoint }}
+          {{- end }}
+          {{- if .HFEndpoint }}
           - name: HF_ENDPOINT
             value: "{{ .HFEndpoint }}"
-        {{- end }}
-        {{- if .Limit }}
+          {{- end }}
+          {{- if .Limit }}
           - name: LIMIT
             value: "{{.Limit}}"
-        {{- end }}
-        {{- end }}
+          {{- end }}
+      {{- if not .IsKind }}
+      volumes:
+        - name: model
+          persistentVolumeClaim:
+            claimName: {{ .PVCName }}
+        - name: writable-cache
+          emptyDir: {}
+      {{- end }}

@@ -10,7 +10,7 @@ import (
 )
 
 // CreateWorkloadNamespace creates the workload namespace and labels.
-func CreateWorkloadNamespace(namespace string, mifNamespace string, istioRev string) error {
+func CreateWorkloadNamespace(namespace string, mifNamespace string) error {
 	cmd := exec.Command("kubectl", "create", "ns", namespace, "--request-timeout=30s")
 	_, err := Run(cmd)
 	if err != nil && !strings.Contains(err.Error(), "AlreadyExists") {
@@ -23,15 +23,6 @@ func CreateWorkloadNamespace(namespace string, mifNamespace string, istioRev str
 		_, err = Run(cmd)
 		if err != nil {
 			return fmt.Errorf("failed to add mif=enabled label to namespace: %w", err)
-		}
-	}
-
-	if istioRev != "" {
-		cmd = exec.Command("kubectl", "label", "namespace", namespace,
-			fmt.Sprintf("istio.io/rev=%s", istioRev), "--overwrite", "--request-timeout=30s")
-		_, err = Run(cmd)
-		if err != nil {
-			return fmt.Errorf("failed to add istio.io/rev label to namespace: %w", err)
 		}
 	}
 	return nil

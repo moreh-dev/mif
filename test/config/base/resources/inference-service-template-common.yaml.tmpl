@@ -36,7 +36,7 @@ spec:
               vllm serve ${ISVC_MODEL_NAME} \
                 --port ${ISVC_PORT} \
                 --served-model-name ${ISVC_MODEL_NAME} \
-                --tensor-parallel-size 4 \
+                --tensor-parallel-size 2 \
                 ${ISVC_EXTRA_ARGS}
             {{- end }}
           env:

@@ -168,7 +168,7 @@ func UninstallGatewayController(gatewayClass string) {
 }
 
 // CreateGatewayResource creates Gateway resources in the workload namespace.
-func CreateGatewayResource(namespace string, gatewayClass string) error {
+func CreateGatewayResource(namespace string, gatewayClass string, istioRev string) error {
 	var templatePath string
 	switch gatewayClass {
 	case "istio":
@@ -181,8 +181,10 @@ func CreateGatewayResource(namespace string, gatewayClass string) error {
 
 	data := struct {
 		GatewayName string
+		IstioRev    string
 	}{
 		GatewayName: settings.GatewayName,
+		IstioRev:    istioRev,
 	}
 	rendered, err := RenderTemplate(templatePath, data)
 	if err != nil {
