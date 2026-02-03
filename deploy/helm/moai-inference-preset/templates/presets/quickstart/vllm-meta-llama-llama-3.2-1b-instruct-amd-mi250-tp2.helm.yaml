@@ -1,7 +1,7 @@
 apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceServiceTemplate
 metadata:
-  name: vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2
+  name: quickstart-vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2
   namespace: {{ include "common.names.namespace" . }}
   labels:
     {{- include "mif.preset.labels" . | nindent 4 }}
@@ -20,11 +20,8 @@ spec:
               value: >-
                 --disable-uvicorn-access-log
                 --no-enable-log-requests
-                --quantization None
-                --max-model-len 8192
-                --max-num-batched-tokens 32768
-                --no-enable-prefix-caching
-                --kv-transfer-config '{"kv_connector":"NixlConnector","kv_role":"kv_both"}'
+                --max-model-len 16384
+                --max-num-batched-tokens 8192
           resources:
             requests:
               amd.com/gpu: 2
