@@ -13,7 +13,7 @@ spec:
     spec:
       containers:
         - name: main
-          image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/quickstart/moreh-vllm:vllm_251212
+          image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/quickstart/moreh-vllm:vllm_0.11.0rc1_251230
           env:
             - name: VLLM_MOE_DP_CHUNK_SIZE
               value: "512"
