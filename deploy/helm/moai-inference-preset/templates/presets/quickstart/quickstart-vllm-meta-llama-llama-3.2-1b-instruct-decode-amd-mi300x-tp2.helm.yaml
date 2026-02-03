@@ -1,7 +1,7 @@
 apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceServiceTemplate
 metadata:
-  name: quickstart-vllm-meta-llama-llama-3.2-1b-instruct-amd-mi300x-tp2
+  name: quickstart-vllm-meta-llama-llama-3.2-1b-instruct-decode-amd-mi300x-tp2
   namespace: {{ include "common.names.namespace" . }}
   labels:
     {{- include "mif.preset.labels" . | nindent 4 }}
@@ -22,6 +22,7 @@ spec:
                 --no-enable-log-requests
                 --max-model-len 16384
                 --max-num-batched-tokens 8192
+                --kv-transfer-config '{"kv_connector":"NixlConnector","kv_role":"kv_consumer"}'
           resources:
             requests:
               amd.com/gpu: 2
@@ -31,6 +32,6 @@ spec:
         moai.moreh.io/accelerator.vendor: amd
         moai.moreh.io/accelerator.model: mi300x
       tolerations:
-        - key: "amd.com/gpu"
-          operator: "Exists"
-          effect: "NoSchedule"
+        - key: amd.com/gpu
+          operator: Exists
+          effect: NoSchedule
