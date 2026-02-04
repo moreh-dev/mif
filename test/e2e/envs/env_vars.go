@@ -15,8 +15,9 @@ const (
 	envSkipCleanup      = "SKIP_CLEANUP"
 
 	// Test
-	envTestModel    = "TEST_MODEL"
-	envTestTemplate = "TEST_TEMPLATE"
+	envTestModel           = "TEST_MODEL"
+	envTestTemplatePrefill = "TEST_TEMPLATE_PREFILL"
+	envTestTemplateDecode  = "TEST_TEMPLATE_DECODE"
 
 	// AWS Credentials
 	envAWSAccessKeyID     = "AWS_ACCESS_KEY_ID"
@@ -63,7 +64,8 @@ var envVars = []envVarInfo{
 
 	// Test
 	{envTestModel, "meta-llama/Llama-3.2-1B-Instruct", "Test model name", "Configuration", "string"},
-	{envTestTemplate, "quickstart-vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2", "Test template name", "Configuration", "string"},
+	{envTestTemplatePrefill, "quickstart-vllm-meta-llama-llama-3.2-1b-instruct-prefill-amd-mi250-tp2", "Test template name for prefill", "Configuration", "string"},
+	{envTestTemplateDecode, "quickstart-vllm-meta-llama-llama-3.2-1b-instruct-decode-amd-mi250-tp2", "Test template name for decode", "Configuration", "string"},
 
 	// AWS Credentials
 	{envAWSAccessKeyID, "", "AWS access key ID", "AWS Credentials (for ECR)", "string"},
@@ -102,8 +104,9 @@ var (
 	SkipCleanup      = getEnvBool(envSkipCleanup)
 
 	// Test
-	TestModel    = getEnv(envTestModel)
-	TestTemplate = getEnv(envTestTemplate)
+	TestModel           = getEnv(envTestModel)
+	TestTemplatePrefill = getEnv(envTestTemplatePrefill)
+	TestTemplateDecode  = getEnv(envTestTemplateDecode)
 
 	// AWS Credentials
 	AWSAccessKeyID     = getEnv(envAWSAccessKeyID)
