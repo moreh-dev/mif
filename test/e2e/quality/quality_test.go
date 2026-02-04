@@ -103,9 +103,6 @@ var _ = Describe("Quality Benchmark", Label("quality"), Ordered, func() {
 		utils.DeleteInferenceService(envs.WorkloadNamespace, prefillServiceName)
 		utils.DeleteInferenceService(envs.WorkloadNamespace, decodeServiceName)
 
-		By("deleting Heimdall")
-		utils.UninstallHeimdall(envs.WorkloadNamespace)
-
 		if envs.SkipKind {
 			By("deleting model PVC")
 			utils.DeleteModelPVC(envs.WorkloadNamespace, pvcName)
@@ -113,6 +110,9 @@ var _ = Describe("Quality Benchmark", Label("quality"), Ordered, func() {
 			By("deleting model PV")
 			utils.DeleteModelPV(pvName)
 		}
+
+		By("deleting Heimdall")
+		utils.UninstallHeimdall(envs.WorkloadNamespace)
 
 		By("deleting Gateway resources")
 		utils.DeleteGatewayResource(envs.WorkloadNamespace, envs.GatewayClassName)

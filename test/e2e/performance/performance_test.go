@@ -151,7 +151,10 @@ func waitForInferenceService(namespace string, name string) error {
 }
 
 func createInferencePerfJob(namespace string, baseURL string, image string, isKind bool) (string, error) {
-	_, imageTag := utils.ParseImage(image)
+	_, imageTag, err := utils.ParseImage(image)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse image: %w", err)
+	}
 
 	type jobTemplateData struct {
 		Namespace         string
