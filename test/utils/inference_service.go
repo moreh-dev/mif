@@ -15,15 +15,17 @@ type InferenceServiceData struct {
 	TemplateRefs []string
 	HFToken      string
 	HFEndpoint   string
+	IsKind       bool
 }
 
-func GetInferenceServiceData(name string, namespace string, templateRefs []string, hfToken string, hfEndpoint string) InferenceServiceData {
+func GetInferenceServiceData(name string, namespace string, templateRefs []string, hfToken string, hfEndpoint string, isKind bool) InferenceServiceData {
 	return InferenceServiceData{
 		Name:         name,
 		Namespace:    namespace,
 		TemplateRefs: templateRefs,
 		HFToken:      hfToken,
 		HFEndpoint:   hfEndpoint,
+		IsKind:       isKind,
 	}
 }
 

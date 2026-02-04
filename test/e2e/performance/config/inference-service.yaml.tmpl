@@ -26,3 +26,11 @@ spec:
             - name: HF_ENDPOINT
               value: "{{ .HFEndpoint }}"
             {{- end }}
+          {{- if not .IsKind }}
+          resources:
+            requests:
+              mellanox/hca: "1"
+            limits:
+              mellanox/hca: "1"
+          {{- end }}
+

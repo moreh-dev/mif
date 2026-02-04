@@ -76,11 +76,11 @@ var _ = Describe("Quality Benchmark", Label("quality"), Ordered, func() {
 		isKind := !envs.SkipKind
 		var prefillData, decodeData utils.InferenceServiceData
 		if isKind {
-			prefillData = utils.GetInferenceServiceData("prefill", envs.WorkloadNamespace, []string{"sim-prefill"}, envs.HFToken, envs.HFEndpoint)
-			decodeData = utils.GetInferenceServiceData("decode", envs.WorkloadNamespace, []string{"sim-decode"}, envs.HFToken, envs.HFEndpoint)
+			prefillData = utils.GetInferenceServiceData("prefill", envs.WorkloadNamespace, []string{"sim-prefill"}, envs.HFToken, envs.HFEndpoint, isKind)
+			decodeData = utils.GetInferenceServiceData("decode", envs.WorkloadNamespace, []string{"sim-decode"}, envs.HFToken, envs.HFEndpoint, isKind)
 		} else {
-			prefillData = utils.GetInferenceServiceData("prefill", envs.WorkloadNamespace, []string{"vllm-prefill", envs.TestTemplate, "vllm-hf-hub-offline"}, envs.HFToken, envs.HFEndpoint)
-			decodeData = utils.GetInferenceServiceData("decode", envs.WorkloadNamespace, []string{"vllm-decode", envs.TestTemplate, "vllm-hf-hub-offline"}, envs.HFToken, envs.HFEndpoint)
+			prefillData = utils.GetInferenceServiceData("prefill", envs.WorkloadNamespace, []string{"vllm-prefill", envs.TestTemplate, "vllm-hf-hub-offline"}, envs.HFToken, envs.HFEndpoint, isKind)
+			decodeData = utils.GetInferenceServiceData("decode", envs.WorkloadNamespace, []string{"vllm-decode", envs.TestTemplate, "vllm-hf-hub-offline"}, envs.HFToken, envs.HFEndpoint, isKind)
 		}
 		prefillServiceName, err = utils.CreateInferenceService(envs.WorkloadNamespace, InferenceServicePath, prefillData)
 		Expect(err).NotTo(HaveOccurred(), "failed to create prefill InferenceService")
