@@ -29,6 +29,9 @@ const (
 var (
 	prefillServiceName string
 	decodeServiceName  string
+
+	pvName  string
+	pvcName string
 )
 
 var _ = Describe("Inference Performance", Label("performance"), Ordered, func() {
@@ -58,6 +61,16 @@ var _ = Describe("Inference Performance", Label("performance"), Ordered, func() 
 		values, err := utils.RenderTemplate(HeimdallValues, data)
 		Expect(err).NotTo(HaveOccurred(), "failed to render Heimdall values template")
 		Expect(utils.InstallHeimdall(envs.WorkloadNamespace, values)).To(Succeed())
+
+		if envs.SkipKind {
+			By("creating model PV")
+			pvName, err = utils.CreateModelPV(envs.WorkloadNamespace)
+			Expect(err).NotTo(HaveOccurred(), "failed to create model PV")
+
+			By("creating model PVC")
+			pvcName, err = utils.CreateModelPVC(envs.WorkloadNamespace)
+			Expect(err).NotTo(HaveOccurred(), "failed to create model PVC")
+		}
 
 		By("creating InferenceServices")
 		isKind := !envs.SkipKind
@@ -89,6 +102,14 @@ var _ = Describe("Inference Performance", Label("performance"), Ordered, func() 
 		By("deleting InferenceServices")
 		utils.DeleteInferenceService(envs.WorkloadNamespace, prefillServiceName)
 		utils.DeleteInferenceService(envs.WorkloadNamespace, decodeServiceName)
+
+		if envs.SkipKind {
+			By("deleting model PVC")
+			utils.DeleteModelPVC(envs.WorkloadNamespace, pvcName)
+
+			By("deleting model PV")
+			utils.DeleteModelPV(pvName)
+		}
 
 		By("deleting Heimdall")
 		utils.UninstallHeimdall(envs.WorkloadNamespace)

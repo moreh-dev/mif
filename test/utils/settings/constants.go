@@ -54,6 +54,12 @@ const (
 	HeimdallVersion = "v0.6.1"
 )
 
+// Models
+const (
+	ModelPV  = "test/utils/config/model-pv.yaml.tmpl"
+	ModelPVC = "test/utils/config/model-pvc.yaml.tmpl"
+)
+
 // Inference service
 const (
 	GatewayName             = "mif"
