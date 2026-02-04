@@ -5,6 +5,8 @@ metadata:
   namespace: {{ include "common.names.namespace" . }}
   labels:
     {{- include "mif.runtimeBase.labels" . | nindent 4 }}
+    mif.moreh.io/role: prefill
+    mif.moreh.io/parallelism: pp
 spec:
   template:
     metadata:
