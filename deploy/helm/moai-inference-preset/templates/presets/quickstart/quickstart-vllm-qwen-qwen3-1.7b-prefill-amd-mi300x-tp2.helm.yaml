@@ -5,6 +5,12 @@ metadata:
   namespace: {{ include "common.names.namespace" . }}
   labels:
     {{- include "mif.preset.labels" . | nindent 4 }}
+    mif.moreh.io/model.org: qwen
+    mif.moreh.io/model.name: qwen3-1.7b
+    mif.moreh.io/role: prefill
+    mif.moreh.io/accelerator.vendor: amd
+    mif.moreh.io/accelerator.model: mi300x
+    mif.moreh.io/parallelism: tp2
 spec:
   parallelism:
     tensor: 2
