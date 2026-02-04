@@ -7,47 +7,23 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
-
-	"github.com/moreh-dev/mif/test/utils/settings"
 )
 
 type InferenceServiceData struct {
-	Name               string
-	Namespace          string
-	ImagePullSecret    string
-	Image              string
-	Model              string
-	HFToken            string
-	HFEndpoint         string
-	IsKind             bool
-	IsQualityBenchmark bool
+	Name         string
+	Namespace    string
+	TemplateRefs []string
+	HFToken      string
+	HFEndpoint   string
 }
 
-func GetInferenceImageInfo(isKind bool) (repo, tag string) {
-	repo = settings.ImageRepoDefault
-	tag = settings.ImageTagDefault
-	if isKind {
-		repo = settings.ImageRepoKindDefault
-		tag = settings.ImageTagKindDefault
-	}
-
-	return repo, tag
-}
-
-func GetInferenceServiceData(namespace string, model string, hfToken string, hfEndpoint string, isKind bool, isQualityBenchmark bool) InferenceServiceData {
-	imageRepo, imageTag := GetInferenceImageInfo(isKind)
-	image := fmt.Sprintf("%s:%s", imageRepo, imageTag)
-
+func GetInferenceServiceData(name string, namespace string, templateRefs []string, hfToken string, hfEndpoint string) InferenceServiceData {
 	return InferenceServiceData{
-		Name:               settings.InferenceServiceName,
-		Namespace:          namespace,
-		ImagePullSecret:    settings.MorehRegistrySecretName,
-		Image:              image,
-		Model:              model,
-		HFToken:            hfToken,
-		HFEndpoint:         hfEndpoint,
-		IsKind:             isKind,
-		IsQualityBenchmark: isQualityBenchmark,
+		Name:         name,
+		Namespace:    namespace,
+		TemplateRefs: templateRefs,
+		HFToken:      hfToken,
+		HFEndpoint:   hfEndpoint,
 	}
 }
 
@@ -77,8 +53,8 @@ func DeleteInferenceService(namespace string, name string) {
 }
 
 // CreateInferenceServiceTemplate creates an InferenceServiceTemplate CR in the given namespace.
-func CreateInferenceServiceTemplate(namespace string, manifestPath string, data InferenceServiceData) (string, error) {
-	rendered, err := RenderTemplate(manifestPath, data)
+func CreateInferenceServiceTemplate(namespace string, manifestPath string) (string, error) {
+	rendered, err := RenderTemplate(manifestPath, map[string]string{"Namespace": namespace})
 	if err != nil {
 		return "", fmt.Errorf("failed to render InferenceServiceTemplate manifest: %w", err)
 	}
@@ -99,6 +75,19 @@ func DeleteInferenceServiceTemplate(namespace, templateName string) {
 	if _, err := Run(cmd); err != nil {
 		warnError(err)
 	}
+}
+
+// GetInferenceServiceContainerImage returns the main container image of the given InferenceService.
+// Call after the service is created and merged (e.g. when Ready); uses the actual applied spec.
+func GetInferenceServiceContainerImage(namespace, serviceName string) (string, error) {
+	cmd := exec.Command("kubectl", "get", "deployment", serviceName,
+		"-n", namespace,
+		"-o", "jsonpath={.spec.template.spec.containers[0].image}")
+	output, err := Run(cmd)
+	if err != nil {
+		return "", fmt.Errorf("failed to get Deployment container image: %w", err)
+	}
+	return strings.TrimSpace(output), nil
 }
 
 // GetGatewayServiceName gets the name of the Gateway service in the workload namespace.

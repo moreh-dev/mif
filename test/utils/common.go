@@ -144,3 +144,12 @@ func hasAllCRDs(output string, required []string) bool {
 	}
 	return true
 }
+
+// ParseImage parses a container image reference
+func ParseImage(image string) (repo, tag string) {
+	lastColon := strings.LastIndex(image, ":")
+	repo = image[:lastColon]
+	tag = image[lastColon+1:]
+
+	return repo, tag
+}

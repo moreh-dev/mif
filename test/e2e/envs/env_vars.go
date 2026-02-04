@@ -14,8 +14,9 @@ const (
 	envSkipPrerequisite = "SKIP_PREREQUISITE"
 	envSkipCleanup      = "SKIP_CLEANUP"
 
-	// Test Model
-	envTestModel = "TEST_MODEL"
+	// Test
+	envTestModel    = "TEST_MODEL"
+	envTestTemplate = "TEST_TEMPLATE"
 
 	// AWS Credentials
 	envAWSAccessKeyID     = "AWS_ACCESS_KEY_ID"
@@ -60,8 +61,9 @@ var envVars = []envVarInfo{
 	{envSkipPrerequisite, boolDefaultString(false), "Skip prerequisite installation (cert-manager, Gateway API, Gateway controller, Gateway Inference Extension) and MIF/Preset setup. When enabled, setupPrerequisites() returns early without installing or validating any components", "Skip", "bool"},
 	{envSkipCleanup, boolDefaultString(false), "Skip cleanup after tests", "Skip", "bool"},
 
-	// Test Model
-	{envTestModel, "Qwen/Qwen2.5-0.5B", "Test model name", "Configuration", "string"},
+	// Test
+	{envTestModel, "meta-llama/Llama-3.2-1B-Instruct", "Test model name", "Configuration", "string"},
+	{envTestTemplate, "quickstart-vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2", "Test template name", "Configuration", "string"},
 
 	// AWS Credentials
 	{envAWSAccessKeyID, "", "AWS access key ID", "AWS Credentials (for ECR)", "string"},
@@ -99,8 +101,9 @@ var (
 	SkipPrerequisite = getEnvBool(envSkipPrerequisite)
 	SkipCleanup      = getEnvBool(envSkipCleanup)
 
-	// Test Model
-	TestModel = getEnv(envTestModel)
+	// Test
+	TestModel    = getEnv(envTestModel)
+	TestTemplate = getEnv(envTestTemplate)
 
 	// AWS Credentials
 	AWSAccessKeyID     = getEnv(envAWSAccessKeyID)
