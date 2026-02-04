@@ -52,44 +52,6 @@ func DeleteInferenceService(namespace string, name string) {
 	}
 }
 
-// CreateInferenceServiceTemplate creates an InferenceServiceTemplate CR in the given namespace.
-func CreateInferenceServiceTemplate(namespace string, manifestPath string) (string, error) {
-	rendered, err := RenderTemplate(manifestPath, map[string]string{"Namespace": namespace})
-	if err != nil {
-		return "", fmt.Errorf("failed to render InferenceServiceTemplate manifest: %w", err)
-	}
-
-	cmd := exec.Command("kubectl", "apply", "-f", "-", "-n", namespace, "-o", "name")
-	cmd.Stdin = strings.NewReader(rendered)
-	output, err := Run(cmd)
-	if err != nil {
-		return "", fmt.Errorf("failed to create InferenceServiceTemplate: %w", err)
-	}
-	return ParseResourceName(output), nil
-}
-
-// DeleteInferenceServiceTemplate deletes an InferenceServiceTemplate from the given namespace.
-func DeleteInferenceServiceTemplate(namespace, templateName string) {
-	cmd := exec.Command("kubectl", "delete", "inferenceservicetemplate", templateName,
-		"-n", namespace, "--ignore-not-found=true")
-	if _, err := Run(cmd); err != nil {
-		warnError(err)
-	}
-}
-
-// GetInferenceServiceContainerImage returns the main container image of the given InferenceService.
-// Call after the service is created and merged (e.g. when Ready); uses the actual applied spec.
-func GetInferenceServiceContainerImage(namespace, serviceName string) (string, error) {
-	cmd := exec.Command("kubectl", "get", "deployment", serviceName,
-		"-n", namespace,
-		"-o", "jsonpath={.spec.template.spec.containers[0].image}")
-	output, err := Run(cmd)
-	if err != nil {
-		return "", fmt.Errorf("failed to get Deployment container image: %w", err)
-	}
-	return strings.TrimSpace(output), nil
-}
-
 // GetGatewayServiceName gets the name of the Gateway service in the workload namespace.
 func GetGatewayServiceName(namespace string) (string, error) {
 	cmd := exec.Command("kubectl", "get", "service",
@@ -100,6 +62,18 @@ func GetGatewayServiceName(namespace string) (string, error) {
 	output, err := Run(cmd)
 	if err != nil {
 		return "", fmt.Errorf("gateway service not found: %w", err)
+	}
+	return strings.TrimSpace(output), nil
+}
+
+// GetInferenceServiceContainerImage returns the main container image of the given InferenceService.
+func GetInferenceServiceContainerImage(namespace, serviceName string) (string, error) {
+	cmd := exec.Command("kubectl", "get", "deployment", serviceName,
+		"-n", namespace,
+		"-o", "jsonpath={.spec.template.spec.containers[0].image}")
+	output, err := Run(cmd)
+	if err != nil {
+		return "", fmt.Errorf("failed to get Deployment container image: %w", err)
 	}
 	return strings.TrimSpace(output), nil
 }
