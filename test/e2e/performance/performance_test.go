@@ -16,6 +16,10 @@ import (
 )
 
 const (
+	HeimdallValues       = "test/e2e/performance/config/heimdall-values.yaml.tmpl"
+	InferenceServicePath = "test/e2e/performance/config/inference-service.yaml.tmpl"
+	InferencePerfJob     = "test/e2e/performance/config/inference-perf-job.yaml.tmpl"
+
 	InferencePerfS3PrefixBase = "vllm"
 	InferencePerfPreset       = "workertemplate-vllm-common"
 	InferencePerfExpType      = "performance"
@@ -23,12 +27,11 @@ const (
 )
 
 var (
-	commonTemplateName      string
-	prefillMetaTemplateName string
-	decodeMetaTemplateName  string
-	decodeProxyTemplateName string
-	prefillServiceName      string
-	decodeServiceName       string
+	prefillServiceName string
+	decodeServiceName  string
+
+	pvName  string
+	pvcName string
 )
 
 var _ = Describe("Inference Performance", Label("performance"), Ordered, func() {
@@ -55,26 +58,33 @@ var _ = Describe("Inference Performance", Label("performance"), Ordered, func() 
 			IstioRev:                envs.IstioRev,
 		}
 
-		values, err := utils.RenderTemplate("test/e2e/performance/config/heimdall-values.yaml.tmpl", data)
+		values, err := utils.RenderTemplate(HeimdallValues, data)
 		Expect(err).NotTo(HaveOccurred(), "failed to render Heimdall values template")
 		Expect(utils.InstallHeimdall(envs.WorkloadNamespace, values)).To(Succeed())
 
-		By("creating InferenceServiceTemplates")
-		isKind := !envs.SkipKind
-		inferenceServiceData := utils.GetInferenceServiceData(envs.WorkloadNamespace, envs.TestModel, envs.HFToken, envs.HFEndpoint, isKind, false)
-		commonTemplateName, err = utils.CreateInferenceServiceTemplate(envs.WorkloadNamespace, settings.InferenceServiceTemplateCommon, inferenceServiceData)
-		Expect(err).NotTo(HaveOccurred(), "failed to create common InferenceServiceTemplate")
-		prefillMetaTemplateName, err = utils.CreateInferenceServiceTemplate(envs.WorkloadNamespace, settings.InferenceServiceTemplatePrefillMeta, inferenceServiceData)
-		Expect(err).NotTo(HaveOccurred(), "failed to create prefill meta InferenceServiceTemplate")
-		decodeMetaTemplateName, err = utils.CreateInferenceServiceTemplate(envs.WorkloadNamespace, settings.InferenceServiceTemplateDecodeMeta, inferenceServiceData)
-		Expect(err).NotTo(HaveOccurred(), "failed to create decode meta InferenceServiceTemplate")
-		decodeProxyTemplateName, err = utils.CreateInferenceServiceTemplate(envs.WorkloadNamespace, settings.InferenceServiceTemplateDecodeProxy, inferenceServiceData)
-		Expect(err).NotTo(HaveOccurred(), "failed to create decode proxy InferenceServiceTemplate")
+		if envs.SkipKind {
+			By("creating model PV")
+			pvName, err = utils.CreateModelPV(envs.WorkloadNamespace)
+			Expect(err).NotTo(HaveOccurred(), "failed to create model PV")
+
+			By("creating model PVC")
+			pvcName, err = utils.CreateModelPVC(envs.WorkloadNamespace)
+			Expect(err).NotTo(HaveOccurred(), "failed to create model PVC")
+		}
 
 		By("creating InferenceServices")
-		prefillServiceName, err = utils.CreateInferenceService(envs.WorkloadNamespace, settings.InferenceServicePrefill, inferenceServiceData)
+		isKind := !envs.SkipKind
+		var prefillData, decodeData utils.InferenceServiceData
+		if isKind {
+			prefillData = utils.GetInferenceServiceData("prefill", envs.WorkloadNamespace, []string{"sim-prefill"}, envs.HFToken, envs.HFEndpoint, isKind)
+			decodeData = utils.GetInferenceServiceData("decode", envs.WorkloadNamespace, []string{"sim-decode"}, envs.HFToken, envs.HFEndpoint, isKind)
+		} else {
+			prefillData = utils.GetInferenceServiceData("prefill", envs.WorkloadNamespace, []string{"vllm-prefill", envs.TestTemplatePrefill, "vllm-hf-hub-offline"}, envs.HFToken, envs.HFEndpoint, isKind)
+			decodeData = utils.GetInferenceServiceData("decode", envs.WorkloadNamespace, []string{"vllm-decode", envs.TestTemplateDecode, "vllm-hf-hub-offline"}, envs.HFToken, envs.HFEndpoint, isKind)
+		}
+		prefillServiceName, err = utils.CreateInferenceService(envs.WorkloadNamespace, InferenceServicePath, prefillData)
 		Expect(err).NotTo(HaveOccurred(), "failed to create prefill InferenceService")
-		decodeServiceName, err = utils.CreateInferenceService(envs.WorkloadNamespace, settings.InferenceServiceDecode, inferenceServiceData)
+		decodeServiceName, err = utils.CreateInferenceService(envs.WorkloadNamespace, InferenceServicePath, decodeData)
 		Expect(err).NotTo(HaveOccurred(), "failed to create decode InferenceService")
 
 		By("waiting for prefill InferenceService to be ready")
@@ -93,11 +103,13 @@ var _ = Describe("Inference Performance", Label("performance"), Ordered, func() 
 		utils.DeleteInferenceService(envs.WorkloadNamespace, prefillServiceName)
 		utils.DeleteInferenceService(envs.WorkloadNamespace, decodeServiceName)
 
-		By("deleting InferenceServiceTemplates")
-		utils.DeleteInferenceServiceTemplate(envs.WorkloadNamespace, commonTemplateName)
-		utils.DeleteInferenceServiceTemplate(envs.WorkloadNamespace, prefillMetaTemplateName)
-		utils.DeleteInferenceServiceTemplate(envs.WorkloadNamespace, decodeMetaTemplateName)
-		utils.DeleteInferenceServiceTemplate(envs.WorkloadNamespace, decodeProxyTemplateName)
+		if envs.SkipKind {
+			By("deleting model PVC")
+			utils.DeleteModelPVC(envs.WorkloadNamespace, pvcName)
+
+			By("deleting model PV")
+			utils.DeleteModelPV(pvName)
+		}
 
 		By("deleting Heimdall")
 		utils.UninstallHeimdall(envs.WorkloadNamespace)
@@ -114,8 +126,13 @@ var _ = Describe("Inference Performance", Label("performance"), Ordered, func() 
 		serviceName, err := utils.GetGatewayServiceName(envs.WorkloadNamespace)
 		Expect(err).NotTo(HaveOccurred(), "failed to get Gateway service name")
 
+		By("getting InferenceService container image")
+		image, err := utils.GetInferenceServiceContainerImage(envs.WorkloadNamespace, prefillServiceName)
+		Expect(err).NotTo(HaveOccurred(), "failed to get InferenceService container image")
+
 		By("creating inference-perf job")
-		jobName, err := createInferencePerfJob(envs.WorkloadNamespace, fmt.Sprintf("http://%s", serviceName))
+		isKind := !envs.SkipKind
+		jobName, err := createInferencePerfJob(envs.WorkloadNamespace, fmt.Sprintf("http://%s", serviceName), image, isKind)
 		Expect(err).NotTo(HaveOccurred(), "failed to create inference-perf job")
 		defer deleteInferencePerfJob(envs.WorkloadNamespace, jobName)
 
@@ -133,9 +150,11 @@ func waitForInferenceService(namespace string, name string) error {
 	return err
 }
 
-func createInferencePerfJob(namespace string, baseURL string) (string, error) {
-	isKind := !envs.SkipKind
-	_, imageTag := utils.GetInferenceImageInfo(isKind)
+func createInferencePerfJob(namespace string, baseURL string, image string, isKind bool) (string, error) {
+	_, imageTag, err := utils.ParseImage(image)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse image: %w", err)
+	}
 
 	type jobTemplateData struct {
 		Namespace         string
@@ -173,7 +192,7 @@ func createInferencePerfJob(namespace string, baseURL string) (string, error) {
 		ExpName:           InferencePerfExpName,
 	}
 
-	jobYAML, err := utils.RenderTemplate("test/e2e/performance/config/inference-perf-job.yaml.tmpl", data)
+	jobYAML, err := utils.RenderTemplate(InferencePerfJob, data)
 	if err != nil {
 		return "", fmt.Errorf("failed to render job template: %w", err)
 	}

@@ -6,12 +6,20 @@ config:
   apiVersion: inference.networking.x-k8s.io/v1alpha1
   kind: EndpointPickerConfig
   plugins:
-    - type: single-profile-handler
+    - type: pd-profile-handler
+    - type: prefill-filter
+    - type: decode-filter
     - type: queue-scorer
     - type: max-score-picker
   schedulingProfiles:
-    - name: default
+    - name: prefill
       plugins:
+        - pluginRef: prefill-filter
+        - pluginRef: queue-scorer
+        - pluginRef: max-score-picker
+    - name: decode
+      plugins:
+        - pluginRef: decode-filter
         - pluginRef: queue-scorer
         - pluginRef: max-score-picker
 

@@ -42,7 +42,8 @@ jobs:
       KUBECONFIG: "/tmp/kubeconfig"
       MIF_NAMESPACE: "mif"
       ISTIO_REV: "1-28-1"
-      TEST_MODEL: "Qwen/Qwen2.5-0.5B"
+      TEST_MODEL: "meta-llama/Llama-3.2-1B-Instruct"
+      TEST_TEMPLATE: "quickstart-vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2"
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
       HF_ENDPOINT: ${{ secrets.HF_ENDPOINT }}
       SKIP_KIND: "true"

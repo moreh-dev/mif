@@ -54,21 +54,16 @@ const (
 	HeimdallVersion = "v0.6.1"
 )
 
+// Models
+const (
+	ModelPV  = "test/utils/config/model-pv.yaml.tmpl"
+	ModelPVC = "test/utils/config/model-pvc.yaml.tmpl"
+)
+
 // Inference service
 const (
-	InferenceServiceName                = "pd"
-	InferenceServicePrefill             = "test/config/base/resources/inference-service-prefill.yaml.tmpl"
-	InferenceServiceDecode              = "test/config/base/resources/inference-service-decode.yaml.tmpl"
-	InferenceServiceTemplateCommon      = "test/config/base/resources/inference-service-template-common.yaml.tmpl"
-	InferenceServiceTemplatePrefillMeta = "test/config/base/resources/inference-service-template-prefill-meta.yaml.tmpl"
-	InferenceServiceTemplateDecodeMeta  = "test/config/base/resources/inference-service-template-decode-meta.yaml.tmpl"
-	InferenceServiceTemplateDecodeProxy = "test/config/base/resources/inference-service-template-decode-proxy.yaml.tmpl"
-	GatewayName                         = "mif"
-	MorehRegistrySecretName             = "moreh-registry"
-	ImageRepoKindDefault                = "ghcr.io/llm-d/llm-d-inference-sim"
-	ImageTagKindDefault                 = "v0.6.1"
-	ImageRepoDefault                    = "255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/quickstart/moreh-vllm"
-	ImageTagDefault                     = "20250915.1"
+	GatewayName             = "mif"
+	MorehRegistrySecretName = "moreh-registry"
 )
 
 // Timeout and interval constants for E2E tests
