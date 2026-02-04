@@ -56,8 +56,8 @@ const (
 
 // Models
 const (
-	ModelPV  = "test/utils/config/model-pv.yaml.tmpl"
-	ModelPVC = "test/utils/config/model-pvc.yaml.tmpl"
+	ModelPV  = "test/config/base/model-pv.yaml.tmpl"
+	ModelPVC = "test/config/base/model-pvc.yaml.tmpl"
 )
 
 // Inference service
