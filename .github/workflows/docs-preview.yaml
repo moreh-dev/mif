@@ -1,0 +1,59 @@
+name: Docs preview (Docusaurus)
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'website/**'
+  pull_request:
+    paths:
+      - 'website/**'
+
+jobs:
+  build-and-publish-preview:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    env:
+      PREVIEW_BRANCH: main-build
+
+    defaults:
+      run:
+        working-directory: website
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: website/package.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Docusaurus site
+        run: npm run build
+
+      - name: Publish preview to main-build branch (mif repo)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          cd build
+          git init
+          git checkout -b "${PREVIEW_BRANCH}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Preview docs for ${GITHUB_SHA}"
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO}.git"
+          git push origin "${PREVIEW_BRANCH}" --force
+
+
