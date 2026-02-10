@@ -27,8 +27,7 @@ const (
 )
 
 var (
-	prefillServiceName string
-	decodeServiceName  string
+	vllmServiceName string
 
 	pvName  string
 	pvcName string
@@ -73,25 +72,19 @@ var _ = Describe("Quality Benchmark", Label("quality"), Ordered, func() {
 		}
 
 		By("creating InferenceServices")
+		// PD disaggregation environment cannot run tests normally, so we test in aggregate environment
 		isKind := !envs.SkipKind
-		var prefillData, decodeData utils.InferenceServiceData
+		var vllmData utils.InferenceServiceData
 		if isKind {
-			prefillData = utils.GetInferenceServiceData("prefill", envs.WorkloadNamespace, []string{"sim-prefill"}, envs.HFToken, envs.HFEndpoint, isKind)
-			decodeData = utils.GetInferenceServiceData("decode", envs.WorkloadNamespace, []string{"sim-decode"}, envs.HFToken, envs.HFEndpoint, isKind)
+			vllmData = utils.GetInferenceServiceData("vllm", envs.WorkloadNamespace, []string{"sim"}, envs.HFToken, envs.HFEndpoint, isKind)
 		} else {
-			prefillData = utils.GetInferenceServiceData("prefill", envs.WorkloadNamespace, []string{"vllm-prefill", envs.TestTemplatePrefill, "vllm-hf-hub-offline"}, envs.HFToken, envs.HFEndpoint, isKind)
-			decodeData = utils.GetInferenceServiceData("decode", envs.WorkloadNamespace, []string{"vllm-decode", envs.TestTemplateDecode, "vllm-hf-hub-offline"}, envs.HFToken, envs.HFEndpoint, isKind)
+			vllmData = utils.GetInferenceServiceData("vllm", envs.WorkloadNamespace, []string{"vllm", envs.TestTemplateDecode, "vllm-hf-hub-offline"}, envs.HFToken, envs.HFEndpoint, isKind)
 		}
-		prefillServiceName, err = utils.CreateInferenceService(envs.WorkloadNamespace, InferenceServicePath, prefillData)
-		Expect(err).NotTo(HaveOccurred(), "failed to create prefill InferenceService")
-		decodeServiceName, err = utils.CreateInferenceService(envs.WorkloadNamespace, InferenceServicePath, decodeData)
-		Expect(err).NotTo(HaveOccurred(), "failed to create decode InferenceService")
+		vllmServiceName, err = utils.CreateInferenceService(envs.WorkloadNamespace, InferenceServicePath, vllmData)
+		Expect(err).NotTo(HaveOccurred(), "failed to create vllm InferenceService")
 
-		By("waiting for prefill InferenceService to be ready")
-		Expect(waitForInferenceService(envs.WorkloadNamespace, prefillServiceName)).To(Succeed())
-
-		By("waiting for decode InferenceService to be ready")
-		Expect(waitForInferenceService(envs.WorkloadNamespace, decodeServiceName)).To(Succeed())
+		By("waiting for vllm InferenceService to be ready")
+		Expect(waitForInferenceService(envs.WorkloadNamespace, vllmServiceName)).To(Succeed())
 	})
 
 	AfterAll(func() {
@@ -100,8 +93,7 @@ var _ = Describe("Quality Benchmark", Label("quality"), Ordered, func() {
 		}
 
 		By("deleting InferenceServices")
-		utils.DeleteInferenceService(envs.WorkloadNamespace, prefillServiceName)
-		utils.DeleteInferenceService(envs.WorkloadNamespace, decodeServiceName)
+		utils.DeleteInferenceService(envs.WorkloadNamespace, vllmServiceName)
 
 		if envs.SkipKind {
 			By("deleting model PVC")
