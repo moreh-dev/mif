@@ -11,7 +11,7 @@ import (
 	"github.com/moreh-dev/mif/test/utils/settings"
 )
 
-// CreateModelPV creates a model PV in the given namespace.
+// CreateModelPV creates a model PersistentVolume and returns its name.
 func CreateModelPV(namespace string) (string, error) {
 	data := struct {
 		Namespace string
@@ -39,7 +39,7 @@ func CreateModelPV(namespace string) (string, error) {
 	return pvName, nil
 }
 
-// DeleteModelPV deletes a model PV in the given namespace.
+// DeleteModelPV deletes a model PersistentVolume identified by its name.
 func DeleteModelPV(pvName string) {
 	cmd := exec.Command("kubectl", "delete", "pv", pvName,
 		"--ignore-not-found=true")
