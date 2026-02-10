@@ -1,4 +1,4 @@
-name: Quality Benchmark on Product Cluster
+name: e2e-quality-benchmark-p-cluster
 
 # Required GitHub Secrets for Product Cluster Testing:
 # - KUBECONFIG_BASE64: Base64-encoded kubeconfig file for the Product cluster
@@ -136,7 +136,7 @@ jobs:
           if-no-files-found: warn
 
   test-summary:
-    name: Quality Benchmark Summary
+    name: Quality Benchmark E2E Test Summary
     runs-on: ubuntu-latest
     needs: [quality-benchmark]
     if: always()
@@ -145,10 +145,10 @@ jobs:
       - name: Check test result
         run: |
           if [ "${{ needs.quality-benchmark.outputs.test_passed }}" == "true" ]; then
-            echo "✅ Quality benchmark E2E tests passed."
-            echo "::notice::Quality benchmark E2E tests passed."
+            echo "✅ Quality Benchmark E2E tests passed."
+            echo "::notice::Quality Benchmark E2E tests passed."
           else
-            echo "❌ Quality benchmark E2E tests failed. Please check the logs and fix issues."
-            echo "::error::Quality benchmark E2E tests failed."
+            echo "❌ Quality Benchmark E2E tests failed. Please check the logs and fix issues."
+            echo "::error::Quality Benchmark E2E tests failed."
             exit 1
           fi
