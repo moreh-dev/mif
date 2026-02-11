@@ -1,5 +1,7 @@
 ---
-title: Overview
+sidebar_position: 1
+
+title: 'Overview'
 ---
 
 MoAI Inference Framework is designed to enable efficient and automated distributed inference on cluster systems and Kubernetes environments. It supports a wide range of distributed inference techniques &mdash; such as prefill-decode disaggregation, expert parallelism, and prefix-cache-aware routing. Leveraging its unique cost model, it automatically identifies, applies, and dynamically adjusts the optimal way to utilize various accelerators so as to meet the defined service level objectives (SLOs). All of these capabilities are seamlessly integrated not only for NVIDIA GPUs but also for other accelerators, especially AMD GPUs.
@@ -13,19 +15,22 @@ MoAI Inference Framework consists of four main components:
 3. **"Odin" inference service**: runs individual inference instances on Kubernetes at scale.
 4. **Moreh vLLM**: an optimized version of vLLM designed to deliver superior inference performance on AMD GPUs. It supports the same models and features as the original vLLM, while applying end-to-end optimization across GPU kernels, libraries, model implementations, and individual parallelization/disaggregation techniques specifically tuned for AMD GPU architectures. [(Learn more)](https://moreh.io/moreh-vllm/)
 
+---
+
 ## Supported accelerators
 
 MoAI Inference Framework is compatible with NVIDIA GPUs, AMD GPUs, Tenstorrent AI accelerators, and various other devices supported by vLLM. Its official support currently covers the following accelerators:
 
-Vendor      | Models
-------------|---------------------------------------------------
-AMD         | MI250, MI250X, MI300X, MI308X, MI325X, and MI355X
-NVIDIA      | A100, H100, H200, H20, and B200
-Tenstorrent | Wormhole and Blackhole
+| Vendor      | Models                                            |
+| ----------- | ------------------------------------------------- |
+| AMD         | MI250, MI250X, MI300X, MI308X, MI325X, and MI355X |
+| NVIDIA      | A100, H100, H200, H20, and B200                   |
+| Tenstorrent | Wormhole and Blackhole                            |
 
 Supported features and compatibility may vary across accelerators. Please contact Moreh for detailed information.
+
+---
 
 ## Supported models
 
 MoAI Inference Framework natively supports all open-source LLMs available in [vLLM](https://docs.vllm.ai/en/latest/models/supported_models.html), including (but not limited to) Llama 2/3/4, DeepSeek V3/3.1/3.2/R1, GPT-OSS, Qwen 1.5/2/2.5/3, Step3, Baichuan2, Gemma2, and Mistral.
-

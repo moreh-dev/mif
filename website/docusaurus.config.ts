@@ -6,16 +6,20 @@ const config: Config = {
   tagline: 'MoAI Inference Framework documentation',
   url: 'https://docs.moreh.io',
   baseUrl: '/',
-  favicon: 'moreh-icon.png',
+  favicon: '/moreh-icon.png',
   organizationName: 'moreh-dev',
   projectName: 'mif',
-  onBrokenLinks: 'throw',
-  onBrokenMarkdownLinks: 'warn',
-  i18n: {
-    defaultLocale: 'en',
-    locales: ['en'],
-  },
-  staticDirectories: ['static', '../docs.moreh.io/docs/static'],
+  staticDirectories: ['static'],
+  onBrokenLinks: 'warn',
+  plugins: [
+    [
+      '@cmfcmf/docusaurus-search-local',
+      {
+        indexBlog: false,
+        language: 'en',
+      },
+    ],
+  ],
   presets: [
     [
       'classic',
@@ -24,27 +28,22 @@ const config: Config = {
           sidebarPath: require.resolve('./sidebars'),
           routeBasePath: '/',
         },
-        blog: false,
         theme: {
-          customCss: [],
+          customCss: require.resolve('./css/custom.css'),
         },
+        blog: false,
       } satisfies Preset.Options,
     ],
   ],
   themeConfig: {
     navbar: {
-      title: 'Moreh',
+      title: '',
       logo: {
         alt: 'Moreh logo',
-        src: 'moreh-logo.svg',
+        src: '/moreh-logo.svg',
+        srcDark: '/moreh-logo-white.svg',
       },
       items: [
-        {
-          type: 'doc',
-          docId: 'home',
-          position: 'left',
-          label: 'Docs',
-        },
         {
           href: 'https://moreh.io/',
           label: 'Website',
@@ -52,8 +51,9 @@ const config: Config = {
         },
         {
           href: 'https://github.com/moreh-dev/mif',
-          label: 'GitHub',
           position: 'right',
+          className: 'header-github-link',
+          'aria-label': 'GitHub repository',
         },
       ],
     },
@@ -68,4 +68,3 @@ const config: Config = {
 };
 
 export default config;
-

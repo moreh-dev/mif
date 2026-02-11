@@ -1,0 +1,35 @@
+# Dependencies
+node_modules
+
+# Build output
+build
+.docusaurus
+
+# Cache / tooling
+.cache-loader
+.eslintcache
+
+# Yarn (if used)
+.yarn
+yarn-error.log
+
+# IDE (project-specific; root covers .vscode, .history)
+.idea
+*.iml
+*.code-workspace
+
+# Profiling / debug
+.cpu-prof
+rspack-tracing.json
+rspack-tracing.pftrace
+bundler-cpu-profile.json
+profile.json.gz
+
+# Test / coverage
+coverage
+
+# Generated types
+types
+
+# i18n build artifacts (optional)
+CrowdinTranslations_*.zip

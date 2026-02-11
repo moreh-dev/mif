@@ -27,4 +27,3 @@ npx docusaurus docs:version X.Y.Z
 ```
 
 Commit the generated `versioned_docs`, `versioned_sidebars`, and `versions.json` before creating the corresponding `vX.Y.Z` Git tag.
-

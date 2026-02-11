@@ -1,0 +1,71 @@
+---
+sidebar_position: 2
+
+title: 'Odin inference service'
+---
+
+# Odin inference service
+
+**Odin** is the component that launches individual inference pods at scale. These inference pods run [Moreh vLLM](https://moreh.io/moreh-vllm/) by default, but they can also use open-source vLLM or SGLang when needed.
+
+---
+
+## Manual configuration
+
+```yaml {19}
+global:
+  imagePullSecrets:
+    - name: moreh-registry
+
+extraArgs:
+  - meta-llama/Llama-3.2-1B-Instruct
+  - --quantization
+  - "None"
+  - --tensor-parallel-size
+  - "2"
+  - --max-num-batched-tokens
+  - "8192"
+  - --no-enable-prefix-caching
+  - --no-enable-log-requests
+  - --disable-uvicorn-access-log
+
+extraEnvVars:
+  - name: HF_TOKEN
+    value: "<huggingFaceToken>"
+
+decode:
+  replicas: 2
+
+  image:
+    repository: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/quickstart/moreh-vllm
+    tag: "20250915.1"
+
+  resources:
+    requests:
+      amd.com/gpu: "2"
+      mellanox/hca: "1"
+    limits:
+      amd.com/gpu: "2"
+      mellanox/hca: "1"
+
+  extraArgs: []
+
+  podMonitor:
+    labels:
+      release: prometheus-stack
+
+prefill:
+  enabled: true
+  ...
+```
+
+A single Odin configuration file can specify the configurations for two types of inference pods -- `decode` and `prefill`. When `prefill.enabled` is set to true, the `decode` section defines the configuration for decode-only pods, while the `prefill` section defines the configuration for prefill-only pods. When `prefill.enabled` is false, only the `decode` section is used, and it defines the configuration for pods that run the model end-to-end (not decode-only).
+
+- `decode.replicas`: the number of decode-only (or end-to-end) pods.
+- `prefill.replicas`: the number of prefill-only pods.
+- `decode.resources`: specifies how much of resources each decode-only (or end-to-end) pod needs.
+- `prefill.resources`: specifies how much of resources each prefill-only pod needs.
+- `extraArgs`: the list of arguments passed to all pods.
+- `extraEnvVars`: the list of environment variables passed to all pods.
+- `decode.extraArgs`: the list of additional arguments passed only to decode-only pods; none of these may overlap with the global `extraArgs`.
+- `prefill.extraArgs`: the list of additional arguments passed only to prefill-only pods; none of these may overlap with the global `extraArgs`.
