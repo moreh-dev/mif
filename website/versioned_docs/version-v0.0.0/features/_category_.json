@@ -1,0 +1,13 @@
+{
+  "position": 3,
+  "label": "Features",
+  "key": "features",
+  "collapsible": true,
+  "collapsed": false,
+  "link": {
+    "type": "generated-index",
+    "title": "Features",
+    "description": "Prefill-decode disaggregation, expert parallelism, routing strategies (load-aware, prefix cache-aware), presets, and auto-scaling.",
+    "slug": "/features"
+  }
+}
