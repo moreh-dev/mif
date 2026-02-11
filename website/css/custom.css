@@ -40,8 +40,8 @@ body[data-theme='dark'] {
   background-color: var(--ifm-navbar-link-hover-color);
 }
 
-/* Hide the "Home" card in DocCardList on the home page (card linking to /). */
-html.docs-doc-id-home .theme-doc-markdown article:has(a.card[href='/']) {
+/* Hide the "Home" card in DocCardList on the home page (for any version) */
+html.docs-doc-id-home .theme-doc-markdown article:has(a.card h2[title='Home']) {
   display: none;
 }
 

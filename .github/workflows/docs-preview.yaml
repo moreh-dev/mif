@@ -19,6 +19,9 @@ jobs:
 
     env:
       PREVIEW_BRANCH: main-build
+      # GitHub Pages project site: https://<org>.github.io/<repo>/
+      DOCS_SITE_URL: 'https://moreh-dev.github.io'
+      DOCS_BASE_URL: '/mif/'
 
     defaults:
       run:
