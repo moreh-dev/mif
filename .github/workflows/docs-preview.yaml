@@ -45,8 +45,8 @@ jobs:
 
       - name: Publish preview to main-build branch (mif repo)
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ secrets.GITOPS_TOKEN }}
+          REPO: "moreh-dev/test-docs.moreh.io"
         run: |
           cd build
           git init
