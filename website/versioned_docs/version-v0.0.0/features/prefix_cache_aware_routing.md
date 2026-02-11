@@ -49,7 +49,7 @@ config:
           tokenizersPoolConfig:
             workersCount: 8
             minPrefixOverlapRatio: 0.8
-            huggingFaceToken: "<huggingFaceToken>"
+            huggingFaceToken: <huggingFaceToken>
             tokenizersCacheDir: "/tmp"
         kvEventsConfig:
           zmqEndpoint: "tcp://*:5557"
@@ -83,7 +83,7 @@ If a large portion of a new request's prompt prefix &mdash; for example, more th
   - `blockSize`: the number of characters in each block.
 - `indexerConfig.tokenizersPoolConfig`: configuration for the tokenizer worker processes.
   - `workersCount`: the number of workers.
-  - `mixPrefixOverlapRatio`: threshold for reusing cached results in the prefix store. A value between 0 and 1.
+  - `minPrefixOverlapRatio`: threshold for reusing cached results in the prefix store. A value between 0 and 1.
   - `huggingFaceToken`: Hugging Face token required to download the tokenizer.
   - `tokenizersCacheDir`: Tokenizer download path.
 

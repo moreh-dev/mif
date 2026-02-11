@@ -28,6 +28,7 @@ This rule applies permanently so that the website remains maintainable without c
 - Use standard GFM tables only; do not add MkDocs-style attributes such as `{.compact}`.
 - **Every subfolder under `docs/` that contains docs (Markdown/MDX) must have a `_category_.json` file.** Use the same structure as existing categories (e.g. `docs/getting_started/_category_.json`): include `label`, `key` (kebab-case), `collapsible`, `collapsed`, and optionally `position` and `link` (e.g. generated-index). When adding a new docs folder, add its `_category_.json` at the same time. **When adding or updating documents within a category, check whether the category's description (e.g. `link.description` in `_category_.json`) still accurately reflects the contents; update the description if it no longer fits.**
 - **Every new document must belong to a subcategory.** Place new docs in an existing subfolder under `docs/` that fits the topic (e.g. getting*started, features, reference). If no existing category fits the context, create a new subfolder, add the document(s) there, and add a `\_category*.json` for that folder so the new category appears in the sidebar.
+- **Do not manually edit or validate generated documentation output.** The `versioned_docs/` and `versioned_sidebars/` directories are build artifacts produced by `docusaurus docs:version` / `docusaurus build`. Do not run manual style/content review, linters, or formatters on these folders, and do not hand-edit files under them; instead, edit the source files under `docs/` and regenerate.
 
 ## Tone and voice
 

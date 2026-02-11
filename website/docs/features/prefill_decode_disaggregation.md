@@ -45,7 +45,7 @@ prefill:
   extraArgs: ...
 ```
 
-Within the `decode` and `prefill` section, you can independently configure not only the number of replicas (`replicas`) but also the type and number of GPUs (`resources`) and the argument passed to the inference engine (`extraArgs`). Make suire that the options specified in the `extraArgs` field of the `decode` or `prefill` sections do not duplicate those defined in the global `extraArgs`.
+Within the `decode` and `prefill` section, you can independently configure not only the number of replicas (`replicas`) but also the type and number of GPUs (`resources`) and the argument passed to the inference engine (`extraArgs`). Make sure that the options specified in the `extraArgs` field of the `decode` or `prefill` sections do not duplicate those defined in the global `extraArgs`.
 
 Additionally, in the **Heimdall** scheduler, you must define separate scheduling profiles for prefill and decode as shown below.
 

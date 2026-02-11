@@ -29,7 +29,7 @@ Then, install the chart. This will create `InferenceServiceTemplate` resources i
 
 ```shell
 helm upgrade -i moai-inference-preset moreh/moai-inference-preset \
-    --version v0.2.0 \
+    --version v0.3.0 \
     -n mif
 ```
 

@@ -31,8 +31,7 @@ extraArgs:
 
 extraEnvVars:
   - name: HF_TOKEN
-    value: "<huggingFaceToken>"
-
+    value: <huggingFaceToken>
 decode:
   replicas: 2
 

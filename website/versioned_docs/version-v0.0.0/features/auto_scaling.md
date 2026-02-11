@@ -6,9 +6,9 @@ title: 'Auto-scaling'
 
 # Auto-scaling
 
-The model inference endpoints provided by the MoAI Inference Fraemwork are often just one of many functions running on the overall AI compute infrastructure. Therefore, it is essential to allocate the appropriate amount of GPU resources (to run the appropriate number of Pods) so that GPUs are not under-utilized while still handling all incoming traffic and meeting the defined service level objectives (SLOs).
+The model inference endpoints provided by the MoAI Inference Framework are often just one of many functions running on the overall AI compute infrastructure. Therefore, it is essential to allocate the appropriate amount of GPU resources (to run the appropriate number of Pods) so that GPUs are not under-utilized while still handling all incoming traffic and meeting the defined service level objectives (SLOs).
 
-This where auto-scaling comes into play. Instead of allocating all GPU resources from the start, the system begins with a small number of Pods, and adds more only when traffic increases or SLOs are at risk. Additionally, if traffic decreases, the number of Pods is reduced accordingly. It is also necessary to adjust not only the total number of Pods but also the number of Pods assigned to each disaggregated parts (prefill, decode, a set of experts, etc.).
+This is where auto-scaling comes into play. Instead of allocating all GPU resources from the start, the system begins with a small number of Pods, and adds more only when traffic increases or SLOs are at risk. Additionally, if traffic decreases, the number of Pods is reduced accordingly. It is also necessary to adjust not only the total number of Pods but also the number of Pods assigned to each disaggregated part (prefill, decode, a set of experts, etc.).
 
 ## Key features
 

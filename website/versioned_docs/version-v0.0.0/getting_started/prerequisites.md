@@ -9,7 +9,7 @@ import Tabs from '@theme/Tabs'; import TabItem from '@theme/TabItem';
 This document introduces the prerequisites for the MoAI Inference Framework and provides instructions on how to install them.
 
 :::info
-To follow this document, you need to understand the configuration of the Kubernetes cluster where the MoAI Inference Framework will be installed. Since Moreh provides support for installing the MoAI Inference Framework at customer sites, if you encounter any difficulties, you can request assistant from the Moreh team.
+To follow this document, you need to understand the configuration of the Kubernetes cluster where the MoAI Inference Framework will be installed. Since Moreh provides support for installing the MoAI Inference Framework at customer sites, if you encounter any difficulties, you can request assistance from the Moreh team.
 :::
 
 ---
@@ -249,7 +249,7 @@ data:
           "resourceName": "hca",
           "rdmaHcaMax": 1000,
           "devices": [
-            "<device>"
+            <device>
           ]
         }
       ]

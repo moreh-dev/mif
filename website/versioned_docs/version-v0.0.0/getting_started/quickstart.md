@@ -9,8 +9,8 @@ import TabItem from '@theme/TabItem';
 
 In this quickstart, we will launch two vLLM instances (pods) of the Llama 3.2 1B Instruct model and serve them through a single endpoint as an example. Please make sure to install all [prerequisites](/getting_started/prerequisites), including the following versions of the components, before starting this quickstart guide.
 
-- **moai-inference-framework** v0.2.0
-- **moai-inference-preset** v0.2.0
+- **moai-inference-framework** v0.3.0
+- **moai-inference-preset** v0.3.0
 
 ## Required tools
 
