@@ -53,6 +53,11 @@ const config: Config = {
     ],
   ],
   themeConfig: {
+    colorMode: {
+      defaultMode: 'dark',
+      respectPrefersColorScheme: true,
+      disableSwitch: false,
+    },
     navbar: {
       title: '',
       logo: {
