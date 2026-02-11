@@ -3,7 +3,7 @@ name: Docs release (Docusaurus → mif/publish-build)
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - "v*.*.*"
 
 jobs:
   build-and-publish:
@@ -14,7 +14,7 @@ jobs:
 
     env:
       PUBLISHED_BRANCH: publish-build
-      DOCS_INCLUDE_CURRENT_VERSION: 'false'
+      DOCS_INCLUDE_CURRENT_VERSION: "false"
 
     defaults:
       run:
@@ -27,8 +27,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
           cache-dependency-path: website/package.json
 
       - name: Install dependencies
@@ -54,5 +54,3 @@ jobs:
           git commit -m "Publish docs for ${GITHUB_REF}"
           git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO}.git"
           git push origin "${PUBLISHED_BRANCH}" --force
-
-
