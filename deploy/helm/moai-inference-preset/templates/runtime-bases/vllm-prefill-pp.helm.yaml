@@ -9,7 +9,6 @@ spec:
   template:
     metadata:
       labels:
-        heimdall.moreh.io/role: prefill # DEPRECATED
         mif.moreh.io/role: prefill
     spec:
       imagePullSecrets:

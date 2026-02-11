@@ -9,7 +9,7 @@ spec:
   workerTemplate:
     metadata:
       labels:
-        heimdall.moreh.io/dummy: dummy # DEPRECATED
+        mif.moreh.io/dummy: dummy # DEPRECATED
     spec:
       imagePullSecrets:
         - name: moreh-registry

@@ -9,7 +9,6 @@ spec:
   template:
     metadata:
       labels:
-        heimdall.moreh.io/role: decode # DEPRECATED
         mif.moreh.io/role: decode
     spec:
       imagePullSecrets:
