@@ -45,6 +45,17 @@ var _ = Describe("Inference Performance", Label("performance"), Ordered, func() 
 		By("creating Gateway resources")
 		Expect(utils.CreateGatewayResource(envs.WorkloadNamespace, envs.GatewayClassName, envs.IstioRev)).To(Succeed())
 
+		var err error
+		if envs.SkipKind {
+			By("creating model PV")
+			pvName, err = utils.CreateModelPV(envs.WorkloadNamespace)
+			Expect(err).NotTo(HaveOccurred(), "failed to create model PV")
+
+			By("creating model PVC")
+			pvcName, err = utils.CreateModelPVC(envs.WorkloadNamespace)
+			Expect(err).NotTo(HaveOccurred(), "failed to create model PVC")
+		}
+
 		By("installing Heimdall")
 		data := struct {
 			HeimdallTag             string
@@ -63,16 +74,6 @@ var _ = Describe("Inference Performance", Label("performance"), Ordered, func() 
 		values, err := utils.RenderTemplate(HeimdallValues, data)
 		Expect(err).NotTo(HaveOccurred(), "failed to render Heimdall values template")
 		Expect(utils.InstallHeimdall(envs.WorkloadNamespace, values)).To(Succeed())
-
-		if envs.SkipKind {
-			By("creating model PV")
-			pvName, err = utils.CreateModelPV(envs.WorkloadNamespace)
-			Expect(err).NotTo(HaveOccurred(), "failed to create model PV")
-
-			By("creating model PVC")
-			pvcName, err = utils.CreateModelPVC(envs.WorkloadNamespace)
-			Expect(err).NotTo(HaveOccurred(), "failed to create model PVC")
-		}
 
 		By("creating InferenceServices")
 		isKind := !envs.SkipKind
@@ -137,6 +138,9 @@ var _ = Describe("Inference Performance", Label("performance"), Ordered, func() 
 		utils.DeleteInferenceService(envs.WorkloadNamespace, prefillServiceName)
 		utils.DeleteInferenceService(envs.WorkloadNamespace, decodeServiceName)
 
+		By("deleting Heimdall")
+		utils.UninstallHeimdall(envs.WorkloadNamespace)
+
 		if envs.SkipKind {
 			By("deleting model PVC")
 			utils.DeleteModelPVC(envs.WorkloadNamespace, pvcName)
@@ -144,9 +148,6 @@ var _ = Describe("Inference Performance", Label("performance"), Ordered, func() 
 			By("deleting model PV")
 			utils.DeleteModelPV(pvName)
 		}
-
-		By("deleting Heimdall")
-		utils.UninstallHeimdall(envs.WorkloadNamespace)
 
 		By("deleting Gateway resources")
 		utils.DeleteGatewayResource(envs.WorkloadNamespace, envs.GatewayClassName)
