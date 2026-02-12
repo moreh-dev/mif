@@ -1,0 +1,95 @@
+---
+title: Odin API Reference
+sidebar_label: API Reference
+---
+
+## odin.moreh.io/v1alpha1
+
+- [InferenceService](#inferenceservice)
+- [InferenceServiceTemplate](#inferenceservicetemplate)
+
+### InferenceService
+
+```shell
+kubectl explain --api-version odin.moreh.io/v1alpha1 inferenceservice
+```
+
+| Field        | Type                                            | Description                                                                   |
+| :----------- | :---------------------------------------------- | :---------------------------------------------------------------------------- |
+| `apiVersion` | `string`                                        | APIVersion defines the versioned schema of this representation of an object.  |
+| `kind`       | `string`                                        | Kind is a string value representing the REST resource this object represents. |
+| `metadata`   | `object`                                        | Standard object's metadata.                                                   |
+| `spec`       | [`InferenceServiceSpec`](#inferenceservicespec) | Specification of the desired behavior of the InferenceService.                |
+
+#### InferenceServiceSpec
+
+```shell
+kubectl explain --api-version odin.moreh.io/v1alpha1 inferenceservice.spec
+```
+
+| Field               | Type                                                                                                              | Description                                                                   |
+| :------------------ | :---------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------- |
+| `inferencePoolRefs` | [`[]LocalObjectReference`](#localobjectreference)                                                                 | InferencePoolRefs is a list of references to InferencePools.                  |
+| `parallelism`       | [`Parallelism`](#parallelism)                                                                                     | Parallelism defines the parallelism parameters for distributed inference.     |
+| `replicas`          | `integer`                                                                                                         | Number of replicas for Deployments or LeaderWorkerSets. Default is 1.         |
+| `template`          | [`PodTemplateSpec`](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core) | Template describes the pod template for Deployment or LeaderWorkerSet leader. |
+| `templateRefs`      | [`[]TemplateReference`](#templatereference)                                                                       | TemplateRefs is a list of references to InferenceServiceTemplates.            |
+| `workerTemplate`    | [`PodTemplateSpec`](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core) | WorkerTemplate describes the pod template for LeaderWorkerSet workers.        |
+
+#### LocalObjectReference
+
+| Field  | Type     | Description                                     |
+| :----- | :------- | :---------------------------------------------- |
+| `name` | `string` | Name is the name of the referent. **Required**. |
+
+#### TemplateReference
+
+```shell
+kubectl explain --api-version odin.moreh.io/v1alpha1 inferenceservice.spec.templateRefs
+```
+
+| Field   | Type     | Description                                     |
+| :------ | :------- | :---------------------------------------------- |
+| `group` | `string` | Group is the group of the referent.             |
+| `kind`  | `string` | Kind is the kind of the referent.               |
+| `name`  | `string` | Name is the name of the referent. **Required**. |
+
+#### Parallelism
+
+```shell
+kubectl explain --api-version odin.moreh.io/v1alpha1 inferenceservice.spec.parallelism
+```
+
+| Field         | Type      | Description                                   |
+| :------------ | :-------- | :-------------------------------------------- |
+| `data`        | `integer` | Data parallelism size.                        |
+| `dataLocal`   | `integer` | DataLocal data local parallelism size.        |
+| `dataRPCPort` | `integer` | DataRPCPort is the data parallelism RPC port. |
+| `expert`      | `boolean` | Expert enables expert parallelism.            |
+| `pipeline`    | `integer` | Pipeline parallelism size.                    |
+| `tensor`      | `integer` | Tensor parallelism size.                      |
+
+### InferenceServiceTemplate
+
+```shell
+kubectl explain --api-version odin.moreh.io/v1alpha1 inferenceservicetemplate
+```
+
+| Field        | Type                                                            | Description                                                                   |
+| :----------- | :-------------------------------------------------------------- | :---------------------------------------------------------------------------- |
+| `apiVersion` | `string`                                                        | APIVersion defines the versioned schema of this representation of an object.  |
+| `kind`       | `string`                                                        | Kind is a string value representing the REST resource this object represents. |
+| `metadata`   | `object`                                                        | Standard object's metadata.                                                   |
+| `spec`       | [`InferenceServiceTemplateSpec`](#inferenceservicetemplatespec) | Specification of the desired behavior of the InferenceServiceTemplate.        |
+
+#### InferenceServiceTemplateSpec
+
+```shell
+kubectl explain --api-version odin.moreh.io/v1alpha1 inferenceservicetemplate.spec
+```
+
+| Field            | Type                                                                                                              | Description                                                                   |
+| :--------------- | :---------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------- |
+| `parallelism`    | [`Parallelism`](#parallelism)                                                                                     | Parallelism defines the parallelism parameters for distributed inference.     |
+| `template`       | [`PodTemplateSpec`](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core) | Template describes the pod template for Deployment or LeaderWorkerSet leader. |
+| `workerTemplate` | [`PodTemplateSpec`](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core) | WorkerTemplate describes the pod template for LeaderWorkerSet workers.        |
