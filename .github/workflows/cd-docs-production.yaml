@@ -1,26 +1,20 @@
-name: Docs preview (Docusaurus)
+name: Docs production (Docusaurus)
 
 on:
   push:
-    branches:
-      - main
-    paths:
-      - "website/**"
-  pull_request:
-    paths:
-      - "website/**"
+    tags:
+      - "v*.*.*"
 
 jobs:
-  build-and-publish-preview:
+  build-and-publish-production:
     runs-on: ubuntu-latest
 
     permissions:
       contents: write
 
     env:
-      PREVIEW_BRANCH: main-build
-      DOCS_SITE_URL: "https://moreh-dev.github.io"
-      DOCS_BASE_URL: "/mif/"
+      PUBLISHED_BRANCH: publish-build
+      DOCS_INCLUDE_CURRENT_VERSION: "false"
 
     defaults:
       run:
@@ -40,20 +34,23 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Create docs version from tag
+        run: npm run docs:version ${{ github.ref_name }}
+
       - name: Build Docusaurus site
         run: npm run build
 
-      - name: Publish preview to main-build branch (mif repo)
+      - name: Publish production docs to publish-build branch (mif repo)
         env:
           GITHUB_TOKEN: ${{ secrets.GITOPS_TOKEN }}
           REPO: "moreh-dev/test-docs.moreh.io"
         run: |
           cd build
           git init
-          git checkout -b "${PREVIEW_BRANCH}"
+          git checkout -b "${PUBLISHED_BRANCH}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add .
-          git commit -m "Preview docs for ${GITHUB_SHA}"
+          git commit -m "Publish docs for ${GITHUB_REF}"
           git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO}.git"
-          git push origin "${PREVIEW_BRANCH}" --force
+          git push origin "${PUBLISHED_BRANCH}" --force
