@@ -13,6 +13,10 @@ import (
 
 // CreateKindCluster creates a kind cluster with the given name.
 func CreateKindCluster() error {
+	if IsKindClusterExists() {
+		return nil
+	}
+
 	args := []string{"create", "cluster", "--name", settings.KindClusterName}
 
 	cmd := exec.Command("kind", args...)

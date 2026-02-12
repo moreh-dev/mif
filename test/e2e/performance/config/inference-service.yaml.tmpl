@@ -1,0 +1,34 @@
+apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceService
+metadata:
+  name: {{ .Name }}
+  namespace: {{ .Namespace }}
+spec:
+  replicas: 1
+  inferencePoolRefs:
+    - name: heimdall
+  templateRefs:
+    {{- range .TemplateRefs }}
+    - name: {{ . }}
+    {{- end }}
+  template:
+    spec:
+      containers:
+        - name: main
+          env:
+            {{- if .HFToken }}
+            - name: HF_TOKEN
+              value: "{{ .HFToken }}"
+            {{- end }}
+            {{- if .HFEndpoint }}
+            - name: HF_ENDPOINT
+              value: "{{ .HFEndpoint }}"
+            {{- end }}
+          {{- if not .IsKind }}
+          resources:
+            requests:
+              mellanox/hca: "1"
+            limits:
+              mellanox/hca: "1"
+          {{- end }}
+

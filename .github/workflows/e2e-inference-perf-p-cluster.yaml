@@ -1,10 +1,12 @@
-name: Quality Benchmark on Product Cluster
+name: e2e-inference-perf-p-cluster
 
 # Required GitHub Secrets for Product Cluster Testing:
 # - KUBECONFIG_BASE64: Base64-encoded kubeconfig file for the Product cluster
 #   To create: kubectl config view --flatten | base64 -w 0
 # - HF_TOKEN: HuggingFace token for model download (optional)
 # - HF_ENDPOINT: HuggingFace endpoint URL (optional)
+# - AWS_S3_ACCESS_KEY: AWS access key ID for S3 results upload (optional, mapped to env var S3_ACCESS_KEY_ID)
+# - AWS_S3_SECRET_KEY: AWS secret access key for S3 results upload (optional, mapped to env var S3_SECRET_ACCESS_KEY)
 #
 # Note: For Product cluster testing (SKIP_PREREQUISITE=true), setupPrerequisites() returns early
 # without installing or validating any components. All required components must be pre-installed:
@@ -25,11 +27,11 @@ permissions:
   checks: write
 
 jobs:
-  quality-benchmark:
-    name: Quality Benchmark E2E Test
+  inference-perf:
+    name: Inference Performance E2E Test
     runs-on: [self-hosted, github-runner]
     concurrency:
-      group: quality-benchmark
+      group: inference-perf
       cancel-in-progress: false
 
     container:
@@ -42,9 +44,13 @@ jobs:
       KUBECONFIG: "/tmp/kubeconfig"
       MIF_NAMESPACE: "mif"
       ISTIO_REV: "1-28-1"
-      TEST_MODEL: "Qwen/Qwen2.5-0.5B"
+      TEST_MODEL: "meta-llama/Llama-3.2-1B-Instruct"
+      TEST_TEMPLATE_PREFILL: "quickstart-vllm-meta-llama-llama-3.2-1b-instruct-prefill-amd-mi250-tp2"
+      TEST_TEMPLATE_DECODE: "quickstart-vllm-meta-llama-llama-3.2-1b-instruct-decode-amd-mi250-tp2"
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
       HF_ENDPOINT: ${{ secrets.HF_ENDPOINT }}
+      S3_ACCESS_KEY_ID: ${{ secrets.AWS_S3_ACCESS_KEY }}
+      S3_SECRET_ACCESS_KEY: ${{ secrets.AWS_S3_SECRET_KEY }}
       SKIP_KIND: "true"
       SKIP_PREREQUISITE: "true"
 
@@ -68,11 +74,17 @@ jobs:
       - name: Set workload namespace
         run: |
           COMMIT_HASH_SHORT=$(echo "${{ github.sha }}" | cut -c1-7)
-          echo "WORKLOAD_NAMESPACE=mif-quality-${COMMIT_HASH_SHORT}" >> "$GITHUB_ENV"
+          echo "WORKLOAD_NAMESPACE=mif-e2e-${COMMIT_HASH_SHORT}" >> "$GITHUB_ENV"
 
       - name: Set up kubeconfig
         run: |
           mkdir -p ~/.kube
+          # KUBECONFIG_BASE64 secret must be set in repository secrets
+          # It should contain a base64-encoded kubeconfig file for the target cluster
+          # To create this secret:
+          # 1. Get your kubeconfig file: kubectl config view --flatten > kubeconfig.yaml
+          # 2. Encode it: cat kubeconfig.yaml | base64 -w 0
+          # 3. Add it as a repository secret named KUBECONFIG_BASE64
           echo "${{ secrets.KUBECONFIG_BASE64 }}" | base64 --decode > ${{ env.KUBECONFIG }}
           chmod 600 ${{ env.KUBECONFIG }}
           kubectl cluster-info
@@ -90,10 +102,10 @@ jobs:
       - name: Download dependencies
         run: go mod download
 
-      - name: Run quality E2E test
+      - name: Run inference-perf E2E test
         id: validate
         run: |
-          if make test-e2e-quality; then
+          if make test-e2e-performance; then
             echo "test_passed=true" >> "$GITHUB_OUTPUT"
           else
             echo "test_passed=false" >> "$GITHUB_OUTPUT"
@@ -117,7 +129,7 @@ jobs:
         with:
           files: |
             test-reports/*.xml
-          check_name: Quality Benchmark E2E Test Results
+          check_name: Inference Performance E2E Test Results
           comment_mode: off
           report_individual_runs: false
           check_run_annotations: all tests, skipped tests
@@ -128,25 +140,25 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: quality-benchmark-e2e-test-reports-${{ github.run_id }}
+          name: inference-perf-e2e-test-reports-${{ github.run_id }}
           path: test-reports
-          retention-days: 30
+          retention-days: 7
           if-no-files-found: warn
 
   test-summary:
-    name: Quality Benchmark Summary
+    name: Inference Performance E2E Test Summary
     runs-on: ubuntu-latest
-    needs: [quality-benchmark]
+    needs: [inference-perf]
     if: always()
 
     steps:
       - name: Check test result
         run: |
-          if [ "${{ needs.quality-benchmark.outputs.test_passed }}" == "true" ]; then
-            echo "✅ Quality benchmark E2E tests passed."
-            echo "::notice::Quality benchmark E2E tests passed."
+          if [ "${{ needs.inference-perf.outputs.test_passed }}" == "true" ]; then
+            echo "✅ Inference Performance E2E tests passed. Ready for production release."
+            echo "::notice::Inference Performance E2E tests passed. You can now create a production tag."
           else
-            echo "❌ Quality benchmark E2E tests failed. Please check the logs and fix issues."
-            echo "::error::Quality benchmark E2E tests failed."
+            echo "❌ Inference Performance E2E tests failed. Please check the logs and fix issues before releasing."
+            echo "::error::Inference Performance E2E tests failed. Production release blocked."
             exit 1
           fi

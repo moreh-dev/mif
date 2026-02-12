@@ -18,17 +18,16 @@ import (
 )
 
 const (
+	HeimdallValues       = "test/e2e/quality/config/heimdall-values.yaml.tmpl"
+	InferenceServicePath = "test/e2e/quality/config/inference-service.yaml.tmpl"
+	QualityBenchmarkJob  = "test/e2e/quality/config/quality-benchmark-job.yaml.tmpl"
+
 	QualityBenchmarkImage = "255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/moreh-llm-eval:v0.0.1"
 	MinMMLUScore          = 0.37
 )
 
 var (
-	commonTemplateName      string
-	prefillMetaTemplateName string
-	decodeMetaTemplateName  string
-	decodeProxyTemplateName string
-	prefillServiceName      string
-	decodeServiceName       string
+	vllmServiceName string
 
 	pvName  string
 	pvcName string
@@ -58,43 +57,34 @@ var _ = Describe("Quality Benchmark", Label("quality"), Ordered, func() {
 			IstioRev:                envs.IstioRev,
 		}
 
-		values, err := utils.RenderTemplate("test/e2e/quality/config/heimdall-values.yaml.tmpl", data)
+		values, err := utils.RenderTemplate(HeimdallValues, data)
 		Expect(err).NotTo(HaveOccurred(), "failed to render Heimdall values template")
 		Expect(utils.InstallHeimdall(envs.WorkloadNamespace, values)).To(Succeed())
 
-		By("creating InferenceServiceTemplates")
-		isKind := !envs.SkipKind
-		inferenceServiceData := utils.GetInferenceServiceData(envs.WorkloadNamespace, envs.TestModel, envs.HFToken, envs.HFEndpoint, isKind, true)
-		commonTemplateName, err = utils.CreateInferenceServiceTemplate(envs.WorkloadNamespace, settings.InferenceServiceTemplateCommon, inferenceServiceData)
-		Expect(err).NotTo(HaveOccurred(), "failed to create common InferenceServiceTemplate")
-		prefillMetaTemplateName, err = utils.CreateInferenceServiceTemplate(envs.WorkloadNamespace, settings.InferenceServiceTemplatePrefillMeta, inferenceServiceData)
-		Expect(err).NotTo(HaveOccurred(), "failed to create prefill meta InferenceServiceTemplate")
-		decodeMetaTemplateName, err = utils.CreateInferenceServiceTemplate(envs.WorkloadNamespace, settings.InferenceServiceTemplateDecodeMeta, inferenceServiceData)
-		Expect(err).NotTo(HaveOccurred(), "failed to create decode meta InferenceServiceTemplate")
-		decodeProxyTemplateName, err = utils.CreateInferenceServiceTemplate(envs.WorkloadNamespace, settings.InferenceServiceTemplateDecodeProxy, inferenceServiceData)
-		Expect(err).NotTo(HaveOccurred(), "failed to create decode proxy InferenceServiceTemplate")
-
-		By("creating InferenceServices")
-		prefillServiceName, err = utils.CreateInferenceService(envs.WorkloadNamespace, settings.InferenceServicePrefill, inferenceServiceData)
-		Expect(err).NotTo(HaveOccurred(), "failed to create prefill InferenceService")
-		decodeServiceName, err = utils.CreateInferenceService(envs.WorkloadNamespace, settings.InferenceServiceDecode, inferenceServiceData)
-		Expect(err).NotTo(HaveOccurred(), "failed to create decode InferenceService")
-
-		By("waiting for prefill InferenceService to be ready")
-		Expect(waitForInferenceService(envs.WorkloadNamespace, prefillServiceName)).To(Succeed())
-
-		By("waiting for decode InferenceService to be ready")
-		Expect(waitForInferenceService(envs.WorkloadNamespace, decodeServiceName)).To(Succeed())
-
 		if envs.SkipKind {
 			By("creating model PV")
-			pvName, err = createModelPV(envs.WorkloadNamespace)
+			pvName, err = utils.CreateModelPV(envs.WorkloadNamespace)
 			Expect(err).NotTo(HaveOccurred(), "failed to create model PV")
 
 			By("creating model PVC")
-			pvcName, err = createModelPVC(envs.WorkloadNamespace)
+			pvcName, err = utils.CreateModelPVC(envs.WorkloadNamespace)
 			Expect(err).NotTo(HaveOccurred(), "failed to create model PVC")
 		}
+
+		By("creating InferenceServices")
+		// PD disaggregation environment cannot run tests normally, so we test in aggregate environment
+		isKind := !envs.SkipKind
+		var vllmData utils.InferenceServiceData
+		if isKind {
+			vllmData = utils.GetInferenceServiceData("vllm", envs.WorkloadNamespace, []string{"sim"}, envs.HFToken, envs.HFEndpoint, isKind)
+		} else {
+			vllmData = utils.GetInferenceServiceData("vllm", envs.WorkloadNamespace, []string{"vllm", envs.TestTemplateDecode, "vllm-hf-hub-offline"}, envs.HFToken, envs.HFEndpoint, isKind)
+		}
+		vllmServiceName, err = utils.CreateInferenceService(envs.WorkloadNamespace, InferenceServicePath, vllmData)
+		Expect(err).NotTo(HaveOccurred(), "failed to create vllm InferenceService")
+
+		By("waiting for vllm InferenceService to be ready")
+		Expect(waitForInferenceService(envs.WorkloadNamespace, vllmServiceName)).To(Succeed())
 	})
 
 	AfterAll(func() {
@@ -102,23 +92,16 @@ var _ = Describe("Quality Benchmark", Label("quality"), Ordered, func() {
 			return
 		}
 
+		By("deleting InferenceServices")
+		utils.DeleteInferenceService(envs.WorkloadNamespace, vllmServiceName)
+
 		if envs.SkipKind {
 			By("deleting model PVC")
-			deleteModelPVC(envs.WorkloadNamespace, pvcName)
+			utils.DeleteModelPVC(envs.WorkloadNamespace, pvcName)
 
 			By("deleting model PV")
-			deleteModelPV(pvName)
+			utils.DeleteModelPV(pvName)
 		}
-
-		By("deleting InferenceServices")
-		utils.DeleteInferenceService(envs.WorkloadNamespace, prefillServiceName)
-		utils.DeleteInferenceService(envs.WorkloadNamespace, decodeServiceName)
-
-		By("deleting InferenceServiceTemplates")
-		utils.DeleteInferenceServiceTemplate(envs.WorkloadNamespace, commonTemplateName)
-		utils.DeleteInferenceServiceTemplate(envs.WorkloadNamespace, prefillMetaTemplateName)
-		utils.DeleteInferenceServiceTemplate(envs.WorkloadNamespace, decodeMetaTemplateName)
-		utils.DeleteInferenceServiceTemplate(envs.WorkloadNamespace, decodeProxyTemplateName)
 
 		By("deleting Heimdall")
 		utils.UninstallHeimdall(envs.WorkloadNamespace)
@@ -174,66 +157,6 @@ func waitForInferenceService(namespace string, name string) error {
 	return err
 }
 
-func createModelPV(namespace string) (string, error) {
-	data := struct {
-		Namespace string
-	}{
-		Namespace: namespace,
-	}
-
-	rendered, err := utils.RenderTemplate("test/config/base/model-pv.yaml.tmpl", data)
-	if err != nil {
-		return "", fmt.Errorf("failed to render model PV template: %w", err)
-	}
-	cmd := exec.Command("kubectl", "apply", "-f", "-", "-o", "name")
-	cmd.Stdin = strings.NewReader(rendered)
-	output, err := utils.Run(cmd)
-	if err != nil {
-		return "", fmt.Errorf("failed to create model PV: %w", err)
-	}
-
-	pvName := utils.ParseResourceName(output)
-
-	cmd = exec.Command("kubectl", "patch", "pv", pvName, "-p", `{"spec":{"claimRef":null}}`)
-	if _, err := utils.Run(cmd); err != nil {
-		return "", fmt.Errorf("failed to patch model PV: %w", err)
-	}
-	return pvName, nil
-}
-
-func deleteModelPV(pvName string) {
-	cmd := exec.Command("kubectl", "delete", "pv", pvName,
-		"--ignore-not-found=true")
-	_, _ = utils.Run(cmd)
-}
-
-func createModelPVC(namespace string) (string, error) {
-	data := struct {
-		Namespace string
-	}{
-		Namespace: namespace,
-	}
-
-	rendered, err := utils.RenderTemplate("test/config/base/model-pvc.yaml.tmpl", data)
-	if err != nil {
-		return "", fmt.Errorf("failed to render model PVC template: %w", err)
-	}
-
-	cmd := exec.Command("kubectl", "apply", "-f", "-", "-o", "name")
-	cmd.Stdin = strings.NewReader(rendered)
-	output, err := utils.Run(cmd)
-	if err != nil {
-		return "", fmt.Errorf("failed to create model PVC: %w", err)
-	}
-	return utils.ParseResourceName(output), nil
-}
-
-func deleteModelPVC(namespace string, pvcName string) {
-	cmd := exec.Command("kubectl", "delete", "pvc", pvcName,
-		"-n", namespace, "--ignore-not-found=true")
-	_, _ = utils.Run(cmd)
-}
-
 func createQualityBenchmarkJob(namespace string, serviceName string, pvcName string) (string, error) {
 	type jobTemplateData struct {
 		Namespace             string
@@ -266,7 +189,7 @@ func createQualityBenchmarkJob(namespace string, serviceName string, pvcName str
 		PVCName:               pvcName,
 	}
 
-	jobYAML, err := utils.RenderTemplate("test/e2e/quality/config/quality-benchmark-job.yaml.tmpl", data)
+	jobYAML, err := utils.RenderTemplate(QualityBenchmarkJob, data)
 	if err != nil {
 		return "", fmt.Errorf("failed to render job template: %w", err)
 	}
