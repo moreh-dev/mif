@@ -1,0 +1,128 @@
+---
+title: Heimdall API Reference
+sidebar_label: API Reference
+---
+
+## inference.networking.k8s.io/v1
+
+- [InferencePool](#inferencepool)
+
+### InferencePool
+
+```shell
+kubectl explain --api-version inference.networking.k8s.io/v1 inferencepools
+```
+
+| Field        | Type                                      | Description                                                                   |
+| :----------- | :---------------------------------------- | :---------------------------------------------------------------------------- |
+| `apiVersion` | `string`                                  | APIVersion defines the versioned schema of this representation of an object.  |
+| `kind`       | `string`                                  | Kind is a string value representing the REST resource this object represents. |
+| `metadata`   | `object`                                  | Standard object's metadata.                                                   |
+| `spec`       | [`InferencePoolSpec`](#inferencepoolspec) | Specification of the desired behavior of the InferencePool.                   |
+
+#### InferencePoolSpec
+
+```shell
+kubectl explain --api-version inference.networking.k8s.io/v1 inferencepools.spec
+```
+
+| Field               | Type                                      | Description                                         |
+| :------------------ | :---------------------------------------- | :-------------------------------------------------- |
+| `endpointPickerRef` | [`EndpointPickerRef`](#endpointpickerref) | Reference to the EndpointPicker.                    |
+| `selector`          | [`LabelSelector`](#labelselector)         | Selects the pods that belong to the inference pool. |
+| `targetPorts`       | [`[]TargetPort`](#targetport)             | List of ports exposed by the inference pool.        |
+
+#### EndpointPickerRef
+
+```bash
+kubectl explain --api-version inference.networking.k8s.io/v1 inferencepools.spec.endpointPickerRef
+```
+
+| Field         | Type            | Description                                                                                                                           |
+| :------------ | :-------------- | :------------------------------------------------------------------------------------------------------------------------------------ |
+| `failureMode` | `string`        | FailureMode configures how the parent handles the case when the Endpoint Picker extension is non-responsive. Defaults to "FailClose". |
+| `group`       | `string`        | Group is the group of the referent API object. Defaults to "".                                                                        |
+| `kind`        | `string`        | Kind is the Kubernetes resource kind of the referent. Defaults to "Service".                                                          |
+| `name`        | `string`        | Name is the name of the referent API object. **Required**.                                                                            |
+| `port`        | [`Port`](#port) | Port is the port of the Endpoint Picker extension service.                                                                            |
+
+#### Port
+
+| Field    | Type      | Description                                                              |
+| :------- | :-------- | :----------------------------------------------------------------------- |
+| `number` | `integer` | Number defines the port number to access the selected model server Pods. |
+
+#### LabelSelector
+
+| Field         | Type                | Description                                  |
+| :------------ | :------------------ | :------------------------------------------- |
+| `matchLabels` | `map[string]string` | matchLabels is a map of `{key,value}` pairs. |
+
+#### TargetPort
+
+| Field    | Type      | Description         |
+| :------- | :-------- | :------------------ |
+| `number` | `integer` | Number of the port. |
+
+## inference.networking.k8s-x.io/v1alpha1
+
+- [EndpointPickerConfig](#endpointpickerconfig)
+
+### EndpointPickerConfig
+
+| Field                | Type                                        | Description                                                                             |
+| :------------------- | :------------------------------------------ | :-------------------------------------------------------------------------------------- |
+| `data`               | [`DataLayerConfig`](#datalayerconfig)       | Data configures the DataLayer. It is required if the new DataLayer is enabled.          |
+| `featureGates`       | []string                                    | FeatureGates is a set of flags that enable various experimental features with the EPP.  |
+| `plugins`            | [`[]PluginSpec`](#pluginspec)               | Plugins is the list of plugins that will be instantiated.                               |
+| `saturationDetector` | [`SaturationDetector`](#saturationdetector) | SaturationDetector when present specifies the configuration of the Saturation detector. |
+| `schedulingProfiles` | [`[]SchedulingProfile`](#schedulingprofile) | SchedulingProfiles is the list of named SchedulingProfiles that will be created.        |
+
+#### PluginSpec
+
+| Field        | Type     | Description                                                                                                          |
+| :----------- | :------- | :------------------------------------------------------------------------------------------------------------------- |
+| `name`       | `string` | Name provides a name for plugin entries to reference. If omitted, the value of the Plugin's Type field will be used. |
+| `parameters` | `object` | Parameters are the set of parameters to be passed to the plugin's factory function.                                  |
+| `type`       | `string` | Type specifies the plugin type to be instantiated.                                                                   |
+
+#### SchedulingProfile
+
+| Field     | Type                                      | Description                                                                                                                  |
+| :-------- | :---------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------- |
+| `name`    | `string`                                  | Name specifies the name of this SchedulingProfile.                                                                           |
+| `plugins` | [`[]SchedulingPlugin`](#schedulingplugin) | Plugins is the list of plugins for this SchedulingProfile. They are assigned to the appropriate "slots" based on their type. |
+
+#### SchedulingPlugin
+
+| Field       | Type      | Description                                                                                   |
+| :---------- | :-------- | :-------------------------------------------------------------------------------------------- |
+| `pluginRef` | `string`  | PluginRef specifies a partiular Plugin instance to be associated with this SchedulingProfile. |
+| `weight`    | `integer` | Weight is the weight fo be used if this plugin is a Scorer.                                   |
+
+#### SaturationDetector
+
+| Field                       | Type      | Description                                                                                                                                |
+| :-------------------------- | :-------- | :----------------------------------------------------------------------------------------------------------------------------------------- |
+| `kvCacheUtilThreshold`      | `float`   | KVCacheUtilThreshold defines the KV cache utilization (0.0 to 1.0) above which a pod is considered to have insufficient capacity.          |
+| `metricsStalenessThreshold` | `string`  | MetricsStalenessThreshold defines how old a pod's metrics can be.                                                                          |
+| `queueDepthThreshold`       | `integer` | QueueDepthThreshold defines the backend waiting queue size above which a pod is considered to have insufficient capacity for new requests. |
+
+#### DataLayerConfig
+
+| Field     | Type                                    | Description                                                |
+| :-------- | :-------------------------------------- | :--------------------------------------------------------- |
+| `sources` | [`[]DataLayerSource`](#datalayersource) | Sources is the list of sources to define to the DataLayer. |
+
+#### DataLayerSource
+
+| Field        | Type                                          | Description                                                                          |
+| :----------- | :-------------------------------------------- | :----------------------------------------------------------------------------------- |
+| `extractors` | [`[]DataLayerExtractor`](#datalayerextractor) | Extractors specifies the list of Plugin instances to be associated with this Source. |
+| `pluginRef`  | `string`                                      | PluginRef specifies a partiular Plugin instance to be associated with this Source.   |
+
+#### DataLayerExtractor
+
+| Field       | Type     | Description                                                                           |
+| :---------- | :------- | :------------------------------------------------------------------------------------ |
+| `pluginRef` | `string` | PluginRef specifies a partiular Plugin instance to be associated with this Extractor. |
