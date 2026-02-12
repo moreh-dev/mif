@@ -22,7 +22,7 @@ sequenceDiagram
   participant Inference-pod as Inference pod
   participant Heimdall
   participant Scheduling-profile-1 as Scheduling profile 1
-  participant Scheduling-profile-2 as Scehduling profile 2
+  participant Scheduling-profile-2 as Scheduling profile 2
 
   Gateway ->>+ Heimdall: Request
 

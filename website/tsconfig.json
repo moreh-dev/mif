@@ -5,9 +5,5 @@
     "strict": true,
     "noImplicitAny": true
   },
-  "include": [
-    "src",
-    "docusaurus.config.ts",
-    "sidebars.ts",
-  ]
+  "include": ["src", "docusaurus.config.ts", "sidebars.ts"]
 }
