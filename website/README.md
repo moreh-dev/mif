@@ -4,7 +4,7 @@ This directory contains the Docusaurus-based documentation site for the MoAI Inf
 
 ## Local development
 
-```bash
+```shell
 cd website
 npm install
 npm run start
@@ -12,7 +12,7 @@ npm run start
 
 ## Production build
 
-```bash
+```shell
 cd website
 npm run build
 ```
@@ -21,7 +21,7 @@ npm run build
 
 To create a new documentation version aligned with a MIF release tag:
 
-```bash
+```shell
 cd website
 npm run docs:version X.Y.Z
 ```
