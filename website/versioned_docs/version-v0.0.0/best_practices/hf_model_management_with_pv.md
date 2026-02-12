@@ -1,0 +1,276 @@
+---
+sidebar_position: 2
+
+title: 'Hugging Face model management with persistent volume'
+---
+
+# Hugging Face model management with persistent volume
+
+Efficient management of large language models (LLMs) is crucial for optimizing storage usage and reducing startup times. Instead of downloading models repeatedly for each pod, using a shared Persistent Volume (PV) allows multiple pods to access the same model files.
+
+This workflow optimizes your LLM deployment pipeline by:
+
+1. Centralizing storage: Creating a ReadWriteMany (RWX) volume named `models` to store multiple large models.
+2. Decoupling management: Utilizing a dedicated model manager pod to download model parameters into the volume.
+3. Accelerating deployment: Enabling vLLM or other engines to load the parameters directly from the local mount when an InferenceService is created.
+
+## Create a ReadWriteMany (RWX) PVC
+
+:::warning
+Ensure your Kubernetes cluster supports a storage class that provides `ReadWriteMany` access mode (e.g., NFS, CephFS, or specific cloud provider storage).
+:::
+
+:::warning
+Values enclosed in `<>` (e.g., `<namespace>`, `<huggingFaceToken>`) are placeholders. You must replace them with your actual values before applying the YAML files. Failure to do so will result in deployment errors.
+:::
+
+First, create a PersistentVolumeClaim (PVC) with `ReadWriteMany` access mode. This allows multiple nodes to mount the same volume simultaneously, enabling concurrent access for distributed inference.
+
+```yaml {5,12}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: models
+  namespace: <namespace>
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Ti
+  storageClassName: <storageClassForReadWriteMany>
+```
+
+---
+
+## Deploy a model manager pod
+
+Create a lightweight deployment to serve as a workspace for managing model files. This pod will be used to download models using the `hf` command-line tool.
+
+```yaml {5,31}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: huggingface-cli
+  namespace: <namespace>
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: huggingface-cli
+  template:
+    metadata:
+      labels:
+        app: huggingface-cli
+    spec:
+      containers:
+        - name: main
+          image: ubuntu:24.04
+          command:
+            - /bin/bash
+            - -c
+          args:
+            - |
+              apt-get update \
+              && apt-get install -y python3 python3-pip \
+              && pip install huggingface_hub[cli] --break-system-packages
+
+              sleep infinity
+          env:
+            - name: HF_TOKEN
+              value: <huggingFaceToken>
+            - name: HF_HOME
+              value: /mnt/models
+          volumeMounts:
+            - name: models
+              mountPath: /mnt/models
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: models
+```
+
+Apply this manifest and wait for the pod to be ready.
+
+---
+
+## Download and manage models
+
+Once the management pod is running, you can access it to manage your models. For more details about the `hf` command, refer to the [Hugging Face CLI guides](https://huggingface.co/docs/huggingface_hub/en/guides/cli).
+
+Access the pod:
+
+```shell
+kubectl exec -it deployment/huggingface-cli -n <namespace> -- bash
+```
+
+Download models:
+
+Download models directly to the mounted volume. This example downloads the meta-llama/Llama-3.2-1B-Instruct model.
+
+```shell
+hf download meta-llama/Llama-3.2-1B-Instruct
+```
+
+List downloaded models:
+
+```shell
+hf cache ls
+```
+
+```shell Expected output
+ID                                      SIZE     LAST_ACCESSED LAST_MODIFIED REFS
+--------------------------------------- -------- ------------- ------------- ----
+model/meta-llama/Llama-3.2-1B-Instruct      7.4G 1 minute ago  1 minute ago  main
+model/meta-llama/Llama-3.3-70B-Instruct   405.7G 1 days ago    1 days ago    main
+model/openai/gpt-oss-120b                 195.8G 1 days ago    1 days ago    main
+model/openai/gpt-oss-20b                   82.6G 1 days ago    1 days ago    main
+...
+```
+
+---
+
+## Use models in InferenceService
+
+To use the pre-downloaded models in an InferenceService, define an InferenceServiceTemplate that mounts the PVC and sets the environment to offline mode.
+
+### Create an offline template
+
+This template configures the worker pods to mount the shared storage (`/mnt/models`) and tells the Hugging Face library to operate in offline mode.
+
+```yaml {5}
+apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceServiceTemplate
+metadata:
+  name: template-hf-hub-offline
+  namespace: <namespace>
+spec:
+  template:
+    spec:
+      containers:
+        - name: main
+          env:
+            - name: HF_HOME
+              value: /mnt/models
+            - name: HF_HUB_OFFLINE
+              value: '1'
+          volumeMounts:
+            - name: models
+              mountPath: /mnt/models
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: models
+```
+
+### Create the InferenceService
+
+Reference the offline template in your InferenceService. Specify the model ID (e.g., meta-llama/Llama-3.2-1B-Instruct) in the `args` field to load the model from the offline cache.
+
+:::warning
+The container name in the InferenceService (e.g., `main`) must match the container name defined in the InferenceServiceTemplate for the configurations to merge correctly.
+:::
+
+```yaml {5,12}
+apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceService
+metadata:
+  name: llama3-1b-instruct
+  namespace: <namespace>
+spec:
+  templateRefs:
+    - name: template-hf-hub-offline
+  template:
+    spec:
+      containers:
+        - name: main
+          image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/quickstart/moreh-vllm:20250915.1
+          command:
+            - vllm
+            - serve
+          args:
+            - meta-llama/Llama-3.2-1B-Instruct
+            - --port
+            - '8000'
+          resources:
+            requests:
+              amd.com/gpu: '1'
+            limits:
+              amd.com/gpu: '1'
+          ports:
+            - name: http
+              containerPort: 8000
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+      tolerations:
+        - key: amd.com/gpu
+          operator: Exists
+          effect: NoSchedule
+```
+
+### Create an InferenceService without Template
+
+Alternatively, you can configure the volume mount and environment variables directly within the InferenceService without using a template. However, as the number of InferenceService and models grows, managing individual configurations can become complex. In such cases, using templates is recommended to simplify management and reduce duplication.
+
+```yaml {5,19-23,42-48}
+apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceService
+metadata:
+  name: llama3-1b-instruct-no-template
+  namespace: <namespace>
+spec:
+  template:
+    spec:
+      containers:
+        - name: main
+          image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/quickstart/moreh-vllm:20250915.1
+          command:
+            - vllm
+            - serve
+          args:
+            - meta-llama/Llama-3.2-1B-Instruct
+            - --port
+            - '8000'
+          env:
+            - name: HF_HOME
+              value: /mnt/models
+            - name: HF_HUB_OFFLINE
+              value: '1'
+          resources:
+            requests:
+              amd.com/gpu: '1'
+            limits:
+              amd.com/gpu: '1'
+          ports:
+            - name: http
+              containerPort: 8000
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+          volumeMounts:
+            - name: models
+              mountPath: /mnt/models
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: models
+      tolerations:
+        - key: amd.com/gpu
+          operator: Exists
+          effect: NoSchedule
+```

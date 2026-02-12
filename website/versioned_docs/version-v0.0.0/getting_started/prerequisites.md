@@ -1,0 +1,445 @@
+---
+sidebar_position: 2
+
+title: 'Prerequisites'
+---
+
+import Tabs from '@theme/Tabs'; import TabItem from '@theme/TabItem';
+
+This document introduces the prerequisites for the MoAI Inference Framework and provides instructions on how to install them.
+
+:::info
+To follow this document, you need to understand the configuration of the Kubernetes cluster where the MoAI Inference Framework will be installed. Since Moreh provides support for installing the MoAI Inference Framework at customer sites, if you encounter any difficulties, you can request assistance from the Moreh team.
+:::
+
+---
+
+## Target system
+
+To install the MoAI Inference Framework, you must have
+
+- Kubernetes 1.29 or later
+- At least one worker node equipped with accelerators supported by the MoAI Inference Framework (e.g., AMD GPUs)
+- `cluster-admin` privilege for the Kubernetes cluster
+- A StorageClass defined in the Kubernetes cluster (required for storing the monitoring metrics, model weights, etc.)
+- A Docker private registry accessible from the Kubernetes cluster
+
+---
+
+## cert-manager
+
+[cert-manager](https://cert-manager.io/) is a powerful and extensible X.509 certificate controller for Kubernetes workloads. It is essential for managing TLS certificates within the MoAI Inference Framework.
+
+Deploy `cert-manager` using the following command:
+
+```shell
+helm upgrade -i cert-manager oci://quay.io/jetstack/charts/cert-manager \
+    --version v1.18.4 \
+    -n cert-manager \
+    --create-namespace \
+    --set crds.enabled=true
+```
+
+---
+
+## moai-inference-framework
+
+The `moai-inference-framework` Helm chart deploys the dependencies required by the MoAI Inference Framework, excluding GPU and network-related components. To deploy it, you first need to add Moreh's Helm chart repository.
+
+```shell
+helm repo add moreh https://moreh-dev.github.io/helm-charts
+```
+
+If you have already added the repository, make sure to update it.
+
+```shell
+helm repo update moreh
+```
+
+The container images for the MoAI Inference Framework are distributed through a private repository on [Amazon ECR](https://aws.amazon.com/ecr/) `255250787067.dkr.ecr.ap-northeast-2.amazonaws.com`, and you need to obtain an authorization token to download them. To facilitate this, the `moai-inference-framework` chart defines the installation of an ECR token refresher. You need to specify your AWS credentials in the values file to configure the ECR token refresher.
+
+:::info
+**The AWS credentials (`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`) should have been provided to you along with your purchase or trial issuance of the MoAI Inference Framework**. If you did not receive this information, please contact your point of purchase separately.
+:::
+
+Create a `moai-inference-framework-values.yaml` file as follows. **You need to replace `<AWS_ACCESS_KEY_ID>` and `<AWS_SECRET_ACCESS_KEY>` with your own values**.
+
+```yaml {3,4}
+ecrTokenRefresher:
+  aws:
+    accessKeyId: <AWS_ACCESS_KEY_ID>
+    secretAccessKey: <AWS_SECRET_ACCESS_KEY>
+```
+
+In addition, if dependencies such as keda, kube-prometheus-stack, lws are already installed in your cluster, you should skip their installation by setting the corresponding values to `false` in the `moai-inference-framework-values.yaml` file. Refer to [moai-inference-framework README](https://github.com/moreh-dev/mif/tree/main/deploy/helm/moai-inference-framework) to see the full list of dependencies.
+
+Then, deploy the `moai-inference-framework` chart using the following command:
+
+```shell
+helm upgrade -i mif moreh/moai-inference-framework \
+    --version v0.3.0 \
+    -n mif \
+    --create-namespace \
+    -f moai-inference-framework-values.yaml
+```
+
+---
+
+## moai-inference-preset
+
+The `moai-inference-preset` Helm chart deploys the presets for the MoAI Inference Framework. The presets define preconfigured ways to run inference containers (e.g., Moreh vLLM containers) in the MoAI Inference Framework.
+
+```shell
+helm upgrade -i moai-inference-preset moreh/moai-inference-preset \
+    --version v0.3.0 \
+    -n mif
+```
+
+---
+
+## AMD GPU operator
+
+This section describes how to set up the AMD GPU Operator on a Kubernetes cluster. See [AMD GPU Operator / Kubernetes (Helm)](https://instinct.docs.amd.com/projects/gpu-operator/en/release-v1.4.0/installation/kubernetes-helm.html) for more details.
+
+Add the ROCm's GPU Operator Helm chart repository.
+
+```shell
+helm repo add rocm https://rocm.github.io/gpu-operator
+helm repo update rocm
+```
+
+Create a namespace for the AMD GPU Operator.
+
+```shell
+kubectl create namespace amd-gpu
+```
+
+During the installation of the AMD GPU Operator, the GPU driver image needs to be built and pushed to a Docker registry. For more details, see [AMD GPU Operator / Preparing Pre-compiled Driver Images](https://instinct.docs.amd.com/projects/gpu-operator/en/release-v1.4.0/drivers/precompiled-driver.html). The private registry mentioned earlier in the "target system" section can be used for this purpose.
+
+Create a Docker registry secret in the `amd-gpu` namespace to enable access to the private registry. **Set the `<registry>`, `<username>`, and `<password>` values to the information for your private registry**.
+
+```shell
+kubectl create secret -n amd-gpu \
+    docker-registry private-registry \
+    --docker-server=<registry> \
+    --docker-username=<username> \
+    --docker-password=<password>
+```
+
+Then, create a `gpu-operator-values.yaml` file with the following content. **Please replace `<registry>` on line 7 with the URL of your private registry**. You may also change the image name `amdgpu-driver`, if necessary, according to your private registry's policies.
+
+```yaml {7}
+deviceConfig:
+  spec:
+    driver:
+      enable: true
+      version: '6.4.3'
+      blacklist: true
+      image: '<registry>/amdgpu-driver'
+      imageRegistrySecret:
+        name: private-registry
+      imageRegistryTLS:
+        insecure: false
+        insecureSkipTLSVerify: false
+      tolerations: &tolerations
+        - key: amd.com/gpu
+          operator: Exists
+          effect: NoSchedule
+    devicePlugin:
+      devicePluginTolerations: *tolerations
+    metricsExporter:
+      prometheus:
+        serviceMonitor:
+          enable: true
+          interval: 10s
+          labels:
+            release: mif
+      tolerations: *tolerations
+
+node-feature-discovery:
+  worker:
+    tolerations: *tolerations
+```
+
+:::info
+If the AMD GPU Operator is already installed on your system, verify that the toleration key is set to `amd.com/gpu`. MoAI Inference Framework assumes this name.
+:::
+
+You can install the AMD GPU Operator as follows.
+
+```shell
+helm upgrade -i gpu-operator rocm/gpu-operator-charts \
+    --version v1.4.0 \
+    -n amd-gpu \
+    -f gpu-operator-values.yaml
+```
+
+Note that installing the operator and GPU driver may take some time. After the installation is complete, you can verify that the gpu-operator pods are running using the following command.
+
+```shell
+kubectl get pods -n amd-gpu
+```
+
+```shell
+NAME                                                              READY   STATUS    RESTARTS   AGE
+default-device-plugin-fxj66                                       1/1     Running   0          108s
+default-metrics-exporter-r2l6h                                    1/1     Running   0          108s
+default-node-labeller-qhqdl                                       1/1     Running   0          2m35s
+gpu-operator-gpu-operator-charts-controller-manager-69856dhd67k   1/1     Running   0          4m20s
+gpu-operator-kmm-controller-7b5dd7b48b-fpcv6                      1/1     Running   0          4m20s
+gpu-operator-kmm-webhook-server-c7bfc864-tfqdb                    1/1     Running   0          4m20s
+gpu-operator-node-feature-discovery-gc-7649c47d5d-55rcn           1/1     Running   0          4m20s
+gpu-operator-node-feature-discovery-master-fc889959c-sx7wv        1/1     Running   0          4m20s
+gpu-operator-node-feature-discovery-worker-4tnns                  1/1     Running   0          4m20s
+```
+
+:::tip
+You can monitor the installation progress using the `kubectl get pods -n amd-gpu -w` command instead.
+:::
+
+---
+
+## RDMA device plugin
+
+### Host driver and OFED installation
+
+You need to install the device drivers and OFED software for InfiniBand or RoCE NICs on the **host OS**. Follow the instructions provided by your hardware vendor.
+
+**This must be completed before joining the node to the Kubernetes cluster**. By running the following command on the host OS, you can verify that the OFED software has been installed correctly and that it recognizes the NICs. If no devices are shown, there is an issue with the installation.
+
+```shell
+ibv_devices
+```
+
+```shell
+device           node GUID
+<device_name>    <16-hex GUID>
+<device_name>    <16-hex GUID>
+...
+```
+
+### RDMA device plugin installation
+
+This section describes how to install the **rdma-shared-device-plugin**. See [k8s-rdma-shared-dev-plugin / README](https://github.com/Mellanox/k8s-rdma-shared-dev-plugin/blob/master/README.md) for more details.
+
+First, create a `rdma-shared-device-plugin.yaml` file as follows. **You need to replace `<device>` on line 22 with your RDMA NIC's network interface name**. If multiple NICs are installed on the server, you must list all interface names (e.g., `"devices": ["ib0", "ib1"]`).
+
+:::tip
+You can check the network interface names using the `ip addr` command.
+:::
+
+```yaml {22}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rdma-devices
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: rdma-shared-device-plugin
+    app.kubernetes.io/version: v1.5.2
+    app.kubernetes.io/instance: rdma-shared-device-plugin
+data:
+  config.json: |
+    {
+      "periodicUpdateInterval": 300,
+      "configList": [
+        {
+          "resourcePrefix": "mellanox",
+          "resourceName": "hca",
+          "rdmaHcaMax": 1000,
+          "devices": [
+            <device>
+          ]
+        }
+      ]
+    }
+
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: rdma-shared-device-plugin
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: rdma-shared-device-plugin
+    app.kubernetes.io/version: v1.5.2
+    app.kubernetes.io/instance: rdma-shared-device-plugin
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: rdma-shared-device-plugin
+      app.kubernetes.io/instance: rdma-shared-device-plugin
+  updateStrategy:
+    rollingUpdate:
+      maxUnavailable: '30%'
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: rdma-shared-device-plugin
+        app.kubernetes.io/version: v1.5.2
+        app.kubernetes.io/instance: rdma-shared-device-plugin
+    spec:
+      hostNetwork: true
+      priorityClassName: system-node-critical
+      tolerations:
+        - key: amd.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: device-plugin
+          image: ghcr.io/mellanox/k8s-rdma-shared-dev-plugin:v1.5.2
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: device-plugin
+              mountPath: /var/lib/kubelet/device-plugins
+            - name: plugins-registry
+              mountPath: /var/lib/kubelet/plugins_registry
+            - name: config
+              mountPath: /k8s-rdma-shared-dev-plugin
+            - name: devs
+              mountPath: /dev/
+      volumes:
+        - name: device-plugin
+          hostPath:
+            path: /var/lib/kubelet/device-plugins
+        - name: plugins-registry
+          hostPath:
+            path: /var/lib/kubelet/plugins_registry
+        - name: config
+          configMap:
+            name: rdma-devices
+            items:
+              - key: config.json
+                path: config.json
+        - name: devs
+          hostPath:
+            path: /dev/
+```
+
+:::info
+If the RDMA device plugin is already installed on your system, verify that the resource name is set to `mellanox/hca`. MoAI Inference Framework assumes this name. This does not imply that the actual hardware vendor must be Mellanox.
+:::
+
+Then, create an rdma-shared-device-plugin DaemonSet using the following command.
+
+```shell
+kubectl apply -f rdma-shared-device-plugin.yaml
+```
+
+You can verify that the rdma-shared-device-plugin pods are running using the following command.
+
+```shell
+kubectl get pods -n kube-system -l app.kubernetes.io/instance=rdma-shared-device-plugin
+```
+
+```shell
+NAME                              READY   STATUS    RESTARTS   AGE
+rdma-shared-device-plugin-wh9fz   1/1     Running   0          7s
+```
+
+---
+
+## Node labeling for heterogeneous accelerators
+
+The `moai-accelerator` NodeFeatureRule enables the identification of heterogeneous accelerators by assigning vendor and model labels to nodes. This metadata facilitates targeted scheduling or automated selection of optimal accelerator. For a full list of supported hardware, please refer to [supported devices](supported_devices).
+
+Apply the `moai-accelerator` NodeFeatureRule using the following command.
+
+```shell
+kubectl apply -f https://raw.githubusercontent.com/moreh-dev/mif/refs/heads/main/config/nfd/moai-accelerator.yaml
+```
+
+---
+
+## Gateway
+
+Add the Gateway API and Gateway API Inference Extension CRDs.
+
+```shell
+kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.3.0/standard-install.yaml
+kubectl apply -f https://github.com/kubernetes-sigs/gateway-api-inference-extension/releases/download/v1.1.0/manifests.yaml
+```
+
+You can verify the CRDs are installed using the following command.
+
+```shell
+kubectl get crd | grep 'networking.k8s*.io'
+```
+
+```shell
+gatewayclasses.gateway.networking.k8s.io            2025-12-12T02:03:07Z
+gateways.gateway.networking.k8s.io                  2025-12-12T02:03:07Z
+grpcroutes.gateway.networking.k8s.io                2025-12-12T02:03:07Z
+httproutes.gateway.networking.k8s.io                2025-12-12T02:03:07Z
+inferencepools.inference.networking.k8s.io          2025-12-12T02:03:08Z
+referencegrants.gateway.networking.k8s.io           2025-12-12T02:03:07Z
+```
+
+You can use any gateway controller compatible with the Gateway API Inference Extension. We recommend using either **Istio** or **Kgateway**, and installation instructions for both are provided below.
+
+<Tabs>
+<TabItem value="istio" label="Istio (Default)" default>
+
+Add the Istio Helm chart repository.
+
+```shell
+helm repo add istio https://istio-release.storage.googleapis.com/charts
+helm repo update istio
+```
+
+Install the Istio base chart.
+
+```shell
+helm upgrade -i istio-base istio/base \
+    --version 1.28.1 \
+    -n istio-system \
+    --create-namespace
+```
+
+Create a `istiod-values.yaml` file and install the Istio control plane.
+
+```yaml
+pilot:
+  env:
+    PILOT_ENABLE_ALPHA_GATEWAY_API: 'true'
+    ENABLE_GATEWAY_API_INFERENCE_EXTENSION: 'true'
+```
+
+```shell
+helm upgrade -i istiod istio/istiod \
+    --version 1.28.1 \
+    -n istio-system \
+    -f istiod-values.yaml
+```
+
+</TabItem>
+<TabItem value="kgateway" label="Kgateway">
+
+Install the Kgateway CRDs.
+
+```shell
+helm upgrade -i kgateway-crds oci://cr.kgateway.dev/kgateway-dev/charts/kgateway-crds \
+    --version v2.1.1 \
+    -n kgateway-system \
+    --create-namespace
+```
+
+Create a `kgateway-values.yaml` file and install the Kgateway controller.
+
+```yaml
+inferenceExtension:
+  enabled: true
+```
+
+```shell
+helm upgrade -i kgateway oci://cr.kgateway.dev/kgateway-dev/charts/kgateway \
+    --version v2.1.1 \
+    -n kgateway-system \
+    -f kgateway-values.yaml
+```
+
+</TabItem>
+</Tabs>

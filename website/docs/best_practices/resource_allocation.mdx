@@ -1,0 +1,222 @@
+---
+sidebar_position: 1
+
+title: 'Resource allocation'
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Resource allocation
+
+This document describes how to allocate resources (accelerators and NICs) to your inference containers, select specific nodes using [node selectors](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector) and [node affinity](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity), and handle [taints](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/). When an InferenceService is created, it generates a Deployment or a LeaderWorkerSet, which ultimately results in the creation of Pods. Therefore, placing a Pod is synonymous with placing an inference container in this context.
+
+Before starting this guide, make sure to install all [prerequisites](/getting_started/prerequisites).
+
+---
+
+## Allocation examples
+
+Before guiding you through individual settings, let's look at a complete example of allocating the desired resources. This example allocates **8x AMD MI300X GPUs** and **all RDMA NIC devices** to the InferenceService:
+
+```yaml
+apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceService
+spec:
+  template:
+    spec:
+      containers:
+        - name: main
+          resources:
+            limits:
+              amd.com/gpu: "8"
+              mellanox/hca: "1"
+            requests:
+              amd.com/gpu: "8"
+              mellanox/hca: "1"
+      nodeSelector:
+        moai.moreh.io/accelerator.vendor: amd
+        moai.moreh.io/accelerator.model: mi300x
+      tolerations:
+        - key: "amd.com/gpu"
+          operator: "Exists"
+          effect: "NoSchedule"
+```
+
+If you use a LeaderWorkerSet, you can allocate resources to the worker containers by specifying them in the workerTemplate as well like this:
+
+```yaml
+apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceService
+spec:
+  workerTemplate:
+    spec:
+      containers:
+        - name: main
+          resources:
+            limits:
+              amd.com/gpu: "8"
+              mellanox/hca: "1"
+            requests:
+              amd.com/gpu: "8"
+              mellanox/hca: "1"
+      nodeSelector:
+        moai.moreh.io/accelerator.vendor: amd
+        moai.moreh.io/accelerator.model: mi300x
+      tolerations:
+        - key: "amd.com/gpu"
+          operator: "Exists"
+          effect: "NoSchedule"
+```
+
+---
+
+## Resource requests and limits
+
+You can request the resources to use by setting `requests` and `limits` in the `resources` section. Each resource uses the following resource names.
+
+* AMD GPU: `amd.com/gpu`
+* NVIDIA GPU: `nvidia.com/gpu`
+* RDMA NIC: `mellanox/hca`
+
+For example, you can specify resources as follows. Note that, for RDMA NICs, you do not specify the number to use; instead, once requested, the Pod is granted access to all RDMA NICs on the node.
+
+<Tabs>
+<TabItem value="amd-gpus" label="4x AMD GPUs" default>
+
+```yaml
+resources:
+  limits:
+    amd.com/gpu: "4"
+  requests:
+    amd.com/gpu: "4"
+```
+
+</TabItem>
+<TabItem value="nvidia-gpus" label="4x NVIDIA GPUs">
+
+```yaml
+resources:
+  limits:
+    nvidia.com/gpu: "4"
+  requests:
+    nvidia.com/gpu: "4"
+```
+
+</TabItem>
+<TabItem value="rdma-nics" label="RDMA NICs">
+
+```yaml
+resources:
+  limits:
+    mellanox/hca: "1"
+  requests:
+    mellanox/hca: "1"
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Node selection
+
+Resource names alone cannot distinguish GPU types. If you require a specific GPU type for inference containers, you must **additionally** use either `nodeSelector` or `affinity`. You only need to use one of the two options. Node selectors are suitable if you simply want to select GPU types, while node affinity allows you to define more complex conditions.
+
+### Accelerator labels
+
+MoAI Inference Framework automatically detects the vendors and models of accelerators in the cluster and assigns the following labels accordingly, so they can be used with node selectors or node affinity.
+
+* `moai.moreh.io/accelerator.vendor`: The vendor of the accelerator (e.g., `amd`).
+* `moai.moreh.io/accelerator.model`: The specific model of the accelerator.
+
+| Vendor   | Models                                                                                           |
+| -------- | ------------------------------------------------------------------------------------------------ |
+| `amd`    | `mi355x`, `mi350x`, `mi325x`, `mi300x`, `mi308x`, `mi250x`, `mi250`, `mi210`, and `mi100`        |
+| `nvidia` | `h200-sxm`, `h100-sxm`, `a100-80gb-sxm`, `a100-80gb-pcie`, `a100-40gb-sxm`, and `a100-40gb-pcie` |
+
+For more detailed information, please refer to the [supported devices](/getting_started/supported_devices).
+
+### Example: Selecting MI300X nodes
+
+To schedule your workload specifically on nodes with AMD MI300X GPUs, use the `nodeSelector` or `affinity` fields as follows.
+
+**Using `nodeSelector`:**
+
+```yaml
+nodeSelector:
+  moai.moreh.io/accelerator.vendor: amd
+  moai.moreh.io/accelerator.model: mi300x
+```
+
+**Using `affinity`:**
+
+```yaml {17-18}
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: moai.moreh.io/accelerator.vendor
+              operator: In
+              values:
+                - amd
+            - key: moai.moreh.io/accelerator.model
+              operator: In
+              values:
+                - mi300x
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - <nodeName>
+                - <nodeName>
+```
+
+---
+
+## Taints and tolerations
+
+Nodes equipped with GPUs are tainted to prevent accidental scheduling of non-GPU workloads. To schedule a pod on these nodes, you must include a matching toleration in your pod specification. Please note that while a toleration is required to schedule a pod on a tainted node, the presence of a toleration does not imply that the node must be tainted.
+
+<Tabs>
+<TabItem value="amd-gpus" label="AMD GPUs" default>
+
+**Node taint:**
+
+```yaml
+taints:
+  - key: "amd.com/gpu"
+    effect: "NoSchedule"
+```
+
+**Pod toleration:**
+
+```yaml
+tolerations:
+  - key: "amd.com/gpu"
+    operator: "Exists"
+    effect: "NoSchedule"
+```
+
+</TabItem>
+<TabItem value="nvidia-gpus" label="NVIDIA GPUs">
+
+**Node taint:**
+
+```yaml
+taints:
+  - key: "nvidia.com/gpu"
+    effect: "NoSchedule"
+```
+
+**Pod toleration:**
+
+```yaml
+tolerations:
+  - key: "nvidia.com/gpu"
+    operator: "Exists"
+    effect: "NoSchedule"
+```
+
+</TabItem>
+</Tabs>
