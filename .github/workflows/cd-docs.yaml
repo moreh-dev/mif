@@ -2,9 +2,8 @@ name: docs-production-deploy
 
 on:
   push:
-    tags:
-      - "v*.*.*"
-  pull_request:
+    branches:
+      - main
     paths:
       - "website/**"
 
