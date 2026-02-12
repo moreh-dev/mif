@@ -1,22 +1,25 @@
 import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
-const includeCurrentVersion =
-  process.env.DOCS_INCLUDE_CURRENT_VERSION !== 'false';
+const organizationName = process.env.ORGANIZATION_NAME;
+const projectName = process.env.PROJECT_NAME;
+const deploymentBranch = process.env.DEPLOYMENT_BRANCH;
 
-// Required by Docusaurus; use env for preview (GitHub Pages) vs release (custom domain).
-// See: https://docusaurus.io/docs/deployment#configuration
-const siteUrl = process.env.DOCS_SITE_URL ?? 'https://docs.moreh.io';
-const baseUrl = process.env.DOCS_BASE_URL ?? '/';
+const siteUrl = organizationName
+  ? `https://${organizationName}.github.io`
+  : undefined;
+const baseUrl = projectName ? `/${projectName}/` : undefined;
 
 const config: Config = {
   title: 'Moreh',
   tagline: 'MoAI Inference Framework documentation',
   url: siteUrl,
-  baseUrl,
+  baseUrl: baseUrl,
+  organizationName: organizationName,
+  projectName: projectName,
+  deploymentBranch: deploymentBranch,
+  trailingSlash: true,
   favicon: '/moreh-icon.png',
-  organizationName: 'moreh-dev',
-  projectName: 'mif',
   staticDirectories: ['static'],
   onBrokenLinks: 'warn',
   plugins: [
@@ -35,15 +38,12 @@ const config: Config = {
         docs: {
           sidebarPath: require.resolve('./sidebars'),
           routeBasePath: '/',
-          includeCurrentVersion,
-          ...(includeCurrentVersion && {
-            versions: {
-              current: {
-                label: 'Dev 🚧',
-                path: 'dev',
-              },
+          versions: {
+            current: {
+              label: 'Dev 🚧',
+              path: 'dev',
             },
-          }),
+          },
         },
         theme: {
           customCss: require.resolve('./css/custom.css'),
