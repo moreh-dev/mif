@@ -23,7 +23,7 @@ jobs:
     env:
       ORGANIZATION_NAME: "moreh-dev"
       PROJECT_NAME: "test-docs.moreh.io"
-      DEPLOYMENT_BRANCH: "publish-build"
+      DEPLOYMENT_BRANCH: "main"
       GIT_USER: "gitgod-bot"
       GIT_USER_NAME: "gitgod"
       GIT_USER_EMAIL: "gitgod@moreh.io"
