@@ -1,3 +1,6 @@
+image:
+  tag: {{ .HeimdallTag }}
+
 global:
   imagePullSecrets:
     - name: {{ .MorehRegistrySecretName }}
@@ -34,3 +37,12 @@ gateway:
 inferencePool:
   targetPorts:
     - number: 8000
+
+extraVolumes:
+  - name: models
+    persistentVolumeClaim:
+      claimName: models
+
+extraVolumeMounts:
+  - name: models
+    mountPath: /mnt/models

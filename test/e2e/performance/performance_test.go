@@ -47,11 +47,13 @@ var _ = Describe("Inference Performance", Label("performance"), Ordered, func() 
 
 		By("installing Heimdall")
 		data := struct {
+			HeimdallTag             string
 			MorehRegistrySecretName string
 			GatewayName             string
 			GatewayClass            string
 			IstioRev                string
 		}{
+			HeimdallTag:             envs.HeimdallTag,
 			MorehRegistrySecretName: settings.MorehRegistrySecretName,
 			GatewayName:             settings.GatewayName,
 			GatewayClass:            envs.GatewayClassName,
@@ -76,11 +78,43 @@ var _ = Describe("Inference Performance", Label("performance"), Ordered, func() 
 		isKind := !envs.SkipKind
 		var prefillData, decodeData utils.InferenceServiceData
 		if isKind {
-			prefillData = utils.GetInferenceServiceData("prefill", envs.WorkloadNamespace, []string{"sim-prefill"}, envs.HFToken, envs.HFEndpoint, isKind)
-			decodeData = utils.GetInferenceServiceData("decode", envs.WorkloadNamespace, []string{"sim-decode"}, envs.HFToken, envs.HFEndpoint, isKind)
+			prefillData = utils.InferenceServiceData{
+				Name:         "prefill",
+				Namespace:    envs.WorkloadNamespace,
+				Replicas:     3,
+				TemplateRefs: []string{"sim-prefill"},
+				HFToken:      envs.HFToken,
+				HFEndpoint:   envs.HFEndpoint,
+				IsKind:       isKind,
+			}
+			decodeData = utils.InferenceServiceData{
+				Name:         "decode",
+				Namespace:    envs.WorkloadNamespace,
+				Replicas:     5,
+				TemplateRefs: []string{"sim-decode"},
+				HFToken:      envs.HFToken,
+				HFEndpoint:   envs.HFEndpoint,
+				IsKind:       isKind,
+			}
 		} else {
-			prefillData = utils.GetInferenceServiceData("prefill", envs.WorkloadNamespace, []string{"vllm-prefill", envs.TestTemplatePrefill, "vllm-hf-hub-offline"}, envs.HFToken, envs.HFEndpoint, isKind)
-			decodeData = utils.GetInferenceServiceData("decode", envs.WorkloadNamespace, []string{"vllm-decode", envs.TestTemplateDecode, "vllm-hf-hub-offline"}, envs.HFToken, envs.HFEndpoint, isKind)
+			prefillData = utils.InferenceServiceData{
+				Name:         "prefill",
+				Namespace:    envs.WorkloadNamespace,
+				Replicas:     3,
+				TemplateRefs: []string{"vllm-prefill", envs.TestTemplatePrefill, "vllm-hf-hub-offline"},
+				HFToken:      envs.HFToken,
+				HFEndpoint:   envs.HFEndpoint,
+				IsKind:       isKind,
+			}
+			decodeData = utils.InferenceServiceData{
+				Name:         "decode",
+				Namespace:    envs.WorkloadNamespace,
+				Replicas:     5,
+				TemplateRefs: []string{"vllm-decode", envs.TestTemplateDecode, "vllm-hf-hub-offline"},
+				HFToken:      envs.HFToken,
+				HFEndpoint:   envs.HFEndpoint,
+				IsKind:       isKind,
+			}
 		}
 		prefillServiceName, err = utils.CreateInferenceService(envs.WorkloadNamespace, InferenceServicePath, prefillData)
 		Expect(err).NotTo(HaveOccurred(), "failed to create prefill InferenceService")

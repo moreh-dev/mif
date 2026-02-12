@@ -46,11 +46,13 @@ var _ = Describe("Quality Benchmark", Label("quality"), Ordered, func() {
 
 		By("installing Heimdall")
 		data := struct {
+			HeimdallTag             string
 			MorehRegistrySecretName string
 			GatewayName             string
 			GatewayClass            string
 			IstioRev                string
 		}{
+			HeimdallTag:             envs.HeimdallTag,
 			MorehRegistrySecretName: settings.MorehRegistrySecretName,
 			GatewayName:             settings.GatewayName,
 			GatewayClass:            envs.GatewayClassName,
@@ -76,9 +78,25 @@ var _ = Describe("Quality Benchmark", Label("quality"), Ordered, func() {
 		isKind := !envs.SkipKind
 		var vllmData utils.InferenceServiceData
 		if isKind {
-			vllmData = utils.GetInferenceServiceData("vllm", envs.WorkloadNamespace, []string{"sim"}, envs.HFToken, envs.HFEndpoint, isKind)
+			vllmData = utils.InferenceServiceData{
+				Name:         "vllm",
+				Namespace:    envs.WorkloadNamespace,
+				Replicas:     2,
+				TemplateRefs: []string{"sim"},
+				HFToken:      envs.HFToken,
+				HFEndpoint:   envs.HFEndpoint,
+				IsKind:       isKind,
+			}
 		} else {
-			vllmData = utils.GetInferenceServiceData("vllm", envs.WorkloadNamespace, []string{"vllm", envs.TestTemplateDecode, "vllm-hf-hub-offline"}, envs.HFToken, envs.HFEndpoint, isKind)
+			vllmData = utils.InferenceServiceData{
+				Name:         "vllm",
+				Namespace:    envs.WorkloadNamespace,
+				Replicas:     2,
+				TemplateRefs: []string{"vllm", envs.TestTemplateDecode, "vllm-hf-hub-offline"},
+				HFToken:      envs.HFToken,
+				HFEndpoint:   envs.HFEndpoint,
+				IsKind:       isKind,
+			}
 		}
 		vllmServiceName, err = utils.CreateInferenceService(envs.WorkloadNamespace, InferenceServicePath, vllmData)
 		Expect(err).NotTo(HaveOccurred(), "failed to create vllm InferenceService")
