@@ -1,23 +1,11 @@
 import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
-const organizationName = process.env.ORGANIZATION_NAME;
-const projectName = process.env.PROJECT_NAME;
-const deploymentBranch = process.env.DEPLOYMENT_BRANCH;
-
-const siteUrl = organizationName
-  ? `https://${organizationName}.github.io`
-  : undefined;
-const baseUrl = projectName ? `/${projectName}/` : undefined;
-
 const config: Config = {
   title: 'Moreh',
   tagline: 'MoAI Inference Framework documentation',
-  url: siteUrl,
-  baseUrl: baseUrl,
-  organizationName: organizationName,
-  projectName: projectName,
-  deploymentBranch: deploymentBranch,
+  url: 'https://test-docs.moreh.io/',
+  baseUrl: '/',
   trailingSlash: true,
   favicon: '/moreh-icon.png',
   staticDirectories: ['static'],
