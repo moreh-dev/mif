@@ -39,7 +39,7 @@ jobs:
 
       - name: Publish production docs to publish-build branch (mif repo)
         env:
-          GITHUB_TOKEN: ${{ secrets.GITOPS_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.MIF_DOCS_TOKEN }}
           REPO: "moreh-dev/test-docs.moreh.io"
         run: |
           cd build
