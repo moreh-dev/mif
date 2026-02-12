@@ -51,6 +51,9 @@ spec:
                       - mi250-050
                       - mi250-054
       tolerations:
+        - key: amd.com/gpu
+          operator: Exists
+          effect: NoSchedule
         - key: benchmark
           operator: Exists
           effect: NoSchedule
