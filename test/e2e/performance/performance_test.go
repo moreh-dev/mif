@@ -39,6 +39,8 @@ var _ = Describe("Inference Performance", Label("performance"), Ordered, func() 
 	SetDefaultEventuallyPollingInterval(settings.IntervalShort)
 
 	BeforeAll(func() {
+		isKind := !envs.SkipKind
+
 		By("creating workload namespace")
 		Expect(utils.CreateWorkloadNamespace(envs.WorkloadNamespace, envs.MIFNamespace)).To(Succeed())
 
@@ -46,7 +48,7 @@ var _ = Describe("Inference Performance", Label("performance"), Ordered, func() 
 		Expect(utils.CreateGatewayResource(envs.WorkloadNamespace, envs.GatewayClassName, envs.IstioRev)).To(Succeed())
 
 		var err error
-		if envs.SkipKind {
+		if !isKind {
 			By("creating model PV")
 			pvName, err = utils.CreateModelPV(envs.WorkloadNamespace)
 			Expect(err).NotTo(HaveOccurred(), "failed to create model PV")
@@ -62,11 +64,13 @@ var _ = Describe("Inference Performance", Label("performance"), Ordered, func() 
 			GatewayName             string
 			GatewayClass            string
 			IstioRev                string
+			IsKind                  bool
 		}{
 			MorehRegistrySecretName: settings.MorehRegistrySecretName,
 			GatewayName:             settings.GatewayName,
 			GatewayClass:            envs.GatewayClassName,
 			IstioRev:                envs.IstioRev,
+			IsKind:                  isKind,
 		}
 
 		values, err := utils.RenderTemplate(HeimdallValues, data)
@@ -74,7 +78,6 @@ var _ = Describe("Inference Performance", Label("performance"), Ordered, func() 
 		Expect(utils.InstallHeimdall(envs.WorkloadNamespace, values)).To(Succeed())
 
 		By("creating InferenceServices")
-		isKind := !envs.SkipKind
 		var prefillData, decodeData utils.InferenceServiceData
 		if isKind {
 			prefillData = utils.InferenceServiceData{

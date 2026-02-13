@@ -38,6 +38,8 @@ var _ = Describe("Quality Benchmark", Label("quality"), Ordered, func() {
 	SetDefaultEventuallyPollingInterval(settings.IntervalShort)
 
 	BeforeAll(func() {
+		isKind := !envs.SkipKind
+
 		By("creating workload namespace")
 		Expect(utils.CreateWorkloadNamespace(envs.WorkloadNamespace, envs.MIFNamespace)).To(Succeed())
 
@@ -73,7 +75,6 @@ var _ = Describe("Quality Benchmark", Label("quality"), Ordered, func() {
 
 		By("creating InferenceServices")
 		// PD disaggregation environment cannot run tests normally, so we test in aggregate environment
-		isKind := !envs.SkipKind
 		var vllmData utils.InferenceServiceData
 		if isKind {
 			vllmData = utils.InferenceServiceData{

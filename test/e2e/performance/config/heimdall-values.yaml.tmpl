@@ -35,6 +35,7 @@ inferencePool:
   targetPorts:
     - number: 8000
 
+{{- if not .IsKind }}
 extraVolumes:
   - name: models
     persistentVolumeClaim:
@@ -43,3 +44,4 @@ extraVolumes:
 extraVolumeMounts:
   - name: models
     mountPath: /mnt/models
+{{- end }}
