@@ -50,8 +50,8 @@ jobs:
       MIF_NAMESPACE: "mif"
       ISTIO_REV: "1-28-1"
       TEST_MODEL: "meta-llama/Llama-3.2-1B-Instruct"
-      TEST_TEMPLATE_PREFILL: "quickstart-vllm-meta-llama-llama-3.2-1b-instruct-prefill-amd-mi250-tp2"
-      TEST_TEMPLATE_DECODE: "quickstart-vllm-meta-llama-llama-3.2-1b-instruct-decode-amd-mi250-tp2"
+      TEST_TEMPLATE_PREFILL: "sim-prefill"
+      TEST_TEMPLATE_DECODE: "sim-decode"
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
       HF_ENDPOINT: ${{ secrets.HF_ENDPOINT }}
       S3_ACCESS_KEY_ID: ${{ secrets.AWS_S3_ACCESS_KEY }}

@@ -51,8 +51,13 @@ spec:
                 type: constant
                 interval: 5
                 stages:
-                  - rate: 20
+                  # Warmup
+                  - rate: 10
                     duration: 10
+                  # Benchmark
+                  - rate: 5000
+                    duration: 1
+
                 num_workers: 20
                 worker_max_concurrency: 1000
                 worker_max_tcp_connections: 2000
@@ -65,7 +70,7 @@ spec:
 
               report:
                 request_lifecycle:
-                  summary: false
+                  summary: true
                   per_stage: true
                   per_request: false
 
@@ -102,3 +107,21 @@ spec:
           - name: AWS_DEFAULT_REGION
             value: "{{ .S3Region }}"
           {{- end }}
+      {{- if not .IsKind }}
+      tolerations:
+        - key: amd.com/gpu
+          operator: Exists
+          effect: NoSchedule
+        - key: benchmark
+          operator: Exists
+          effect: NoSchedule
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - mi250-050
+      {{- end }}

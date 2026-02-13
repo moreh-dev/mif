@@ -51,7 +51,7 @@ const (
 
 // Heimdall
 const (
-	HeimdallVersion = "v0.6.1"
+	HeimdallVersion = "v0.6.2-rc.1"
 )
 
 // Models

@@ -25,6 +25,8 @@ spec:
               value: "{{ .HFEndpoint }}"
             {{- end }}
           {{- if not .IsKind }}
+            - name: PYTHONHASHSEED
+              value: "12345"
           resources:
             requests:
               mellanox/hca: "1"
@@ -37,19 +39,10 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
               - matchExpressions:
-                  - key: moai.moreh.io/accelerator.vendor
-                    operator: In
-                    values:
-                      - amd
-                  - key: moai.moreh.io/accelerator.model
-                    operator: In
-                    values:
-                      - mi250
                   - key: kubernetes.io/hostname
                     operator: In
                     values:
                       - mi250-050
-                      - mi250-054
       tolerations:
         - key: amd.com/gpu
           operator: Exists
