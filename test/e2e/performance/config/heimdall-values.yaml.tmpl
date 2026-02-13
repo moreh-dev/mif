@@ -11,6 +11,9 @@ config:
   - type: kv-cache-utilization-scorer
   - type: max-score-picker
   - parameters:
+      tokenProcessorConfig:
+        blockSize: 64
+        hashSeed: "12345"
       indexerConfig:
         kvBlockIndexConfig:
           enableMetrics: true
@@ -21,9 +24,7 @@ config:
           blockSize: 256
           cacheSize: 500000
         tokenizersPoolConfig:
-          tokenProcessorConfig:
-            blockSize: 64
-            hashSeed: "12345"
+          modelName: "openai/gpt-oss-20b"
           local:
             autoDiscoveryDir: "/mnt/models"
           hf:
@@ -47,13 +48,13 @@ config:
     - pluginRef: max-score-picker
 
 args:
-  - -pool-name=heimdall
-  - -config-file=/config/config.yaml
+  - --pool-name=heimdall
+  - --config-file=/config/config.yaml
   - -v=5
-  - -zap-encoder=json
-  - -metrics-endpoint-auth=false
-  - -cache-info-metric=vllm:cache_config_info
-  - -total-queued-requests-metric=vllm:num_requests_waiting
+  - --zap-encoder=json
+  - --metrics-endpoint-auth=false
+  - --cache-info-metric=vllm:cache_config_info
+  - --total-queued-requests-metric=vllm:num_requests_waiting
 
 gateway:
   name: {{ .GatewayName }}
