@@ -1,5 +1,6 @@
 import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
+import {themes} from 'prism-react-renderer';
 
 const config: Config = {
   title: 'Moreh',
@@ -9,7 +10,7 @@ const config: Config = {
   trailingSlash: true,
   favicon: '/moreh-icon.png',
   staticDirectories: ['static'],
-  onBrokenLinks: 'warn',
+  onBrokenLinks: 'throw',
   plugins: [
     [
       '@cmfcmf/docusaurus-search-local',
@@ -19,6 +20,15 @@ const config: Config = {
       },
     ],
   ],
+
+  markdown: {
+    mermaid: true,
+    hooks: {
+      onBrokenMarkdownLinks: 'warn',
+    },
+  },
+  themes: ['@docusaurus/theme-mermaid'],
+
   presets: [
     [
       'classic',
@@ -70,6 +80,11 @@ const config: Config = {
           'aria-label': 'GitHub repository',
         },
       ],
+    },
+    prism: {
+      additionalLanguages: ['bash', 'toml', 'yaml'],
+      theme: themes.nightOwlLight,
+      darkTheme: themes.vsDark,
     },
     footer: {
       style: 'dark',

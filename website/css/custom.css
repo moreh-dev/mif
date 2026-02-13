@@ -55,3 +55,34 @@ html.docs-doc-id-home .theme-doc-markdown article:has(a.card h2[title='Home']) {
   align-items: center;
   justify-content: center;
 }
+
+.prism-code {
+  counter-reset: line-number;
+  tab-size: 4;
+}
+
+.prism-code .token-line::marker {
+  color: var(--ifm-color-gray-700);
+  content: counter(line-number);
+}
+
+.prism-code .token-line {
+  counter-increment: line-number;
+  display: list-item;
+  padding-left: var(--ifm-pre-padding);
+  margin-left: var(--ifm-global-spacing);
+}
+
+:root {
+  --docusaurus-highlighted-code-line-bg: rgb(240, 240, 180);
+}
+
+[data-theme='dark'] {
+  --docusaurus-highlighted-code-line-bg: rgb(60, 60, 0);
+}
+
+div.docusaurus-mermaid-container {
+  margin: 0 auto 20px;
+  display: flex;
+  justify-content: center;
+}
