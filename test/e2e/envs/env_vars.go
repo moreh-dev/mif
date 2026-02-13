@@ -41,9 +41,6 @@ const (
 	envMIFNamespace      = "MIF_NAMESPACE"
 	envWorkloadNamespace = "WORKLOAD_NAMESPACE"
 
-	// Heimdall
-	envHeimdallTag = "HEIMDALL_TAG"
-
 	// Gateway Class
 	envGatewayClassName = "GATEWAY_CLASS_NAME"
 
@@ -92,9 +89,6 @@ var envVars = []envVarInfo{
 	{envMIFNamespace, "mif", "MIF namespace", "Namespace", "string"},
 	{envWorkloadNamespace, "mif-e2e-test", "Workload namespace", "Namespace", "string"},
 
-	// Heimdall
-	{envHeimdallTag, "", "Heimdall tag", "Heimdall", "string"},
-
 	// Gateway Class
 	{envGatewayClassName, "istio", "Gateway class (istio or kgateway)", "Gateway Class", "string"},
 
@@ -135,9 +129,6 @@ var (
 	// Namespace
 	MIFNamespace      = getEnv(envMIFNamespace)
 	WorkloadNamespace = getEnv(envWorkloadNamespace)
-
-	// Heimdall
-	HeimdallTag = getEnv(envHeimdallTag)
 
 	// Gateway Class
 	GatewayClassName = getEnv(envGatewayClassName)

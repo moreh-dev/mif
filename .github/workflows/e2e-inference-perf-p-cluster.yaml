@@ -58,7 +58,6 @@ jobs:
       S3_SECRET_ACCESS_KEY: ${{ secrets.AWS_S3_SECRET_KEY }}
       SKIP_KIND: "true"
       SKIP_PREREQUISITE: "true"
-      HEIMDALL_TAG: "v0.6.1"
 
     steps:
       - name: Checkout

@@ -58,13 +58,11 @@ var _ = Describe("Inference Performance", Label("performance"), Ordered, func() 
 
 		By("installing Heimdall")
 		data := struct {
-			HeimdallTag             string
 			MorehRegistrySecretName string
 			GatewayName             string
 			GatewayClass            string
 			IstioRev                string
 		}{
-			HeimdallTag:             envs.HeimdallTag,
 			MorehRegistrySecretName: settings.MorehRegistrySecretName,
 			GatewayName:             settings.GatewayName,
 			GatewayClass:            envs.GatewayClassName,
