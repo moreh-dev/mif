@@ -34,3 +34,14 @@ gateway:
 inferencePool:
   targetPorts:
     - number: 8000
+
+{{- if not .IsKind }}
+extraVolumes:
+  - name: models
+    persistentVolumeClaim:
+      claimName: models
+
+extraVolumeMounts:
+  - name: models
+    mountPath: /mnt/models
+{{- end }}

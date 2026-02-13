@@ -4,7 +4,7 @@ metadata:
   name: {{ .Name }}
   namespace: {{ .Namespace }}
 spec:
-  replicas: 1
+  replicas: {{ .Replicas }}
   inferencePoolRefs:
     - name: heimdall
   templateRefs:
@@ -31,4 +31,30 @@ spec:
             limits:
               mellanox/hca: "1"
           {{- end }}
-
+      {{- if not .IsKind }}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: moai.moreh.io/accelerator.vendor
+                    operator: In
+                    values:
+                      - amd
+                  - key: moai.moreh.io/accelerator.model
+                    operator: In
+                    values:
+                      - mi250
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - mi250-050
+                      - mi250-054
+      tolerations:
+        - key: amd.com/gpu
+          operator: Exists
+          effect: NoSchedule
+        - key: benchmark
+          operator: Exists
+          effect: NoSchedule
+      {{- end }}

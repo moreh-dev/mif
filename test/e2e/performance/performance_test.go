@@ -39,30 +39,16 @@ var _ = Describe("Inference Performance", Label("performance"), Ordered, func() 
 	SetDefaultEventuallyPollingInterval(settings.IntervalShort)
 
 	BeforeAll(func() {
+		isKind := !envs.SkipKind
+
 		By("creating workload namespace")
 		Expect(utils.CreateWorkloadNamespace(envs.WorkloadNamespace, envs.MIFNamespace)).To(Succeed())
 
 		By("creating Gateway resources")
 		Expect(utils.CreateGatewayResource(envs.WorkloadNamespace, envs.GatewayClassName, envs.IstioRev)).To(Succeed())
 
-		By("installing Heimdall")
-		data := struct {
-			MorehRegistrySecretName string
-			GatewayName             string
-			GatewayClass            string
-			IstioRev                string
-		}{
-			MorehRegistrySecretName: settings.MorehRegistrySecretName,
-			GatewayName:             settings.GatewayName,
-			GatewayClass:            envs.GatewayClassName,
-			IstioRev:                envs.IstioRev,
-		}
-
-		values, err := utils.RenderTemplate(HeimdallValues, data)
-		Expect(err).NotTo(HaveOccurred(), "failed to render Heimdall values template")
-		Expect(utils.InstallHeimdall(envs.WorkloadNamespace, values)).To(Succeed())
-
-		if envs.SkipKind {
+		var err error
+		if !isKind {
 			By("creating model PV")
 			pvName, err = utils.CreateModelPV(envs.WorkloadNamespace)
 			Expect(err).NotTo(HaveOccurred(), "failed to create model PV")
@@ -72,15 +58,65 @@ var _ = Describe("Inference Performance", Label("performance"), Ordered, func() 
 			Expect(err).NotTo(HaveOccurred(), "failed to create model PVC")
 		}
 
+		By("installing Heimdall")
+		data := struct {
+			MorehRegistrySecretName string
+			GatewayName             string
+			GatewayClass            string
+			IstioRev                string
+			IsKind                  bool
+		}{
+			MorehRegistrySecretName: settings.MorehRegistrySecretName,
+			GatewayName:             settings.GatewayName,
+			GatewayClass:            envs.GatewayClassName,
+			IstioRev:                envs.IstioRev,
+			IsKind:                  isKind,
+		}
+
+		values, err := utils.RenderTemplate(HeimdallValues, data)
+		Expect(err).NotTo(HaveOccurred(), "failed to render Heimdall values template")
+		Expect(utils.InstallHeimdall(envs.WorkloadNamespace, values)).To(Succeed())
+
 		By("creating InferenceServices")
-		isKind := !envs.SkipKind
 		var prefillData, decodeData utils.InferenceServiceData
 		if isKind {
-			prefillData = utils.GetInferenceServiceData("prefill", envs.WorkloadNamespace, []string{"sim-prefill"}, envs.HFToken, envs.HFEndpoint, isKind)
-			decodeData = utils.GetInferenceServiceData("decode", envs.WorkloadNamespace, []string{"sim-decode"}, envs.HFToken, envs.HFEndpoint, isKind)
+			prefillData = utils.InferenceServiceData{
+				Name:         "prefill",
+				Namespace:    envs.WorkloadNamespace,
+				Replicas:     3,
+				TemplateRefs: []string{"sim-prefill"},
+				HFToken:      envs.HFToken,
+				HFEndpoint:   envs.HFEndpoint,
+				IsKind:       isKind,
+			}
+			decodeData = utils.InferenceServiceData{
+				Name:         "decode",
+				Namespace:    envs.WorkloadNamespace,
+				Replicas:     5,
+				TemplateRefs: []string{"sim-decode"},
+				HFToken:      envs.HFToken,
+				HFEndpoint:   envs.HFEndpoint,
+				IsKind:       isKind,
+			}
 		} else {
-			prefillData = utils.GetInferenceServiceData("prefill", envs.WorkloadNamespace, []string{"vllm-prefill", envs.TestTemplatePrefill, "vllm-hf-hub-offline"}, envs.HFToken, envs.HFEndpoint, isKind)
-			decodeData = utils.GetInferenceServiceData("decode", envs.WorkloadNamespace, []string{"vllm-decode", envs.TestTemplateDecode, "vllm-hf-hub-offline"}, envs.HFToken, envs.HFEndpoint, isKind)
+			prefillData = utils.InferenceServiceData{
+				Name:         "prefill",
+				Namespace:    envs.WorkloadNamespace,
+				Replicas:     3,
+				TemplateRefs: []string{"vllm-prefill", envs.TestTemplatePrefill, "vllm-hf-hub-offline"},
+				HFToken:      envs.HFToken,
+				HFEndpoint:   envs.HFEndpoint,
+				IsKind:       isKind,
+			}
+			decodeData = utils.InferenceServiceData{
+				Name:         "decode",
+				Namespace:    envs.WorkloadNamespace,
+				Replicas:     5,
+				TemplateRefs: []string{"vllm-decode", envs.TestTemplateDecode, "vllm-hf-hub-offline"},
+				HFToken:      envs.HFToken,
+				HFEndpoint:   envs.HFEndpoint,
+				IsKind:       isKind,
+			}
 		}
 		prefillServiceName, err = utils.CreateInferenceService(envs.WorkloadNamespace, InferenceServicePath, prefillData)
 		Expect(err).NotTo(HaveOccurred(), "failed to create prefill InferenceService")
@@ -103,6 +139,9 @@ var _ = Describe("Inference Performance", Label("performance"), Ordered, func() 
 		utils.DeleteInferenceService(envs.WorkloadNamespace, prefillServiceName)
 		utils.DeleteInferenceService(envs.WorkloadNamespace, decodeServiceName)
 
+		By("deleting Heimdall")
+		utils.UninstallHeimdall(envs.WorkloadNamespace)
+
 		if envs.SkipKind {
 			By("deleting model PVC")
 			utils.DeleteModelPVC(envs.WorkloadNamespace, pvcName)
@@ -110,9 +149,6 @@ var _ = Describe("Inference Performance", Label("performance"), Ordered, func() 
 			By("deleting model PV")
 			utils.DeleteModelPV(pvName)
 		}
-
-		By("deleting Heimdall")
-		utils.UninstallHeimdall(envs.WorkloadNamespace)
 
 		By("deleting Gateway resources")
 		utils.DeleteGatewayResource(envs.WorkloadNamespace, envs.GatewayClassName)

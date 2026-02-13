@@ -12,21 +12,11 @@ import (
 type InferenceServiceData struct {
 	Name         string
 	Namespace    string
+	Replicas     int
 	TemplateRefs []string
 	HFToken      string
 	HFEndpoint   string
 	IsKind       bool
-}
-
-func GetInferenceServiceData(name string, namespace string, templateRefs []string, hfToken string, hfEndpoint string, isKind bool) InferenceServiceData {
-	return InferenceServiceData{
-		Name:         name,
-		Namespace:    namespace,
-		TemplateRefs: templateRefs,
-		HFToken:      hfToken,
-		HFEndpoint:   hfEndpoint,
-		IsKind:       isKind,
-	}
 }
 
 // CreateInferenceService creates an InferenceService CR in the given namespace.

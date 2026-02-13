@@ -38,6 +38,8 @@ var _ = Describe("Quality Benchmark", Label("quality"), Ordered, func() {
 	SetDefaultEventuallyPollingInterval(settings.IntervalShort)
 
 	BeforeAll(func() {
+		isKind := !envs.SkipKind
+
 		By("creating workload namespace")
 		Expect(utils.CreateWorkloadNamespace(envs.WorkloadNamespace, envs.MIFNamespace)).To(Succeed())
 
@@ -73,12 +75,27 @@ var _ = Describe("Quality Benchmark", Label("quality"), Ordered, func() {
 
 		By("creating InferenceServices")
 		// PD disaggregation environment cannot run tests normally, so we test in aggregate environment
-		isKind := !envs.SkipKind
 		var vllmData utils.InferenceServiceData
 		if isKind {
-			vllmData = utils.GetInferenceServiceData("vllm", envs.WorkloadNamespace, []string{"sim"}, envs.HFToken, envs.HFEndpoint, isKind)
+			vllmData = utils.InferenceServiceData{
+				Name:         "vllm",
+				Namespace:    envs.WorkloadNamespace,
+				Replicas:     2,
+				TemplateRefs: []string{"sim"},
+				HFToken:      envs.HFToken,
+				HFEndpoint:   envs.HFEndpoint,
+				IsKind:       isKind,
+			}
 		} else {
-			vllmData = utils.GetInferenceServiceData("vllm", envs.WorkloadNamespace, []string{"vllm", envs.TestTemplateDecode, "vllm-hf-hub-offline"}, envs.HFToken, envs.HFEndpoint, isKind)
+			vllmData = utils.InferenceServiceData{
+				Name:         "vllm",
+				Namespace:    envs.WorkloadNamespace,
+				Replicas:     2,
+				TemplateRefs: []string{"vllm", envs.TestTemplateDecode, "vllm-hf-hub-offline"},
+				HFToken:      envs.HFToken,
+				HFEndpoint:   envs.HFEndpoint,
+				IsKind:       isKind,
+			}
 		}
 		vllmServiceName, err = utils.CreateInferenceService(envs.WorkloadNamespace, InferenceServicePath, vllmData)
 		Expect(err).NotTo(HaveOccurred(), "failed to create vllm InferenceService")

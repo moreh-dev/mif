@@ -56,6 +56,10 @@ The commit message should be structured as follows:
 
 ### E2E Test
 
+- **Version scope**:
+  - E2E tests cover only `vX.Y.Z` (release) and `vX.Y.Z-rc.N` (release candidate) version formats.
+  - Other version formats (e.g. dev builds, custom tags) are out of scope and should not be tested in E2E.
+
 - **Do not test resource specifications**:
   - Do not validate individual fields of the YAML file declaring the resource (resource spec).
   - Instead, create the resource and verify that its status reaches the expected state.
