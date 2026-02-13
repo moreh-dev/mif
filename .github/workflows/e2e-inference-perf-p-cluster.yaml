@@ -14,6 +14,11 @@ name: e2e-inference-perf-p-cluster
 # - MIF infrastructure: moai-inference-framework (Odin controller, etc.)
 # - Preset: moai-inference-preset
 # The test will only deploy heimdall and InferenceService in the test workload namespace.
+#
+# Result retrieval (after run):
+# Inference-perf uploads results to S3 and then cleans up the workload namespace.
+# To list or download result files from S3:
+#   aws s3 ls --profile s3 s3://moreh-benchmark/ --recursive
 
 on:
   workflow_dispatch:
