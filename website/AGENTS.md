@@ -9,6 +9,7 @@ This file defines rules for contributors and automation agents working in `websi
   ---
   title: <title>
   sidebar_label: <label>
+  sidebar_position: <position>
   ---
   ```
 - **Categories**: Every subfolder under `docs/` containing docs must have a `_category_.yaml` with `label` and `position`.
@@ -42,6 +43,8 @@ import TabItem from '@theme/TabItem';
 
 ### Code blocks
 
+https://docusaurus.io/docs/markdown-features/code-blocks
+
 ````mdx
 ```yaml
 image:
@@ -57,6 +60,8 @@ image:
   - Highlight lines containing variables in code blocks (e.g., ` ```yaml {2} `).
 
 ### Admonitions
+
+https://docusaurus.io/docs/markdown-features/admonitions
 
 ```mdx
 ::::info
