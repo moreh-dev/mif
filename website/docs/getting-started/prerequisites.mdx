@@ -1,10 +1,10 @@
 ---
-sidebar_position: 2
-
 title: 'Prerequisites'
+sidebar_position: 1
 ---
 
-import Tabs from '@theme/Tabs'; import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
 This document introduces the prerequisites for the MoAI Inference Framework and provides instructions on how to install them.
 
@@ -12,17 +12,15 @@ This document introduces the prerequisites for the MoAI Inference Framework and 
 To follow this document, you need to understand the configuration of the Kubernetes cluster where the MoAI Inference Framework will be installed. Since Moreh provides support for installing the MoAI Inference Framework at customer sites, if you encounter any difficulties, you can request assistance from the Moreh team.
 :::
 
----
-
 ## Target system
 
 To install the MoAI Inference Framework, you must have
 
-- Kubernetes 1.29 or later
-- At least one worker node equipped with accelerators supported by the MoAI Inference Framework (e.g., AMD GPUs)
-- `cluster-admin` privilege for the Kubernetes cluster
-- A StorageClass defined in the Kubernetes cluster (required for storing the monitoring metrics, model weights, etc.)
-- A Docker private registry accessible from the Kubernetes cluster
+* Kubernetes 1.29 or later
+* At least one worker node equipped with accelerators supported by the MoAI Inference Framework (e.g., AMD GPUs)
+* `cluster-admin` privilege for the Kubernetes cluster
+* A StorageClass defined in the Kubernetes cluster (required for storing the monitoring metrics, model weights, etc.)
+* A Docker private registry accessible from the Kubernetes cluster
 
 ---
 
@@ -58,13 +56,13 @@ helm repo update moreh
 
 The container images for the MoAI Inference Framework are distributed through a private repository on [Amazon ECR](https://aws.amazon.com/ecr/) `255250787067.dkr.ecr.ap-northeast-2.amazonaws.com`, and you need to obtain an authorization token to download them. To facilitate this, the `moai-inference-framework` chart defines the installation of an ECR token refresher. You need to specify your AWS credentials in the values file to configure the ECR token refresher.
 
-:::info
+:::warning
 **The AWS credentials (`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`) should have been provided to you along with your purchase or trial issuance of the MoAI Inference Framework**. If you did not receive this information, please contact your point of purchase separately.
 :::
 
 Create a `moai-inference-framework-values.yaml` file as follows. **You need to replace `<AWS_ACCESS_KEY_ID>` and `<AWS_SECRET_ACCESS_KEY>` with your own values**.
 
-```yaml {3,4}
+```yaml title="moai-inference-framework-values.yaml" {3-4}
 ecrTokenRefresher:
   aws:
     accessKeyId: <AWS_ACCESS_KEY_ID>
@@ -118,7 +116,7 @@ During the installation of the AMD GPU Operator, the GPU driver image needs to b
 
 Create a Docker registry secret in the `amd-gpu` namespace to enable access to the private registry. **Set the `<registry>`, `<username>`, and `<password>` values to the information for your private registry**.
 
-```shell
+```shell {3-5}
 kubectl create secret -n amd-gpu \
     docker-registry private-registry \
     --docker-server=<registry> \
@@ -128,14 +126,14 @@ kubectl create secret -n amd-gpu \
 
 Then, create a `gpu-operator-values.yaml` file with the following content. **Please replace `<registry>` on line 7 with the URL of your private registry**. You may also change the image name `amdgpu-driver`, if necessary, according to your private registry's policies.
 
-```yaml {7}
+```yaml title="gpu-operator-values.yaml" {7}
 deviceConfig:
   spec:
     driver:
       enable: true
-      version: '6.4.3'
+      version: "6.4.3"
       blacklist: true
-      image: '<registry>/amdgpu-driver'
+      image: "<registry>/amdgpu-driver"
       imageRegistrySecret:
         name: private-registry
       imageRegistryTLS:
@@ -180,7 +178,9 @@ Note that installing the operator and GPU driver may take some time. After the i
 kubectl get pods -n amd-gpu
 ```
 
-```shell
+Expected output:
+
+```
 NAME                                                              READY   STATUS    RESTARTS   AGE
 default-device-plugin-fxj66                                       1/1     Running   0          108s
 default-metrics-exporter-r2l6h                                    1/1     Running   0          108s
@@ -193,7 +193,7 @@ gpu-operator-node-feature-discovery-master-fc889959c-sx7wv        1/1     Runnin
 gpu-operator-node-feature-discovery-worker-4tnns                  1/1     Running   0          4m20s
 ```
 
-:::tip
+:::info
 You can monitor the installation progress using the `kubectl get pods -n amd-gpu -w` command instead.
 :::
 
@@ -211,7 +211,9 @@ You need to install the device drivers and OFED software for InfiniBand or RoCE 
 ibv_devices
 ```
 
-```shell
+Expected output:
+
+```
 device           node GUID
 <device_name>    <16-hex GUID>
 <device_name>    <16-hex GUID>
@@ -222,13 +224,13 @@ device           node GUID
 
 This section describes how to install the **rdma-shared-device-plugin**. See [k8s-rdma-shared-dev-plugin / README](https://github.com/Mellanox/k8s-rdma-shared-dev-plugin/blob/master/README.md) for more details.
 
-First, create a `rdma-shared-device-plugin.yaml` file as follows. **You need to replace `<device>` on line 22 with your RDMA NIC's network interface name**. If multiple NICs are installed on the server, you must list all interface names (e.g., `"devices": ["ib0", "ib1"]`).
+First, create a `rdma-shared-device-plugin.yaml` file as follows. **You need to replace `<device>` on line 21 with your RDMA NIC's network interface name**. If multiple NICs are installed on the server, you must list all interface names (e.g., `"devices": ["ib0", "ib1"]`).
 
-:::tip
+:::info
 You can check the network interface names using the `ip addr` command.
 :::
 
-```yaml {22}
+```yaml title="rdma-shared-device-plugin.yaml" {21}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -249,7 +251,7 @@ data:
           "resourceName": "hca",
           "rdmaHcaMax": 1000,
           "devices": [
-            <device>
+            "<device>"
           ]
         }
       ]
@@ -272,7 +274,7 @@ spec:
       app.kubernetes.io/instance: rdma-shared-device-plugin
   updateStrategy:
     rollingUpdate:
-      maxUnavailable: '30%'
+      maxUnavailable: "30%"
   template:
     metadata:
       labels:
@@ -335,7 +337,9 @@ You can verify that the rdma-shared-device-plugin pods are running using the fol
 kubectl get pods -n kube-system -l app.kubernetes.io/instance=rdma-shared-device-plugin
 ```
 
-```shell
+Expected output:
+
+```
 NAME                              READY   STATUS    RESTARTS   AGE
 rdma-shared-device-plugin-wh9fz   1/1     Running   0          7s
 ```
@@ -344,7 +348,7 @@ rdma-shared-device-plugin-wh9fz   1/1     Running   0          7s
 
 ## Node labeling for heterogeneous accelerators
 
-The `moai-accelerator` NodeFeatureRule enables the identification of heterogeneous accelerators by assigning vendor and model labels to nodes. This metadata facilitates targeted scheduling or automated selection of optimal accelerator. For a full list of supported hardware, please refer to [supported devices](./supported_devices.md).
+The `moai-accelerator` NodeFeatureRule enables the identification of heterogeneous accelerators by assigning vendor and model labels to nodes. This metadata facilitates targeted scheduling or automated selection of optimal accelerator. For a full list of supported hardware, please refer to [supported devices](../reference/supported-devices.mdx).
 
 Apply the `moai-accelerator` NodeFeatureRule using the following command.
 
@@ -369,7 +373,9 @@ You can verify the CRDs are installed using the following command.
 kubectl get crd | grep 'networking.k8s*.io'
 ```
 
-```shell
+Expected output:
+
+```
 gatewayclasses.gateway.networking.k8s.io            2025-12-12T02:03:07Z
 gateways.gateway.networking.k8s.io                  2025-12-12T02:03:07Z
 grpcroutes.gateway.networking.k8s.io                2025-12-12T02:03:07Z
@@ -378,9 +384,9 @@ inferencepools.inference.networking.k8s.io          2025-12-12T02:03:08Z
 referencegrants.gateway.networking.k8s.io           2025-12-12T02:03:07Z
 ```
 
-You can use any gateway controller compatible with the Gateway API Inference Extension. We recommend using either **Istio** or **Kgateway**, and installation instructions for both are provided below.
+You can use any gateway controller compatible with the Gateway API Inference Extension. using either **Istio** or **Kgateway** is recommended, and installation instructions for both are provided below.
 
-<Tabs>
+<Tabs groupId="gateway-class">
 <TabItem value="istio" label="Istio (Default)" default>
 
 Add the Istio Helm chart repository.
@@ -394,23 +400,23 @@ Install the Istio base chart.
 
 ```shell
 helm upgrade -i istio-base istio/base \
-    --version 1.28.1 \
+    --version 1.28.3 \
     -n istio-system \
     --create-namespace
 ```
 
 Create a `istiod-values.yaml` file and install the Istio control plane.
 
-```yaml
+```yaml title="istiod-values.yaml"
 pilot:
   env:
-    PILOT_ENABLE_ALPHA_GATEWAY_API: 'true'
-    ENABLE_GATEWAY_API_INFERENCE_EXTENSION: 'true'
+    PILOT_ENABLE_ALPHA_GATEWAY_API: "true"
+    ENABLE_GATEWAY_API_INFERENCE_EXTENSION: "true"
 ```
 
 ```shell
 helm upgrade -i istiod istio/istiod \
-    --version 1.28.1 \
+    --version 1.28.3 \
     -n istio-system \
     -f istiod-values.yaml
 ```
@@ -429,7 +435,7 @@ helm upgrade -i kgateway-crds oci://cr.kgateway.dev/kgateway-dev/charts/kgateway
 
 Create a `kgateway-values.yaml` file and install the Kgateway controller.
 
-```yaml
+```yaml title="kgateway-values.yaml"
 inferenceExtension:
   enabled: true
 ```

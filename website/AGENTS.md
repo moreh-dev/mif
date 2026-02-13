@@ -4,7 +4,8 @@ This file defines rules for contributors and automation agents working in `websi
 
 ## 1. Structure & Metadata
 
-- **Frontmatter**: All `.mdx` files must start with the following (wrap titles in single quotes):
+- **File Extension**: All documentation files must use the `.mdx` extension.
+- **Frontmatter**: All documentation files must start with the following (wrap titles in single quotes):
   ```mdx
   ---
   title: <title>
@@ -12,7 +13,7 @@ This file defines rules for contributors and automation agents working in `websi
   sidebar_position: <position>
   ---
   ```
-- **Categories**: Every subfolder under `docs/` containing docs must have a `_category_.yaml` with `label` and `position`.
+- **Categories**: Every subfolder under `docs/` containing docs must have a `_category_.yaml` with `label`, `position`, and `collapsed: false`.
 - **Placement**: Place new docs in appropriate subfolders (e.g., `getting-started`, `reference`). Create a new folder with `_category_.yaml` only if necessary.
 - **Artifacts**: Never edit `versioned_docs/` or `versioned_sidebars/`. Only edit source files in `docs/`.
 
