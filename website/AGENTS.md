@@ -59,6 +59,9 @@ image:
 - **Variables**:
   - Format as `<variableName>` (camelCase, no quotes).
   - Highlight lines containing variables in code blocks (e.g., ` ```yaml {2} `).
+- **No line number references in text**:
+  - Do not refer to specific line numbers in the descriptive text (e.g., avoid "Replace the value on line 4").
+  - Instead, refer to the content or field names (e.g., "Replace the `tags` value").
 
 ### Admonitions
 

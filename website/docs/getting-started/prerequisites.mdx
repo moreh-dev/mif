@@ -1,10 +1,10 @@
 ---
-title: 'Prerequisites'
+title: Prerequisites
 sidebar_position: 1
 ---
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
 
 This document introduces the prerequisites for the MoAI Inference Framework and provides instructions on how to install them.
 
@@ -16,11 +16,11 @@ To follow this document, you need to understand the configuration of the Kuberne
 
 To install the MoAI Inference Framework, you must have
 
-* Kubernetes 1.29 or later
-* At least one worker node equipped with accelerators supported by the MoAI Inference Framework (e.g., AMD GPUs)
-* `cluster-admin` privilege for the Kubernetes cluster
-* A StorageClass defined in the Kubernetes cluster (required for storing the monitoring metrics, model weights, etc.)
-* A Docker private registry accessible from the Kubernetes cluster
+- Kubernetes 1.29 or later
+- At least one worker node equipped with accelerators supported by the MoAI Inference Framework (e.g., AMD GPUs)
+- `cluster-admin` privilege for the Kubernetes cluster
+- A StorageClass defined in the Kubernetes cluster (required for storing the monitoring metrics, model weights, etc.)
+- A Docker private registry accessible from the Kubernetes cluster
 
 ---
 
@@ -124,7 +124,7 @@ kubectl create secret -n amd-gpu \
     --docker-password=<password>
 ```
 
-Then, create a `gpu-operator-values.yaml` file with the following content. **Please replace `<registry>` on line 7 with the URL of your private registry**. You may also change the image name `amdgpu-driver`, if necessary, according to your private registry's policies.
+Then, create a `gpu-operator-values.yaml` file with the following content. **Please replace `<registry>` with the URL of your private registry**. You may also change the image name `amdgpu-driver`, if necessary, according to your private registry's policies.
 
 ```yaml title="gpu-operator-values.yaml" {7}
 deviceConfig:
@@ -224,7 +224,7 @@ device           node GUID
 
 This section describes how to install the **rdma-shared-device-plugin**. See [k8s-rdma-shared-dev-plugin / README](https://github.com/Mellanox/k8s-rdma-shared-dev-plugin/blob/master/README.md) for more details.
 
-First, create a `rdma-shared-device-plugin.yaml` file as follows. **You need to replace `<device>` on line 21 with your RDMA NIC's network interface name**. If multiple NICs are installed on the server, you must list all interface names (e.g., `"devices": ["ib0", "ib1"]`).
+First, create a `rdma-shared-device-plugin.yaml` file as follows. **You need to replace `<device>` with your RDMA NIC's network interface name**. If multiple NICs are installed on the server, you must list all interface names (e.g., `"devices": ["ib0", "ib1"]`).
 
 :::info
 You can check the network interface names using the `ip addr` command.
