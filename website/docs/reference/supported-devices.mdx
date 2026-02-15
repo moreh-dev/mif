@@ -1,16 +1,17 @@
 ---
 title: Supported devices
+sidebar_label: Supported devices
 sidebar_position: 3
 ---
 
 ## Accelerator labels
 
-The MoAI Inference Framework provides features to efficiently utilize clusters with heterogeneous accelerators.
+The types of accelerators used to build AI data centers will continue to diversify, and the MoAI Inference Framework provides features to efficiently utilize clusters with heterogeneous accelerators.
 
-Each accelerator is identified by labels prefixed with `moai.moreh.io`. Users can specificy the accelerator on which a model should run, or allow the framework to automatically select the optimal accelerator. Below is the list of accelerator labels supported by the MoAI Inference Framework.
+Each accelerator is identified by labels prefixed with `moai.moreh.io`. Users can either specify the accelerator on which a model should run, or allow the framework to automatically select the optimal accelerator. Below is the list of accelerator labels supported by the MoAI Inference Framework.
 
 | Label                                                                                            | Accelerator                     |
-| :----------------------------------------------------------------------------------------------- | :------------------------------ |
+| ------------------------------------------------------------------------------------------------ | ------------------------------- |
 | `moai.moreh.io/accelerator.vendor: amd`<br/>`moai.moreh.io/accelerator.model: mi355x`            | AMD Instinct MI355X GPU         |
 | `moai.moreh.io/accelerator.vendor: amd`<br/>`moai.moreh.io/accelerator.model: mi350x`            | AMD Instinct MI350X GPU         |
 | `moai.moreh.io/accelerator.vendor: amd`<br/>`moai.moreh.io/accelerator.model: mi325x`            | AMD Instinct MI325X GPU         |
@@ -42,9 +43,7 @@ You can use the following command to see which accelerators are currently availa
 kubectl get nodes -L moai.moreh.io/accelerator.vendor,moai.moreh.io/accelerator.model
 ```
 
-Expected output:
-
-```shell
+```shell title="Expected output"
 NAME         STATUS     ROLES           AGE    VERSION   ACCELERATOR.VENDOR   ACCELERATOR.MODEL
 cpu-001      Ready      control-plane   1d     v1.32.5
 mi250-001    Ready      <none>          1d     v1.32.5   amd                  mi250
@@ -57,9 +56,7 @@ To list nodes that match a specific label, use the `-l` option:
 kubectl get nodes -l moai.moreh.io/accelerator.model=mi300x
 ```
 
-Expected output:
-
-```shell
+```shell title="Expected output"
 NAME         STATUS   ROLES    AGE   VERSION
 mi300x-001   Ready    <none>   1d   v1.32.5
 ```

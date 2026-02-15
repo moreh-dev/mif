@@ -1,15 +1,18 @@
 ---
 title: Quickstart
+sidebar_label: Quickstart
 sidebar_position: 2
 ---
 
-import Tabs from "@theme/Tabs";
-import TabItem from "@theme/TabItem";
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
 This quickstart launches two vLLM instances (pods) of the Llama 3.2 1B Instruct model and serves them through a single endpoint as an example. Please make sure to install all [prerequisites](./prerequisites.mdx), including the following versions of the components, before starting this quickstart guide.
 
 - **moai-inference-framework** v0.2.0
 - **moai-inference-preset** v0.2.0
+
+---
 
 ## Required tools
 
@@ -164,7 +167,7 @@ spec:
   gatewayClassName: istio
   infrastructure:
     parametersRef:
-      group: ""
+      group: ''
       kind: ConfigMap
       name: mif-gateway-infrastructure
   listeners:
@@ -310,7 +313,9 @@ For more information on presets, please refer to the [Odin Preset](/features/pre
 To enable the vLLM pods to download model parameters from Hugging Face, you must generate a Hugging Face token at [Hugging Face / Access Tokens](https://huggingface.co/settings/tokens). In addition, you need to accept the model license at [meta-llama/Llama-3.2-1B-Instruct](https://huggingface.co/meta-llama/Llama-3.2-1B-Instruct).
 
 :::info
-In production environments, it is common to download the model parameters to a storage volume in advance and load them at runtime. Refer to the [Hugging Face model management with persistent volume](/best_practices/hf_model_management_with_pv) for more details.
+
+In production environments, it is common to download the model parameters to a storage volume in advance and load them at runtime. Refer to the [Hugging Face model management with persistent volume](../operations/hf-model-management-with-pv.mdx) for more details.
+
 :::
 
 Create a `vllm-llama3-1b-instruct-tp2.yaml` file with the following contents. **Please replace `<huggingFaceToken>` with your Hugging Face token that has accepted the model license**.

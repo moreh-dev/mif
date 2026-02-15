@@ -1,10 +1,10 @@
 ---
-title: Heimdall Plugin
-sidebar_label: Plugin
+title: Heimdall plugins
+sidebar_label: Plugins
 sidebar_position: 2
 ---
 
-## Profile Handlers
+## Profile handlers
 
 ### `single-profile-handler`
 
@@ -25,6 +25,8 @@ Handles scheduler profiles for Prefill-Decode (PD) disaggregation.
 | `prefixPluginName` | `string` | `"prefix-cache-scorer"` | Name of the prefix cache plugin to use.              |
 | `hashBlockSize`    | `int`    | `64`                    | Block size used for hashing tokens.                  |
 | `primaryPort`      | `int`    | `0`                     | Port number of the primary container (0 to disable). |
+
+---
 
 ## Filters
 
@@ -60,6 +62,8 @@ Filters for pods designated with the `decode` role. It retains pods that satisfy
 - The label `mif.moreh.io/role` is not set.
 
 No parameters.
+
+---
 
 ## Scorers
 
@@ -246,6 +250,8 @@ Scores pods based on the length of the prefix match for the request prompt.
 | `maxPrefixBlocksToMatch` | `int`  | `256`   | Maximum number of blocks to match for prefix caching.         |
 | `lruCapacityPerServer`   | `int`  | `31250` | Estimated LRU capacity per model server (in blocks).          |
 
+---
+
 ## Pickers
 
 ### `max-score-picker`
@@ -272,7 +278,9 @@ Picks pod(s) based on weighted random sampling derived from their scores.
 | :------------------ | :---- | :------ | :----------------------------------- |
 | `maxNumOfEndpoints` | `int` | `1`     | Maximum number of endpoints to pick. |
 
-## Response Plugins
+---
+
+## Response plugins
 
 ### `response-header-handler`
 

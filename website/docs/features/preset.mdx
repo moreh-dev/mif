@@ -1,0 +1,283 @@
+---
+sidebar_position: 1
+sidebar_label: Presets
+title: Presets
+---
+
+The MoAI Inference Framework provides a set of pre-configured `InferenceServiceTemplate`s, known as presets. These presets encapsulate standard configurations for various models and hardware setups, simplifying the deployment of inference services.
+
+:::warning
+
+This feature requires cluster-level configuration. Please confirm with your cluster administrator that the [prerequisites](../getting-started/prerequisites.mdx) have been met.
+
+:::
+
+---
+
+## Using a complete preset
+
+To use a preset, you reference it in the `spec.templateRefs` field of your `InferenceService`. You can specify multiple templates; they will be merged in the order listed, with later templates overriding earlier ones.
+
+`templateRefs` searches for templates in the following order:
+
+1. The namespace where the `InferenceService` is created.
+2. The `mif` namespace, where the Odin operator is typically installed.
+
+You can view the available presets in your cluster using the following command:
+
+```shell
+kubectl get inferenceservicetemplate -n mif -l mif.moreh.io/template.type=preset
+```
+
+For example, to deploy a vLLM service for the Llama 3.2 1B Instruct model on AMD MI250 GPUs, you can combine the base `vllm` template with the model-specific `vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2` template:
+
+```yaml {18}
+apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceService
+metadata:
+  name: vllm-llama3-1b-instruct-tp2
+spec:
+  replicas: 2
+  inferencePoolRefs:
+    - name: heimdall
+  templateRefs:
+    - name: vllm
+    - name: vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2
+  template:
+    spec:
+      containers:
+        - name: main
+          env:
+            - name: HF_TOKEN
+              value: <huggingFaceToken>
+```
+
+---
+
+## Overriding preset configuration
+
+You can customize or override the configuration defined in the presets by providing a `spec.template` in your `InferenceService`. The fields in `spec.template` take precedence over those in the referenced templates.
+
+:::warning
+
+When using certain runtime-bases (e.g., `vllm-decode-dp`), `workerTemplate` is used instead of `template` to define the pod configuration. Therefore, you must use `spec.workerTemplate` instead of `spec.template` when overriding values.
+
+:::
+
+To identify which values to override, you can inspect the contents of the `InferenceServiceTemplate` resources. For example, to check the runtime-base configuration (`vllm`) and the model-specific configuration (`vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2`):
+
+```shell
+kubectl get inferenceservicetemplate vllm -n mif -o yaml
+```
+
+```shell
+kubectl get inferenceservicetemplate -n mif \
+    vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2 -o yaml
+```
+
+```shell title="Expected output"
+apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceServiceTemplate
+metadata:
+  name: vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2
+  namespace: mif
+  # ... (other fields)
+spec:
+  # ... (other fields)
+  template:
+    spec:
+      # ... (other fields)
+      containers:
+        # ... (other fields)
+        - name: main
+          # ... (other fields)
+          env:
+            # ... (other fields)
+            - name: ISVC_MODEL_NAME
+              value: meta-llama/Llama-3.2-1B-Instruct
+            - name: ISVC_EXTRA_ARGS
+              value: --disable-uvicorn-access-log --no-enable-log-requests
+                --quantization None --max-model-len 8192 --max-num-batched-tokens 32768
+                --no-enable-prefix-caching --kv-transfer-config '{"kv_connector":"NixlConnector","kv_role":"kv_both"}'
+```
+
+This command reveals the default configuration, including containers, environment variables, and resource limits. You can then reference this output to determine the correct structure and values to include in your `spec.template`.
+
+A common use case is modifying the model execution arguments. For instance, the `vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2` preset disables prefix caching by default (`--no-enable-prefix-caching`) in `ISVC_EXTRA_ARGS`. You can enable it by overriding the environment variable in your `InferenceService`:
+
+```yaml {22,25}
+apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceService
+metadata:
+  name: vllm-llama3-1b-instruct-tp2
+spec:
+  # ... (other fields)
+  templateRefs:
+    - name: vllm
+    - name: vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2
+  template:
+    spec:
+      containers:
+        - name: main
+          env:
+            - name: ISVC_EXTRA_ARGS
+              value: >-
+                --disable-uvicorn-access-log
+                --no-enable-log-requests
+                --quantization None
+                --max-model-len 8192
+                --max-num-batched-tokens 32768
+                --enable-prefix-caching
+                --kv-transfer-config '{"kv_connector":"NixlConnector","kv_role":"kv_both"}'
+            - name: HF_TOKEN
+              value: <huggingFaceToken>
+```
+
+---
+
+## Using a runtime-base
+
+If a preset for your specific model or hardware configuration is not available, you can use only the runtime-base (e.g., `vllm-decode-dp`) and manually specify environment variables, resources, scheduler requirements (node selector and tolerations), etc.
+
+You can view the available runtime-bases in your cluster using the following command:
+
+```shell
+kubectl get inferenceservicetemplate -n mif -l mif.moreh.io/template.type=runtime-base
+```
+
+To identify which values to override, you can inspect the contents of the runtime-bases:
+
+```shell
+kubectl get inferenceservicetemplate -n mif vllm-decode-dp -o yaml
+```
+
+The following environment variables are frequently overridden to customize the behavior of the runtime-base.
+
+- **`ISVC_MODEL_NAME`**
+  - The name of the model to serve (e.g., `meta-llama/Llama-3.2-1B-Instruct`).
+- **`ISVC_MODEL_PATH`**
+  - The Hugging Face model ID or the local path to the model weights.
+  - Defaults to `$ISVC_MODEL_NAME` to use the Hugging Face model ID. Set this only when using a locally downloaded model.
+- **`ISVC_EXTRA_ARGS`**
+  - Additional arguments passed to the inference engine (e.g., vLLM). Since parallelism configurations are handled by the runtime-base, use this variable to add other model-specific arguments.
+- **`ISVC_PRE_PROCESS_SCRIPT`**
+  - A script to run before the inference server starts.
+
+For example, the following `InferenceService` uses `vllm-decode-dp` as a runtime-base and serves `meta-llama/Llama-3.2-1B-Instruct`.
+
+```yaml {28}
+apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceService
+metadata:
+  name: my-custom-model
+spec:
+  replicas: 1
+  inferencePoolRefs:
+    - name: heimdall
+  templateRefs:
+    - name: vllm-decode-dp # runtime-base only
+  parallelism:
+    data: 2
+    tensor: 1
+  workerTemplate: # Use workerTemplate for vllm-decode-dp
+    spec:
+      containers:
+        - name: main
+          env:
+            - name: ISVC_MODEL_NAME
+              value: meta-llama/Llama-3.2-1B-Instruct
+            - name: ISVC_EXTRA_ARGS
+              value: >-
+                --disable-uvicorn-access-log
+                --no-enable-log-requests
+                --quantization None
+                --max-model-len 4096
+            - name: HF_TOKEN
+              value: <huggingFaceToken>
+          resources:
+            limits:
+              amd.com/gpu: 1
+            requests:
+              amd.com/gpu: 1
+      nodeSelector:
+        moai.moreh.io/accelerator.vendor: amd
+        moai.moreh.io/accelerator.model: mi300x
+      tolerations:
+        - key: amd.com/gpu
+          operator: Exists
+          effect: NoSchedule
+```
+
+---
+
+## Creating a reusable preset
+
+You can turn the configuration above into a reusable preset (`InferenceServiceTemplate`) by removing the `replicas`, `inferencePoolRefs`, and `templateRefs` fields and changing the `kind` to `InferenceServiceTemplate`. Also, remove the configurations that users need to provide in the `InferenceService` (e.g., `HF_TOKEN`).
+
+**For example:**
+
+```yaml {10} title="custom-prefill-dp16ep.yaml"
+apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceServiceTemplate
+metadata:
+  name: custom-prefill-dp16ep
+spec:
+  parallelism:
+    data: 16
+    dataLocal: 8
+    expert: true
+  workerTemplate: # Use workerTemplate for vllm-prefill-dp runtime-base.
+    spec:
+      containers:
+        - name: main
+          env:
+            - name: ISVC_MODEL_NAME
+              value: deepseek-ai/DeepSeek-R1
+            - name: ISVC_EXTRA_ARGS
+              value: >-
+                --disable-uvicorn-access-log
+                --no-enable-log-requests
+                # ... (other args)
+            # ... (other envs)
+          resources:
+            limits:
+              amd.com/gpu: '8'
+            requests:
+              amd.com/gpu: '8'
+      nodeSelector:
+        moai.moreh.io/accelerator.vendor: amd
+        moai.moreh.io/accelerator.model: mi300x
+      tolerations:
+        - key: amd.com/gpu
+          operator: Exists
+          effect: NoSchedule
+```
+
+Register this custom preset to your namespace:
+
+```shell
+kubectl apply -n <yourNamespace> -f custom-prefill-dp16ep.yaml
+```
+
+To use this custom preset, you can reference it alongside the runtime-base in your `InferenceService`.
+
+:::warning
+
+`InferenceServiceTemplate`s installed in a non-system namespace are available only within that namespace.
+
+:::
+
+```yaml title="custom-prefill.yaml"
+apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceService
+# ... (other fields)
+spec:
+  # ... (other fields)
+  templateRefs:
+    - name: vllm-prefill-dp
+    - name: custom-prefill-dp16ep
+```
+
+```shell
+kubectl apply -n <yourNamespace> -f custom-prefill.yaml
+```
