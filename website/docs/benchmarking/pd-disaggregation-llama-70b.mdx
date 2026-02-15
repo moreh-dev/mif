@@ -1,0 +1,201 @@
+---
+sidebar_position: 2
+sidebar_label: PD Disaggregation (Llama 70B)
+title: PD Disaggregation (Llama 70B)
+---
+
+:::info
+This page describes a benchmarking scenario for [Prefill-decode disaggregation](../features/prefill-decode-disaggregation.mdx).
+:::
+
+---
+
+## Example: PD disaggregation on Llama 3.3 70B
+
+### Benchmarking environment and configuration
+
+| Item                  | Description                                                                                 |
+| --------------------- | ------------------------------------------------------------------------------------------- |
+| Servers               | 4x servers, each equipped with 4x AMD MI250 GPUs                                            |
+| Networking            | InfiniBand HDR                                                                              |
+| Inference Engine      | vLLM (0.10.1rc2.dev59+g0167efe20)                                                           |
+| Model                 | `meta-llama/Llama-3.3-70B-Instruct`                                                         |
+| PD disaggregation     | 6x prefill, 2x decode instances                                                             |
+| Benchmarking tool     | [genai-bench](https://github.com/sgl-project/genai-bench)                                   |
+| Benchmarking scenario | Input sequence length ~ N(3000, 300), output sequence length ~ N(200, 20), concurrency = 64 |
+
+### Deployment
+
+The following configuration files show how to set up PD disaggregation on the **Heimdall** scheduler and the **Odin** inference service. Prefill-only and decode-only vLLM instances each use two AMD MI250 GPUs. Six prefill instances and two decode instances &mdash; a total of eight instances run across four servers in this example.
+
+:::info
+In the `inference-service-values.yaml` file, the number of `amd.com/gpu` is set to 4 because each MI250 GPU is recognized as two logical devices at the device driver level. Therefore, four logical devices correspond to two physical GPUs. This behavior is specific to the MI250 model.
+:::
+
+<details>
+<summary>Heimdall scheduler configuration</summary>
+
+```yaml heimdall-values.yaml
+global:
+  imagePullSecrets:
+    - name: moreh-registry
+
+config:
+  apiVersion: inference.networking.x-k8s.io/v1alpha1
+  kind: EndpointPickerConfig
+  plugins:
+    - type: pd-profile-handler
+    - type: prefill-filter
+    - type: decode-filter
+    - type: queue-scorer
+    - type: max-score-picker
+      parameters:
+        maxNumOfEndpoints: 2
+  schedulingProfiles:
+    - name: prefill
+      plugins:
+        - pluginRef: prefill-filter
+        - pluginRef: queue-scorer
+        - pluginRef: max-score-picker
+    - name: decode
+      plugins:
+        - pluginRef: decode-filter
+        - pluginRef: queue-scorer
+        - pluginRef: max-score-picker
+
+gateway:
+  name: mif
+  gatewayClassName: istio
+
+serviceMonitor:
+  labels:
+    release: prometheus-stack
+```
+
+</details>
+
+<details>
+<summary>Odin inference service configuration</summary>
+
+```yaml inference-service-values.yaml
+global:
+  imagePullSecrets:
+    - name: moreh-registry
+
+extraArgs:
+  - meta-llama/Llama-3.3-70B-Instruct
+  - --no-enable-log-requests
+  - --disable-uvicorn-access-log
+  - --quantization
+  - 'None'
+  - --kv-transfer-config
+  - '{"kv_connector":"NixlConnector", "kv_role":"kv_both"}'
+  - --no-enable-prefix-caching
+  - --tensor-parallel-size
+  - '4'
+  - --max-num-batched-tokens
+  - '8192'
+
+extraEnvVars:
+  - name: VLLM_NIXL_SIDE_CHANNEL_HOST
+    valueFrom:
+      fieldRef:
+        fieldPath: status.podIP
+  - name: UCX_TLS
+    value: rocm_copy,rocm_ipc,self,sm,rc_x
+  - name: HF_TOKEN
+    value: '<huggingfaceToken>'
+
+_common: &common
+  image:
+    repository: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/quickstart/moreh-vllm
+    tag: '20250915.1'
+
+  resources:
+    requests:
+      amd.com/gpu: '4'
+      mellanox/hca: '1'
+    limits:
+      amd.com/gpu: '4'
+      mellanox/hca: '1'
+
+  podMonitor:
+    labels:
+      release: prometheus-stack
+
+decode:
+  replicas: 2
+
+  <<: *common
+
+prefill:
+  replicas: 6
+
+  <<: *common
+```
+
+</details>
+
+Run the following command to deploy the services.
+
+```shell
+helm upgrade -i heimdall moreh/heimdall \
+    --version v0.5.0 \
+    -n mif \
+    -f heimdall-values.yaml
+```
+
+```shell
+helm upgrade -i inference-service moreh/inference-service \
+    --version v0.3.1 \
+    -n mif \
+    -f inference-service-values.yaml
+```
+
+### Benchmarking
+
+Use the **genai-bench** tool as follows to measure performance for the benchmarking scenario described above. Note that the `--api-base` option must be set to your actual endpoint URL.
+
+```shell
+genai-bench benchmark \
+  --api-backend vLLM \
+  --api-key anything \
+  --api-base http://mif-istio.mif.svc.cluster.local \
+  --api-model-name meta-llama/Llama-3.3-70B-Instruct \
+  --model-tokenizer meta-llama/Llama-3.3-70B-Instruct \
+  --task text-to-text \
+  --max-time-per-run 1000 \
+  --max-requests-per-run 3200 \
+  --server-engine vLLM \
+  --traffic-scenario "N(3000,300)/(200,20)" \
+  --num-concurrency 64 \
+  --warmup-ratio 0.05 \
+  --cooldown-ratio 0.05
+```
+
+### Experimental results
+
+We compared the performance of our PD disaggregation setup with that of a baseline configuration using a Kubernetes Service, where requests were simply distributed in a round-robin manner across eight vLLM instances without disaggregation. Time per output token (TPOT) was reduced by approximately 30% (133 → 96 ms), and as a result, the total benchmark runtime decreased by about 20% (1428.6 → 1165.8 s), even though time to first token (TTFT) was sacrificed.
+
+**End-to-end latency:**
+
+| Router      | PD disaggregation | Total duration (s) | Mean   | P50    | P90    | P95    | P99    |
+| ----------- | ----------------- | ------------------ | ------ | ------ | ------ | ------ | ------ |
+| Heimdall    | Applied           | 1165.8             | 22.826 | 22.620 | 26.734 | 28.103 | 30.582 |
+| K8s Service | Not applied       | 1428.6             | 28.107 | 27.858 | 31.723 | 33.231 | 35.352 |
+
+**TTFT (time to first token):**
+
+| Router      | PD disaggregation | Mean (s) | P50    | P90    | P95    | P99    |
+| ----------- | ----------------- | -------- | ------ | ------ | ------ | ------ |
+| Heimdall    | Applied           | 3.7633   | 3.1132 | 6.9578 | 8.3785 | 10.023 |
+| K8s Service | Not applied       | 1.6022   | 1.5994 | 1.8094 | 1.9000 | 2.0133 |
+
+**TPOT (time per output token):**
+
+| Router      | PD disaggregation | Mean (ms) | P50    | P90    | P95    | P99    |
+| ----------- | ----------------- | --------- | ------ | ------ | ------ | ------ |
+| Heimdall    | Applied           | 96.029    | 96.166 | 101.29 | 103.34 | 105.94 |
+| K8s Service | Not applied       | 133.34    | 133.14 | 141.30 | 143.36 | 147.86 |
+
+However, the degradation in TTFT also implies that PD disaggregation should be applied carefully depending on the SLO. The method for automating scheduling in an SLO-driven manner is described in a separate document.

@@ -1,0 +1,125 @@
+---
+sidebar_position: 2
+sidebar_label: Prefix Cache Routing
+title: Prefix Cache Routing
+---
+
+# Prefix cache-aware routing
+
+Prefix caching refers to a technique that stores the KV cache from previous queries, allowing subsequent queries with an identical prefix to reuse it, thereby eliminating redundant computation and improving performance. Since multiple queries often share common prefixes &mdash; such as system prompts, conversation history, or contextual documents, &mdash; recomputing the KV cache for every request would be highly inefficient.
+
+In a system composed of multiple inference instances (Pods), each instance maintains its own (L1) prefix cache in GPU memory. As a result, the cache hit rate (the length of the cached prefix) can vary depending on which instance a request is routed to. Prefix cache-aware routing calculates the cache hit rate of the given request for each Pod and prioritizes routing to the Pod with the highest cache coverage. This reduces redundant KV computation and improves both time to first token (TTFT) and overall throughput.
+
+However, in real-world inference systems, the cache hit rate alone cannot serve as the sole routing criterion. It must be considered alongside other factors &mdash; such as the workload characteristics of the requests and the current state of each Pod &mdash; to make optimal routing decisions.
+
+---
+
+## Key features
+
+- The **Heimdall** scheduler tokenizes the request prompt, calculates the cache hit rate for each Pod, and assigns a normalized score to each Pod so that it can be used as a routing decision criterion. It continuously receives updates on each Pod's cache status through ZMQ events.
+- The framework can automatically determine how much importance to assign to prefix cache-aware routing based on the given service level objectives (SLOs) and the computation characteristics of the GPUs (the penalty of KV cache recomputation).
+
+---
+
+## Scorer
+
+Prefix cache-aware routing is applied by enabling and configuring **precise-prefix-cache-scorer** in the **Heimdall** scheduler. The following configuration file shows an example of setting up the scorer, including each pod's prefix cache information and the model tokenizer details.
+
+```yaml heimdall-values.yaml
+...
+config:
+  apiVersion: inference.networking.x-k8s.io/v1alpha1
+  kind: EndpointPickerConfig
+  plugins:
+    ...
+    - type: precise-prefix-cache-scorer
+      parameters:
+        indexerConfig:
+          prefixStoreConfig:
+            cacheSize: 500000
+            blockSize: 256
+          tokenProcessorConfig:
+            blockSize: 16
+            hashSeed: "12345"
+          kvBlockIndexConfig:
+            inMemoryConfig:
+              size: 100000000
+              podCacheSize: 10
+            enableMetrics: true
+          tokenizersPoolConfig:
+            workersCount: 8
+            minPrefixOverlapRatio: 0.8
+            huggingFaceToken: "<huggingFaceToken>"
+            tokenizersCacheDir: "/tmp"
+        kvEventsConfig:
+          zmqEndpoint: "tcp://*:5557"
+          topicFilter: "kv@"
+          concurrency: 16
+    - type: max-score-picker
+      parameters:
+        maxNumOfEndpoints: 2
+  schedulingProfiles:
+    - name: default
+      plugins:
+        ...
+        - pluginRef: precise-prefix-cache-scorer
+        - pluginRef: max-score-picker
+        ...
+...
+```
+
+### Tokenizer and prefix store
+
+Each vLLM instance (pod) manages its own prefix cache, which uses tokenized sequences rather than raw prompts as cache keys. Therefore, to determine prefix cache hit rates, the scorer must first tokenize each incoming prompt using the model's tokenizer.
+
+Although multiple worker processes are used to increase concurrency, tokenizing every request can still introduce significant overhead. To reduce this cost, the scorer maintains a cache called the **prefix store**, which holds previously computed tokenization results. It uses a combination of model (to identify the tokenizer) and prompt as the key, and the tokenized sequence as the value.
+
+If a large portion of a new request's prompt prefix &mdash; for example, more than 80% &mdash; has already been tokenized, the scorer simply reuses cached results to estimate prefix cache hit rates. It even skips tokenizing the remaining unmatched suffix, since calculating the rate using only the first >80% of the prompt yields results nearly identical to those obtained with the full prompt. This is especially reasonable because the goal is not to compute an exact hit rate value, but to identify pods with more prefix cache hits.
+
+**Parameters:**
+
+- `indexerConfig.prefixStoreConfig`: configuration for the prefix store. `cacheSize * blockSize` will be the capacity of the prefix store.
+  - `cacheSize`: the maximum number of blocks.
+  - `blockSize`: the number of characters in each block.
+- `indexerConfig.tokenizersPoolConfig`: configuration for the tokenizer worker processes.
+  - `workersCount`: the number of workers.
+  - `mixPrefixOverlapRatio`: threshold for reusing cached results in the prefix store. A value between 0 and 1.
+  - `huggingFaceToken`: Hugging Face token required to download the tokenizer.
+  - `tokenizersCacheDir`: Tokenizer download path.
+
+### Token processor
+
+vLLM uses block hashes to efficiently look up all possible prefixes of the current input sequence in the prefix cache. For a given sequence, the first block (the first _B_ tokens) has one hash value, the first and second blocks together (the first _2B_ tokens) have another, ..., and finally the entire sequence has its own last hash value. These hash values serve as actual keys for the prefix cache. For detailed behavior, please refer to the [Automatic Prefix Caching](https://docs.vllm.ai/en/latest/design/prefix_caching/) page.
+
+To emulate vLLM's prefix cache access, the scorer must also compute the block hashes for a given request in the same way as vLLM does.
+
+**Parameters:**
+
+- `indexerConfig.tokenProcessorConfig`
+  - `blockSize`: hash block size, must be identical to the vLLM configuration of each pod.
+  - `hashSeed`: must be identical to vLLM's `PYTHONHASHSEED` of each pod.
+
+### KV block index
+
+Each vLLM instance (pod) publishes events (`BlockStored`, `BlockRemoved`, and `AllCacheCleared`) via ZMQ whenever its prefix cache is updated. The scorer subscribes to the ZMQ channels of all pods to receive these events, thereby maintaining a complete view of the overall prefix cache status. This information is stored in a data structure called the **KV block index**.
+
+The KV block index uses a prefix hash value as the key and stores a list of pods that hold the corresponding KV cache as the value. KV cache values for the same prefix may exist on multiple pods (since previous requests with that prefix could have been routed to different pods), so the value in the KV block index must be a list of pods.
+
+For each incoming request, the scorer tokenizes the prompt into blocks and hashes each block to query the KV block index. The pod that holds the largest number of matching blocks is considered to have the highest cache hit rate.
+
+**Parameters:**
+
+- `indexerConfig.kvBlockIndexConfig`: configurations for the KV block index.
+  - `inMemoryConfig.size`: the maximum number of entries (hash keys).
+  - `inMemoryConfig.podCacheSize`: the maximum length of the pod list for each hash key. If the KV cache for a given prefix is actually stored in more than `podCacheSize` pods, only `podCacheSize` of them are selectively recorded. However, if this value is larger than the total number of vLLM worker pods, it does not affect the result of selecting the pod with the highest cache hit rate.
+  - `enableMetrics`: enables Prometheus to collect metrics related to the KV block index.
+- `kvEventsConfig`: ZMQ subscription configuration.
+  - `zmqEndpoint`: ZMQ endpoint for communication with vLLM pods.
+  - `topicFilter`: a string used to filter prefix cache events only.
+  - `concurrency`: the number of workers for receiving ZMQ events and maintaining the KV block index.
+
+---
+
+:::info
+**Benchmark Results**: See [Prefix Cache Routing (Qwen 32B)](/benchmarking/prefix-cache-aware-routing-qwen3-32b.mdx) for performance comparisons.
+:::

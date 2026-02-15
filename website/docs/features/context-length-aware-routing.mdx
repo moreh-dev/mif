@@ -1,0 +1,278 @@
+---
+sidebar_position: 6
+sidebar_label: Context Length-Aware Routing
+title: Context Length-Aware Routing
+---
+
+Context length-aware routing filters and scores pods based on the context length (token count) of LLM requests. This enables routing requests to pods optimized for specific context length ranges, improving resource utilization and performance.
+
+---
+
+## Key features
+
+- The **Heimdall** scheduler supports context length-aware filtering and scoring to route requests to appropriate pods.
+- Pods can be labeled with supported context length ranges, allowing flexible resource allocation based on request characteristics.
+- The framework supports both filtering mode (strict exclusion) and scoring mode (preference-based selection).
+
+---
+
+## Use cases
+
+- **Resource optimization**: Route short context requests to smaller pods and long context requests to larger pods.
+- **Performance improvement**: Utilize pods with specialized model configurations for specific context lengths.
+- **Cost reduction**: Allocate appropriate resources based on request size.
+
+---
+
+## Scorer
+
+Context length-aware routing is applied by enabling and configuring **context-length-aware** in the **Heimdall** scheduler. The following configuration file shows an example of setting up the scorer.
+
+```yaml heimdall-values.yaml
+apiVersion: inference.networking.x-k8s.io/v1alpha1
+kind: EndpointPickerConfig
+plugins:
+  - type: pd-profile-handler
+  - type: prefill-filter
+  - type: decode-filter
+  - type: context-length-aware
+    parameters:
+      enableFiltering: false # Set to true to enable filtering, false for scoring only
+      charToTokenMultiplier: 0.25 # 1 token ≈ 4 characters
+  - type: max-score-picker
+schedulingProfiles:
+  - name: prefill
+    plugins:
+      - pluginRef: prefill-filter
+      - pluginRef: context-length-aware
+      - pluginRef: max-score-picker
+  - name: decode
+    plugins:
+      - pluginRef: decode-filter
+      - pluginRef: context-length-aware
+      - pluginRef: max-score-picker
+```
+
+### Parameters
+
+| Parameter               | Type   | Default                             | Description                                                                                                                               |
+| ----------------------- | ------ | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `label`                 | string | `mif.moreh.io/context-length-range` | Pod label name for context length range                                                                                                   |
+| `enableFiltering`       | bool   | `false`                             | Enable strict filtering mode                                                                                                              |
+| `charToTokenMultiplier` | float  | `0.25`                              | Multiplier for converting character count to token count (estimated tokens = total characters × multiplier, i.e., 1 token ≈ 4 characters) |
+
+---
+
+## Pod label setup
+
+Pods must be labeled with their supported context length ranges for routing to work correctly.
+
+### Label format
+
+```
+<label-name>: "<min>-<max>"
+```
+
+- `min`: Minimum token count (0 or greater)
+- `max`: Maximum token count (must be >= min)
+
+### Single range example
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: inference-pod-small
+  labels:
+    mif.moreh.io/context-length-range: '0-2048'
+```
+
+### Multiple ranges example
+
+Multiple ranges can be specified using comma separation:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: inference-pod-mixed
+  labels:
+    mif.moreh.io/context-length-range: '0-2048,8192-16384'
+```
+
+---
+
+## How it works
+
+### Context length estimation
+
+The context length of a request is estimated as follows:
+
+```
+Estimated tokens = Total characters × 0.25
+```
+
+- **Chat Completions**: Sum of all message `content` character counts
+- **Completions**: `prompt` character count
+
+### Filter mode (`enableFiltering: true`)
+
+When filtering is enabled:
+
+1. **Pods without label**: Accept all context lengths → **Pass**
+2. **Pods with label**: If request context length is within range → **Pass**
+3. **Range mismatch**: → **Excluded**
+
+### Score mode (always active)
+
+All pods are assigned scores based on context length matching:
+
+| Condition                      | Score range | Description                      |
+| ------------------------------ | ----------- | -------------------------------- |
+| No label                       | 0.2         | Neutral score                    |
+| Label parsing failed           | 0.0         | Lowest score                     |
+| Range match                    | 0.5 - 1.0   | Narrower range gets higher score |
+| Overflow (contextLength > max) | 0.25 - 0.5  | Larger max gets higher score     |
+
+### Scoring algorithm
+
+When context length matches a range:
+
+```
+score = 0.7 × widthScore + 0.3 × positionScore
+
+widthScore = 1.0 / (1.0 + rangeWidth / 10000)
+positionScore = (max - contextLength) / rangeWidth
+```
+
+- **widthScore**: Narrower ranges receive higher scores (specialized pods are preferred)
+- **positionScore**: More headroom to max results in higher scores (stable processing)
+
+---
+
+## Examples
+
+The following examples demonstrate scoring mode (`enableFiltering: false`), which assigns scores to all pods without excluding any.
+
+### Scenario 1: Short context request (500 tokens)
+
+Request context length: **500 tokens**
+
+Pod configuration:
+
+- Pod A: `0-2048` (Small)
+- Pod B: `2048-8192` (Medium)
+- Pod C: No label
+
+Result:
+
+| Pod   | Score | Calculation                                                                                                      |
+| ----- | ----- | ---------------------------------------------------------------------------------------------------------------- |
+| Pod A | ~0.81 | widthScore = 1/(1+2048/10000) ≈ 0.83, positionScore = (2048-500)/2048 ≈ 0.76, score = 0.7×0.83 + 0.3×0.76 ≈ 0.81 |
+| Pod B | 0.0   | Range mismatch (500 < 2048)                                                                                      |
+| Pod C | 0.2   | No label                                                                                                         |
+
+→ **Pod A selected**
+
+### Scenario 2: Overflow (50,000 tokens)
+
+Request context length: **50,000 tokens** (exceeds all pod ranges)
+
+Pod configuration:
+
+- Pod A: `0-8192`
+- Pod B: `0-32768`
+
+Result:
+
+| Pod   | Score | Calculation                 |
+| ----- | ----- | --------------------------- |
+| Pod A | ~0.29 | 0.25 + 0.25 × (8192/50000)  |
+| Pod B | ~0.41 | 0.25 + 0.25 × (32768/50000) |
+
+→ **Pod B selected** (larger max value)
+
+---
+
+## Example: Deployment with context length-aware routing
+
+This example shows how to deploy inference services with context length-aware routing. Different pods are configured to handle different context length ranges, routing short context requests to smaller pods and long context requests to larger pods.
+
+### Deployment
+
+The following configuration files show how to set up the **context-length-aware** plugin on the **Heimdall** scheduler and configure inference services with appropriate context length labels.
+
+==- Heimdall scheduler configuration
+
+```yaml heimdall-values.yaml
+global:
+  imagePullSecrets:
+    - name: moreh-registry
+
+config:
+  apiVersion: inference.networking.x-k8s.io/v1alpha1
+  kind: EndpointPickerConfig
+  plugins:
+    - type: single-profile-handler
+    - type: queue-scorer
+    - type: context-length-aware
+    - type: max-score-picker
+      parameters:
+        maxNumOfEndpoints: 2
+  schedulingProfiles:
+    - name: default
+      plugins:
+        - pluginRef: queue-scorer
+          weight: 1
+        - pluginRef: context-length-aware
+          weight: 2
+        - pluginRef: max-score-picker
+
+gateway:
+  name: mif
+  gatewayClassName: istio
+```
+
+==- Inference service configuration (small context)
+
+```yaml inference-service-small.yaml
+apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceService
+metadata:
+  name: inference-small
+spec:
+  replicas: 1
+  inferencePoolRefs:
+    - name: heimdall
+  templateRefs:
+    - name: vllm
+    - name: quickstart-vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2
+  template:
+    metadata:
+      labels:
+        mif.moreh.io/context-length-range: '0-2048'
+```
+
+==- Inference service configuration (large context)
+
+```yaml inference-service-large.yaml
+apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceService
+metadata:
+  name: inference-large
+spec:
+  replicas: 1
+  inferencePoolRefs:
+    - name: heimdall
+  templateRefs:
+    - name: vllm
+    - name: quickstart-vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2
+  template:
+    metadata:
+      labels:
+        mif.moreh.io/context-length-range: '2048-32768'
+```
+
+===
+
+With this configuration, requests with context lengths up to 2,048 tokens are routed to the small inference pod, while requests with context lengths between 2,048 and 32,768 tokens are routed to the large inference pod. This ensures efficient resource utilization by matching request sizes to appropriately sized pods.

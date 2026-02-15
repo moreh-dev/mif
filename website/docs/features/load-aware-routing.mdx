@@ -1,0 +1,129 @@
+---
+sidebar_position: 3
+sidebar_label: Load-Aware Routing
+title: Load-Aware Routing
+---
+
+# Load-aware routing
+
+Load-aware routing monitors the number of assigned requests and real-time utilization metrics of each inference instance (pod) to determine where the next request should be routed. Since individual requests have different workload characteristics and processing times, applying load-aware routing can achieve higher system-level efficiency than round-robin routing and especially help reduce latency variance across requests. Similar to other routing strategies such as prefix cache-aware routing, load-aware routing cannot serve as the sole routing criterion and should be combined with other metrics for optimal decision-making.
+
+---
+
+## Key features
+
+- The **Heimdall** scheduler supports various scoring methods for load-aware routing.
+- The framework can dynamically adjust the importance of load-aware routing based on defined service level objectives (SLOs) and the current traffic volume.
+
+---
+
+## Scorer
+
+The **Heimdall** scheduler currently supports five scoring methods that can be manually enabled, disabled, or weighted to adjust their influence. All scores are normalized to values between 0 and 1, and a higher score indicates a lighter load &mdash; meaning the pod is more preferred for routing. The following configuration file shows an example of manully enabling all scorers and assigning them equal weights.
+
+```yaml heimdall-values.yaml
+...
+config:
+  apiVersion: inference.networking.x-k8s.io/v1alpha1
+  kind: EndpointPickerConfig
+  plugins:
+    ...
+    - type: queue-scorer
+    - type: load-aware-scorer
+      parameters:
+        threshold: 128
+    - type: active-request-scorer
+      parameters:
+        requestTimeout: "2m"
+    - type: session-affinity-scorer
+    - type: no-hit-lru-scorer
+    - type: max-score-picker
+      parameters:
+        maxNumOfEndpoints: 2
+  schedulingProfiles:
+    - name: default
+      plugins:
+        ...
+        - pluginRef: queue-scorer
+        - pluginRef: load-aware-scorer
+        - pluginRef: active-request-scorer
+        - pluginRef: session-affinity-scorer
+        - pluginRef: no-hit-lru-scorer
+        - pluginRef: max-score-picker
+        ...
+...
+```
+
+### queue-scorer
+
+It assigns scores based on the number of queued requests. The pod with the fewest queued requests receives a score of 1.0, and the one with the most receives 0.0. The others are assigned proportionally based on their relative queue lengths.
+
+### load-aware-scorer
+
+It assigns scores also based on the number of queued requests. A pod with no queued requests receives a score of 0.5. If the number of queued requests exceeds the threshold, it receives a score of 1.0. For values in between, the score is proportional to how many requests are waiting relative to the threshold (i.e., `0.5 + (waitingRequests / threshold)`).
+
+Unlike the queue-scorer, this method prevents excessive score gaps between pods when there are not many pending requests or little variation in their numbers across pods.
+
+**Parameters:**
+
+- `threshold`: the threshold that serves as the criterion for overload
+
+### active-request-scorer
+
+It assigns scores based on the number of active request. A pod with no active requests receives a score of 1.0. while the pod with the most active requests receives a score of 0.0. All other pods are assigned scores proportional to their relative number of active requests.
+
+**Parameters:**
+
+- `requestTimeout`: If a response is not received within this time, the request is assumed to have been timed out by the inference engine (vLLM). Since the scorer does not have visibility into individual request timeouts, this assumption is necessary &mdash; otherwise, timed-out requests would remain counted as active indefinitely.
+
+### session-affinity-scorer
+
+It assigns a higher score if a pod has previously handled a request from the same session (with the same `x-session-token` value in the HTTP header). This indirectly produces a similar effect to prefix cache-aware routing.
+
+### no-hit-lru-scorer
+
+To ensure that cold requests (those without prefix cache hits) are evenly distributed across pods, scores from 0.0 to 1.0 are assigned in order from the pod that most recently received a cold request to the one that received it the longest time ago. This helps ensure that the size of the KV cache stored in either GPU memory or main memory increases evenly across pods.
+
+On the other hand, for hot requests (those with (partial) prefix cache hits), a score of 0.5 is assigned to all pods. That means, unlike other scorers, the `no-hit-lru-scorer` is influenced not only by the state of the pods but also by the input prompts of incoming requests.
+
+To determine whether each request has a prefix cache hit, it operates in integration with the prefix caching plugin.
+
+**Parameters:**
+
+- `prefixPluginName`: the name of the prefix caching plugin used to determine whether a cache hit occurs. The default value is `prefix-cache-scorer`. You must specify the actual plugin that is currently enabled.
+- `lruSize`: the maximum number of pods to track for least recently used (LRU) status. The default value is 1024, meaning that only the most recent 1024 pods that received cold requests are tracked and assigned scores between 0.0 and 1.0. All other pods beyond this range are just assigned a score of 1.0.
+
+### Checking active scorers
+
+If you set the log level of the Heimdall scheduler to 4 (by adding `-v=4` to `extraArgs`), Heimdall will print logs like the following each time it receives a request. The scorers listed in the logs indicate that they are active and functioning.
+
+```shell
+kubectl logs -n mif -f -l app=heimdall | jq -r 'select(.msg | test("Running scorer")) | [.scorer, .msg]'
+```
+
+```shell Expected output
+Defaulted container "main" out of: main, traffic-agent
+[
+  "queue-scorer",
+  "Running scorer"
+]
+[
+  "load-aware-scorer",
+  "Running scorer"
+]
+[
+  "active-request-scorer",
+  "Running scorer"
+]
+[
+  "session-affinity-scorer",
+  "Running scorer"
+]
+...
+```
+
+---
+
+:::info
+**Benchmark Results**: See [Load-aware routing (Llama 70B)](/benchmarking/load-aware-routing-llama-70b.mdx) for performance comparisons.
+:::

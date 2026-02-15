@@ -1,0 +1,191 @@
+---
+sidebar_position: 5
+sidebar_label: Prefix Cache Routing (Qwen 32B)
+title: Prefix Cache Routing (Qwen 32B)
+---
+
+:::info
+This page describes a benchmarking scenario for [Prefix cache-aware routing](../features/prefix-cache-aware-routing.mdx).
+:::
+
+---
+
+## Example: random routing vs prefix cache-aware routing
+
+This example shows how prefix cache-aware routing can improve time to first token (TTFT) and end-to-end latency compared with random routing which selects one of the pods at random for each request.
+
+### Benchmarking environment and configuration
+
+| Item             | Description                                      |
+| ---------------- | ------------------------------------------------ |
+| Servers          | 4x servers, each equipped with 4x AMD MI250 GPUs |
+| Networking       | InfiniBand HDR                                   |
+| Inference Engine | vLLM                                             |
+| Model            | `Qwen/Qwen3-32B`                                 |
+| Pods             | 8x, each using 2x AMD MI250 GPUs                 |
+
+### Deployment
+
+The following configuration file shows how to set up the **precise-prefix-cache-scorer** on the **Heimdall** scheduler. Each of the eight instances runs on two AMD MI250 GPUs and maintains its own separate prefix cache.
+
+:::info
+In the `inference-service-values.yaml` file, the number of `amd.com/gpu` is set to 4 because each MI250 GPU is recognized as two logical devices at the device driver level. Therefore, four logical devices correspond to two physical GPUs. This behavior is specific to the MI250 model.
+:::
+
+<details>
+<summary>Heimdall scheduler configuration</summary>
+
+```yaml #55 heimdall-values.yaml
+global:
+  imagePullSecrets:
+    - name: moreh-registry
+
+config:
+  apiVersion: inference.networking.x-k8s.io/v1alpha1
+  kind: EndpointPickerConfig
+  plugins:
+    - type: single-profile-handler
+    - type: queue-scorer
+    - type: kv-cache-utilization-scorer
+    - type: max-score-picker
+    - type: precise-prefix-cache-scorer
+      parameters:
+        indexerConfig:
+          prefixStoreConfig:
+            cacheSize: 500000
+            blockSize: 256
+          tokenProcessorConfig:
+            blockSize: 32
+            hashSeed: '12345'
+          kvBlockIndexConfig:
+            inMemoryConfig:
+              size: 100000000
+              podCacheSize: 10
+            enableMetrics: true
+          tokenizersPoolConfig:
+            workersCount: 8
+            minPrefixOverlapRatio: 0.8
+            tokenizersCacheDir: '/tmp'
+        kvEventsConfig:
+          zmqEndpoint: 'tcp://*:5557'
+          topicFilter: 'kv@'
+          concurrency: 16
+  schedulingProfiles:
+    - name: default
+      plugins:
+        - pluginRef: queue-scorer
+          weight: 2
+        - pluginRef: kv-cache-utilization-scorer
+          weight: 2
+        - pluginRef: precise-prefix-cache-scorer
+          weight: 3
+        - pluginRef: max-score-picker
+gateway:
+  name: mif
+  gatewayClassName: istio
+
+serviceMonitor:
+  labels:
+    release: prometheus-stack
+
+extraEnvVars:
+  - name: HF_TOKEN
+    value: <huggingfaceToken>
+```
+
+</details>
+
+<details>
+<summary>Odin inference service configuration</summary>
+
+```yaml #41 infernece-service-values.yaml
+global:
+  imagePullSecrets:
+    - name: moreh-registry
+
+extraArgs:
+  - Qwen/Qwen3-32B
+  - --no-enable-log-requests
+  - --disable-uvicorn-access-log
+  - --quantization
+  - 'None'
+  - --kv-transfer-config
+  - '{"kv_connector":"NixlConnector", "kv_role":"kv_both"}'
+  - --max-num-batched-tokens
+  - '65536'
+  - --max-num-seqs
+  - '512'
+  - --prefix-caching-hash-algo
+  - sha256_cbor
+  - --block-size
+  - '32'
+  - --kv-events-config
+  - |
+    {
+      "enable_kv_cache_events": true,
+      "publisher": "zmq",
+      "endpoint": "tcp://heimdall.mif.svc.cluster.local:5557",
+      "topic": "kv@$(POD_IP)@Qwen/Qwen3-32B",
+      "buffer_steps": 1,
+      "hwm": 10000,
+      "max_queue_size": 10000
+    }
+
+extraEnvVars:
+  - name: VLLM_NIXL_SIDE_CHANNEL_HOST
+    valueFrom:
+      fieldRef:
+        fieldPath: status.podIP
+  - name: UCX_TLS
+    value: rocm_copy,rocm_ipc,self,sm,rc_x
+  - name: HF_TOKEN
+    value: '<huggingfaceToken>'
+  - name: PYTHONHASHSEED
+    value: '12345'
+  - name: VLLM_PORT
+    value: '8000'
+
+_common: &common
+  image:
+    repository: '255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/quickstart/moreh-vllm'
+    tag: '20250915.1'
+
+  podMonitor:
+    labels:
+      release: prometheus-stack
+
+decode:
+  replicas: 8
+
+  <<: *common
+
+  extraArgs:
+    - --tensor-parallel-size
+    - '4'
+
+  resources:
+    limits:
+      amd.com/gpu: '4'
+      mellanox/hca: '1'
+    requests:
+      amd.com/gpu: '4'
+      mellanox/hca: '1'
+
+prefill:
+  enabled: false
+```
+
+</details>
+
+### Experimental result
+
+We alternated among 230 different prompt groups, each containing 5 unique user prompts. Each request consisted of an 8,000-token system prompt and a 1,000-token user prompt (9,000 tokens total), generating 1,000 output tokens. Starting with 46 requests per second (RPS) for warmup and gradually increasing from 3 to 100 RPS across multiple stages, we measured time to first token (TTFT) across different load levels.
+
+As a result, when prefix cache-aware routing was applied, the median TTFT was dramatically reduced from 4.46 seconds to 0.22 seconds under random routing &mdash; approximately 20 times faster. The P75 TTFT improved from 9.29 seconds to 0.72 seconds, and the P90 TTFT improved from 17.96 seconds to 1.11 seconds. These results demonstrate that prefix cache-aware routing significantly reduces TTFT by effectively reusing cached prefixes across multiple inference instances, particularly in scenarios with shared system prompts.
+
+**TTFT (time to first token):**
+
+| Routing                    | P50 (ms)    | P75 (ms)    | P90 (ms)     |
+| -------------------------- | ----------- | ----------- | ------------ |
+| Random routing             | 4464.611    | 9292.547    | 17961.767    |
+| Prefix cache-aware routing | **217.383** | **718.785** | **1106.871** |

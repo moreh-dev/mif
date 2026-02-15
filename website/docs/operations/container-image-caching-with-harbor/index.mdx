@@ -354,7 +354,8 @@ spec:
   background: true
   emitWarning: false
   rules:
-    - match:
+    - name: ecr-rewrite-registry-container
+      match:
         any:
           - resources:
               kinds:
@@ -365,11 +366,11 @@ spec:
             patchStrategicMerge:
               spec:
                 containers: # set registry port as your setup (80 or 443)
-                  - image: '{{ regex_replace_all_literal("255250787067.dkr.ecr.ap-northeast-2.amazonaws.com", "{{ element.image }}, "harbor.harbor.svc.cluster.local:<yourPort>/mif") }}'
+                  - image: "{{ regex_replace_all_literal('255250787067.dkr.ecr.ap-northeast-2.amazonaws.com', '{{ element.image }}', 'harbor.harbor.svc.cluster.local:<yourPort>/mif') }}"
                     name: '{{ element.name }}'
-      name: ecr-rewrite-registry-container
       skipBackgroundRequests: true
-    - match:
+    - name: ecr-rewrite-registry-init-container
+      match:
         any:
           - resources:
               kinds:
@@ -380,12 +381,11 @@ spec:
             patchStrategicMerge:
               spec:
                 initContainers: # set registry port as your setup (80 or 443)
-                  - image: '{{ regex_replace_all_literal("255250787067.dkr.ecr.ap-northeast-2.amazonaws.com", "{{ element.image }}, "harbor.harbor.svc.cluster.local:<yourPort>/mif") }}'
+                  - image: "{{ regex_replace_all_literal('255250787067.dkr.ecr.ap-northeast-2.amazonaws.com', '{{ element.image }}', 'harbor.harbor.svc.cluster.local:<yourPort>/mif') }}"
                     name: '{{ element.name }}'
-      name: ecr-rewrite-registry-init-container
       preconditions:
         all:
-          - key: '{{ request.object.spec.initContainers[] || `[]` | length(@) }}
+          - key: '{{ request.object.spec.initContainers[] || `[]` | length(@) }}'
             operator: GreaterThanOrEquals
             value: 1
       skipBackgroundRequests: true

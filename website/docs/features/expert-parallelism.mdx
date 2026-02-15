@@ -1,0 +1,50 @@
+---
+sidebar_position: 5
+sidebar_label: Expert Parallelism
+title: Expert Parallelism
+---
+
+Expert parallelism (EP) refers to a parallelization method that assigns and executes multiple experts of a Mixture-of-Experts (MoE) model across different GPUs. While applying EP is not mandatory for MoE models, it is generally helpful for increasing overall inference throughput (total output tokens per second).
+
+However, implementing EP efficiently is highly challenging because routing between different experts &mdash; and ultimately workload distributin across GPUs &mdash; is determined dynamically. GPU kernels and libraries must ensure good efficiency across a wide range of such cases. EP requires a complex all-to-all communication pattern known as dispatch and combine, where minimizing the associated overhead is critical. There is also an inherent imbalance in routing frequency among different experts, and it is crucial to maintain even workload distribution across GPUs despite these differences.
+
+In addition, while EP is effective for improving throughput, it can lead to higher latency compared to other parallelization methods such as tensor parallelism (TP). Therefore, it should be applied carefully according to the given service level objectives (SLOs) to achieve optimal results.
+
+---
+
+## Key features
+
+- For various MoE models, the framework allows experts to be distributed across multiple GPUs within a single server or across GPUs in multiple servers. The **Odin** inference service manages the latter case by launching and coordinating multiple instances simultaneously when experts are distributed across servers.
+- The framework can automatically determine whether to apply EP and how to allocate experts to GPUs according to defined SLOs.
+- Moreh vLLM is optimized to execute inter-GPU communication efficiently and minimize load imbalance across GPUs on AMD MI200 and MI300 series GPUs.
+
+---
+
+## Manual configuration of EP
+
+To enable EP, add the `--enable-expert-parallel` flag to the `extraArgs` field of the **Odin** inference service. The following configuration file is an example of applying EP to the DeepSeek-R1 model. In vLLM, you don't need to explicitly specify the EP size and it is automatically calculated as DP size × TP size. This is because EP must be used with another parallelism scheme applied to non-expert layers (such as attention), and the possible options for that are DP or TP.
+
+```yaml #4-8 inference-service-values.yaml
+
+...
+extraArgs:
+  - deepseek-ai/DeepSeek-R1
+  - --tensor-parallel-size
+  - '1'
+  - --data-parallel-size
+  - '8'
+  - --enable-expert-parallel
+
+extraEnvVars:
+  - name: VLLM_ROCM_USE_AITER
+    value: '1'
+  - name: VLLM_ALL2ALL_BACKEND
+    value: mori
+
+_resources: &resources
+  limits:
+    amd.com/gpu: '8'
+  requests:
+    amd.com/gpu: '8'
+...
+```

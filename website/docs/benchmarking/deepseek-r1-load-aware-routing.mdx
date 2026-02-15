@@ -1,0 +1,653 @@
+---
+title: DeepSeek R1 Load-Aware Routing
+sidebar_label: DeepSeek R1 Load-Aware Routing
+sidebar_position: 6
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Performance with prefix cache- and load-aware routing
+
+This article demonstrates how applying [prefix cache-aware routing](../features/prefix-cache-aware-routing.mdx) and [load-aware routing](../features/load-aware-routing.mdx) when running the **DeepSeek R1 671B** model on an AMD MI300X GPU cluster can reduce both prefill computation and overall infrastructure cost.
+
+## Overview
+
+Prefix cache-aware routing reduces the amount of prefill computation in a distributed inference environment by routing requests that share the same prompt to the vLLM container where the corresponding KV cache is already stored, thereby increasing the prefix cache hit ratio.
+
+At the same time, prefix cache-aware routing can lead to request concentration on specific nodes holding KV caches for frequently used prefixes. Thus, it must be combined with a load-aware routing mechanism.
+
+The purpose of this benchmarking is to demonstrate that, when performing distributed inference of the DeepSeek R1 671B model on an AMD MI300X GPU cluster, proper routing with awareness of both prefix cache and load can achieve the same or better throughput (tokens/sec) with fewer prefill instances compared to a setup using random routing. Specifically, we compare a configuration with prefix cache-aware routing (1 prefill node and 1 decode node) against a baseline with random routing (4 prefill nodes and 1 decode node), showing that prefix cache-aware routing achieves better performance with 75% fewer prefill instances.
+
+In addition, this benchmarking validates that prefix cache-aware routing can be combined with other techniques (such as PD disaggregation) to efficiently serve large-scale MoE models in real-world deployments.
+
+When expert parallelism is enabled, a single AMD MI300X GPU server can process tens of thousands of tokens/sec for the DeepSeek R1 671B model. Efficiently supporting the required pre- and post-processing necessitates the use of [external data parallelism](https://docs.vllm.ai/en/latest/serving/data_parallel_deployment/#external-load-balancing), which was also applied in our [maximum throughput benchmarking](./deepseek-r1-max-throughput.mdx). Under this configuration, although the eight GPUs in each node cooperatively execute the model, the prefix cache is managed independently per DP rank (i.e., eight separate caches), making effective prefix cache-aware routing even more important.
+
+The experimental design follows the SGLang team's evaluation methodology for cache-aware load balancing. Their experiments used a [workload](https://github.com/sgl-project/sglang/pull/1990) consisting of multiple long prefix groups, and each group is perfectly balanced. Specifically, they made _N_ distinct prefixes, generated _M_ requests for each prefix, and then sent all _N_ &times; _M_ requests to the server to measure performance. We follow the same evaluation approach, with the key difference that our experiments are conducted in a setting where techniques such as PD disaggregation, multi-process data parallelism, and expert parallelism were applied to serve the DeepSeek R1 671B model at a high throughput.
+
+- Reference: [SGLang v0.4: Zero-Overhead Batch Scheduler, Cache-Aware Load Balancer, Faster Structured Outputs](https://lmsys.org/blog/2024-12-04-sglang-v0-4/#cache-aware-load-balancer)
+
+---
+
+## Target environment and configuration
+
+The experimental setup unrelated to routing schemes follows the [previous benchmarking](./deepseek-r1-max-throughput.mdx) that measures the maximum throughput of the DeepSeek R1 671B model.
+
+| Item             | Description                                       |
+| ---------------- | ------------------------------------------------- |
+| GPU servers      | 5x servers, each equipped with 8x AMD MI300X GPUs |
+| Networking       | InfiniBand HDR                                    |
+| Inference engine | Moreh vLLM (0.11.0rc2.moreh20251212)              |
+| Model            | `deepseek-ai/DeepSeek-R1`                         |
+| Parallelization  | EP=8 + DP=8 (external DP)                         |
+
+The specifications of each GPU server are as follows:
+
+- CPU: 2x AMD EPYC 9474F 48-core 3.6 GHz
+- Main memory: 2,304 GB
+- GPU: 8x AMD Instinct MI300X OAM GPU 192 GB
+- Server: Gigabyte G593-ZX1-AAX1
+- Operating system: Ubuntu 22.04.4 LTS
+- ROCm version: 6.4.1
+
+We compare the following two PD disaggregation configurations.
+
+1. **Random routing** (baseline): 4x prefill instances and 1x decode instance (4p1d)
+2. **Prefix cache-aware routing**: 1x prefill instance and 1x decode instance (1p1d)
+
+In the first configuration, achieving maximum throughput for one decode instance requires four prefill instances. In the second configuration, prefix cache-aware routing reduces the prefill workload, enabling a single prefill instance to sufficiently feed the decode instance. As discussed earlier, with external DP enabled, each instance effectively has eight independent prefix caches (per DP rank). Therefore, even in the second configuration, prefix cache-aware routing remains effective, serving to route each request to the appropriate DP rank.
+
+The first configuration simply uses Heimdall's `random-picker` plugin. The second configuration enables the following scorers in Heimdall.
+
+- `precise-prefix-cache-scorer`
+- `kv-cache-utilization-scorer`
+- `queue-scorer`
+
+---
+
+## Deployment
+
+Please make sure to install all [prerequisites](../getting-started/prerequisites.mdx), including the following versions of the components, before starting this benchmarking. Also, please refer to the [quickstart](../getting-started/quickstart.mdx) to understand how to run the MoAI Inference Framework.
+
+- **moai-inference-framework** v0.1.0
+- **moai-inference-preset** v0.1.0
+
+First, you need to have a namespace for deploying and running the components of the MoAI Inference Framework. In this guide, we assume the namespace is named `prefix-benchmark`.
+
+```shell
+kubectl create namespace prefix-benchmark
+kubectl label namespace prefix-benchmark mif=enabled
+```
+
+### Prefix cache-aware routing (1p1d) configuration
+
+You can use the following configuration files for the components. Click to view their contents. **You must replace `<huggingfaceToken>` on line 84 of `heimdall-values.yaml` and line 23 and 58 of `deepseek-r1-mi300x-prefix-cache-pd-dp.yaml` with your own Hugging Face token for downloading the model parameters of DeepSeek R1.**
+
+<Tabs>
+  <TabItem value="gateway" label="Istio gateway configuration (gateway.yaml)">
+
+```yaml # gateway.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mif-gateway-infrastructure
+  namespace: prefix-benchmark
+data:
+  service: |
+    spec:
+      type: ClusterIP
+      ports:
+        - name: http
+          port: 80
+          targetPort: http
+
+  deployment: |
+    spec:
+      template:
+        spec:
+          containers:
+            - name: istio-proxy
+              resources:
+                limits: null
+              ports:
+                - name: http
+                  containerPort: 80
+
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: mif
+  namespace: prefix-benchmark
+spec:
+  gatewayClassName: istio
+  infrastructure:
+    parametersRef:
+      group: ''
+      kind: ConfigMap
+      name: mif-gateway-infrastructure
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+      allowedRoutes:
+        namespaces:
+          from: All
+```
+
+  </TabItem>
+  <TabItem value="heimdall" label="Heimdall scheduler configuration (heimdall-values.yaml)">
+
+```yaml #84 heimdall-values.yaml
+global:
+  imagePullSecrets:
+    - name: moreh-registry
+
+inferencePool:
+  targetPorts:
+    - number: 8000
+    - number: 8001
+    - number: 8002
+    - number: 8003
+    - number: 8004
+    - number: 8005
+    - number: 8006
+    - number: 8007
+
+config:
+  apiVersion: inference.networking.x-k8s.io/v1alpha1
+  kind: EndpointPickerConfig
+  plugins:
+    - type: pd-profile-handler
+    - type: queue-scorer
+    - type: kv-cache-utilization-scorer
+    - type: max-score-picker
+    - type: prefill-filter
+    - type: decode-filter
+    - type: precise-prefix-cache-scorer
+      parameters:
+        indexerConfig:
+          prefixStoreConfig:
+            cacheSize: 1000000
+            blockSize: 256
+          tokenProcessorConfig:
+            blockSize: 32
+            hashSeed: '12345'
+          kvBlockIndexConfig:
+            inMemoryConfig:
+              size: 100000000
+              podCacheSize: 10
+            enableMetrics: true
+          tokenizersPoolConfig:
+            workersCount: 8
+            minPrefixOverlapRatio: 0.8
+        kvEventsConfig:
+          zmqEndpoint: 'tcp://*:5557'
+          topicFilter: 'kv@'
+          concurrency: 32
+  schedulingProfiles:
+    - name: prefill
+      plugins:
+        - pluginRef: prefill-filter
+        - pluginRef: kv-cache-utilization-scorer
+          weight: 2
+        - pluginRef: queue-scorer
+          weight: 2
+        - pluginRef: precise-prefix-cache-scorer
+          weight: 3
+        - pluginRef: max-score-picker
+    - name: decode
+      plugins:
+        - pluginRef: decode-filter
+        - pluginRef: kv-cache-utilization-scorer
+          weight: 2
+        - pluginRef: queue-scorer
+          weight: 2
+        - pluginRef: precise-prefix-cache-scorer
+          weight: 3
+        - pluginRef: max-score-picker
+
+gateway:
+  name: mif
+  gatewayClassName: istio
+
+image:
+  repository: '255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/heimdall'
+  tag: '954ba66'
+  pullPolicy: IfNotPresent
+
+serviceMonitor:
+  labels:
+    release: prometheus-stack
+
+extraEnvVars:
+  - name: HF_TOKEN
+    value: <huggingfaceToken>
+```
+
+  </TabItem>
+  <TabItem value="odin" label="Odin inference service configuration (deepseek-r1-mi300x-prefix-cache-pd-dp.yaml)">
+
+```yaml #23,58 deepseek-r1-mi300x-prefix-cache-pd-dp.yaml
+apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceService
+metadata:
+  name: deepseek-r1-mi300x-prefill-prefix-cache
+  namespace: prefix-benchmark
+spec:
+  replicas: 1
+  inferencePoolRefs:
+    - name: heimdall
+  templateRefs:
+    - name: vllm-dp-base
+    - name: vllm-dp-prefill-meta
+    - name: vllm-deepseek-r1-prefill-mi300x-dp8ep
+  parallelism:
+    data: 8
+    expert: true
+  workerTemplate:
+    spec:
+      containers:
+        - name: main
+          image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/quickstart/moreh-vllm:vllm_0.11.0rc1_251230
+          env:
+            - name: HF_TOKEN
+              value: <huggingfaceToken>
+            - name: ISVC_USE_KV_EVENTS
+              value: 'true'
+          resources:
+            limits:
+              amd.com/gpu: '8'
+              mellanox/hca: '1'
+            requests:
+              amd.com/gpu: '8'
+              mellanox/hca: '1'
+
+---
+apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceService
+metadata:
+  name: deepseek-r1-mi300x-decode-prefix-cache
+  namespace: prefix-benchmark
+spec:
+  replicas: 1
+  inferencePoolRefs:
+    - name: heimdall
+  templateRefs:
+    - name: vllm-dp-base
+    - name: vllm-dp-decode-meta
+    - name: vllm-dp-decode-proxy
+    - name: vllm-deepseek-r1-decode-mi300x-dp8ep
+  parallelism:
+    data: 8
+    expert: true
+  workerTemplate:
+    spec:
+      containers:
+        - name: main
+          image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/quickstart/moreh-vllm:vllm_0.11.0rc1_251230
+          env:
+            - name: HF_TOKEN
+              value: <huggingfaceToken>
+            - name: ISVC_USE_KV_EVENTS
+              value: 'true'
+          resources:
+            limits:
+              amd.com/gpu: '8'
+              mellanox/hca: '1'
+            requests:
+              amd.com/gpu: '8'
+              mellanox/hca: '1'
+```
+
+  </TabItem>
+</Tabs>
+
+Run the following commands to deploy and run the components.
+
+**Istio gateway:**
+
+```shell
+kubectl apply -f gateway.yaml
+kubectl get pod -n prefix-benchmark -l gateway.networking.k8s.io/gateway-name=mif
+```
+
+```shell Expected output
+NAME                         READY   STATUS    RESTARTS   AGE
+mif-istio-584474ddd9-rt9p9   1/1     Running   0          163m
+```
+
+**Heimdall scheduler:**
+
+```shell
+helm upgrade -i heimdall moreh/heimdall \
+    --version v0.6.0 \
+    -n prefix-benchmark \
+    -f heimdall-values.yaml
+kubectl get all -n prefix-benchmark -l app.kubernetes.io/instance=heimdall
+```
+
+```shell Expected output
+NAME                            READY   STATUS    RESTARTS   AGE
+pod/heimdall-5576d4f48b-bgn4c   1/1     Running   0          3d1h
+```
+
+**Odin inference service:**
+
+```shell
+kubectl apply -f deepseek-r1-mi300x-prefix-cache-pd-dp.yaml
+kubectl get pods -n prefix-benchmark -l heimdall.moreh.io/pool=heimdall
+```
+
+```shell Expected output
+NAME                                   READY   STATUS    RESTARTS   AGE
+pod/deepseek-r1-mi300x-decode-dp-0     2/2     Running   0          48m
+pod/deepseek-r1-mi300x-prefill-dp-0    1/1     Running   0          65m
+```
+
+### Random routing (4p1d) configuration
+
+For the baseline random routing configuration, the Heimdall and Odin must be configured differently. Specifically, Heimdall should be set to use the `random-picker` plugin instead of various prefix cache- and load-aware scorers, while the number of prefill replicas should be adjusted in Odin. You can use the following configuration files. Click to view their contents. **You must replace `<huggingfaceToken>` on line 23 and 58 of `deepseek-r1-mi300x-random-pd-dp.yaml` with your own Hugging Face token.**
+
+<Tabs>
+  <TabItem value="heimdall" label="Heimdall scheduler configuration (heimdall-values-random.yaml)">
+
+```yaml # heimdall-values-random.yaml
+global:
+  imagePullSecrets:
+    - name: moreh-registry
+
+inferencePool:
+  targetPorts:
+    - number: 8000
+    - number: 8001
+    - number: 8002
+    - number: 8003
+    - number: 8004
+    - number: 8005
+    - number: 8006
+    - number: 8007
+
+config:
+  apiVersion: inference.networking.x-k8s.io/v1alpha1
+  kind: EndpointPickerConfig
+  plugins:
+    - type: pd-profile-handler
+    - type: random-picker
+    - type: prefill-filter
+    - type: decode-filter
+  schedulingProfiles:
+    - name: prefill
+      plugins:
+        - pluginRef: prefill-filter
+        - pluginRef: random-picker
+    - name: decode
+      plugins:
+        - pluginRef: decode-filter
+        - pluginRef: random-picker
+
+gateway:
+  name: mif
+  gatewayClassName: istio
+
+image:
+  repository: '255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/heimdall'
+  tag: '954ba66'
+  pullPolicy: IfNotPresent
+
+serviceMonitor:
+  labels:
+    release: prometheus-stack
+```
+
+  </TabItem>
+  <TabItem value="odin" label="Odin inference service configuration (deepseek-r1-mi300x-random-pd-dp.yaml)">
+
+```yaml #23,58 deepseek-r1-mi300x-random-pd-dp.yaml
+apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceService
+metadata:
+  name: deepseek-r1-mi300x-prefill-random
+  namespace: prefix-benchmark
+spec:
+  replicas: 4
+  inferencePoolRefs:
+    - name: heimdall
+  templateRefs:
+    - name: vllm-dp-base
+    - name: vllm-dp-prefill-meta
+    - name: vllm-deepseek-r1-prefill-mi300x-dp8ep
+  parallelism:
+    data: 8
+    expert: true
+  workerTemplate:
+    spec:
+      containers:
+        - name: main
+          image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/quickstart/moreh-vllm:vllm_0.11.0rc1_251230
+          env:
+            - name: HF_TOKEN
+              value: <huggingfaceToken>
+            - name: ISVC_USE_KV_EVENTS
+              value: 'false'
+          resources:
+            limits:
+              amd.com/gpu: '8'
+              mellanox/hca: '1'
+            requests:
+              amd.com/gpu: '8'
+              mellanox/hca: '1'
+
+---
+apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceService
+metadata:
+  name: deepseek-r1-mi300x-decode-random
+  namespace: prefix-benchmark
+spec:
+  replicas: 1
+  inferencePoolRefs:
+    - name: heimdall
+  templateRefs:
+    - name: vllm-dp-base
+    - name: vllm-dp-decode-meta
+    - name: vllm-dp-decode-proxy
+    - name: vllm-deepseek-r1-decode-mi300x-dp8ep
+  parallelism:
+    data: 8
+    expert: true
+  workerTemplate:
+    spec:
+      containers:
+        - name: main
+          image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/quickstart/moreh-vllm:vllm_0.11.0rc1_251230
+          env:
+            - name: HF_TOKEN
+              value: <huggingfaceToken>
+            - name: ISVC_USE_KV_EVENTS
+              value: 'false'
+          resources:
+            limits:
+              amd.com/gpu: '8'
+              mellanox/hca: '1'
+            requests:
+              amd.com/gpu: '8'
+              mellanox/hca: '1'
+```
+
+  </TabItem>
+</Tabs>
+
+Run the following commands to deploy and run the components for the baseline configuration.
+
+```shell
+helm upgrade -i heimdall moreh/heimdall \
+    --version v0.6.0 \
+    -n prefix-benchmark \
+    -f heimdall-values-random.yaml
+kubectl apply -f deepseek-r1-mi300x-random-pd-dp.yaml
+```
+
+---
+
+## Benchmarking method
+
+Following the same experimental methodology as the SGLang team, we construct a scenario in which multiple requests share prefixes by generating **200** distinct system prompts and creating **15** requests per system prompt, resulting in a total of **3,000** requests sent to the server (API endpoint). Each request consists of a 4,000-token system prompt (a shared prefix) and a 200-token question, and generates a 1,000-token output.
+
+We use the [inference-perf](https://github.com/kubernetes-sigs/inference-perf) tool, which provides the ability to generate requests with shared prefixes and measure various performance metrics.
+
+Because the effectiveness of routing policies can vary with the request rate, we apply load at different request rates across four stages and measure performance.
+
+- Stage 0: 20 requests/sec for 150 seconds (a warm-up stage in which all 3,000 requests are sent once to populate the prefix cache)
+- Stage 1: 10 requests/sec for 80 seconds
+- Stage 2: 50 requests/sec for 80 seconds
+- Stage 3: 80 requests/sec for 80 seconds
+
+To run the benchmark, create the following resources. **You must also replace `<huggingfaceToken>` on line 8 of `inference-perf-benchmark.yaml` with your own Hugging Face token.**
+
+```yaml #8 inference-perf-benchmark.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: hf-secret
+  namespace: prefix-benchmark
+type: Opaque
+stringData:
+  hf_api_token: <huggingfaceToken>
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: inference-perf-shared-prefix-config
+  namespace: prefix-benchmark
+data:
+  config.yml: |
+    load:
+      type: poisson
+      interval: 0
+      stages:
+      - rate: 20.0
+        duration: 150
+      - rate: 10.0
+        duration: 80
+      - rate: 50.0
+        duration: 80
+      - rate: 80.0
+        duration: 80
+      num_workers: 4
+      worker_max_concurrency: 500
+      worker_max_tcp_connections: 2500
+      request_timeout: 1200.0
+    api:
+      type: completion
+      streaming: true
+    server:
+      type: vllm
+      model_name: deepseek-ai/DeepSeek-R1
+      base_url: http://mif-istio.prefix-benchmark.svc.cluster.local:80
+      ignore_eos: true
+    data:
+      type: shared_prefix
+      shared_prefix:
+        num_groups: 200
+        num_prompts_per_group: 15
+        system_prompt_len: 4000
+        question_len: 200
+        output_len: 1000
+    report:
+      request_lifecycle:
+        summary: true
+        per_stage: true
+        per_request: false
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: inference-perf-shared-prefix
+  namespace: prefix-benchmark
+  labels:
+    app: inference-perf
+    benchmark: shared-prefix
+spec:
+  template:
+    metadata:
+      labels:
+        app: inference-perf
+        benchmark: shared-prefix
+    spec:
+      containers:
+        - name: inference-perf
+          image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/inference-perf:a439f819
+          imagePullPolicy: IfNotPresent
+          command: ['sh', '-c']
+          args:
+            - |
+              inference-perf --config_file /etc/config/config.yml
+              echo "[INFO] Benchmark completed. Keeping container alive..."
+              sleep infinity
+          env:
+            - name: HF_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: hf-secret
+                  key: hf_api_token
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/config
+              readOnly: true
+      restartPolicy: Never
+      volumes:
+        - name: config-volume
+          configMap:
+            name: inference-perf-shared-prefix-config
+```
+
+Apply the resources and run the benchmark.
+
+```shell
+kubectl apply -f inference-perf-benchmark.yaml
+```
+
+Monitor the benchmark progress as follows.
+
+```shell
+kubectl logs -n prefix-benchmark -f job/inference-perf-shared-prefix
+```
+
+---
+
+## Experimental results
+
+The following tables show TTFT (time to first token) percentiles (P50, P75, and P90) and throughput (output tokens/sec) for each request rate and configuration.
+
+At a rate of **10 requests/sec** (Stage 1):
+
+| Configuration             | P50 TTFT (s) | P75 TTFT (s) | P90 TTFT (s) | Output tokens/sec | Output tokens/sec per node |
+| ------------------------- | -----------: | -----------: | -----------: | ----------------: | -------------------------: |
+| Random (4p1d)             |         1.73 |         2.20 |         2.64 |             4,098 |                        820 |
+| Prefix cache-aware (1p1d) |         1.43 |         5.20 |         7.25 |             4,108 |                      2,054 |
+| **Speedup**               |    **1.21x** |    **0.42x** |    **0.36x** |         **1.00x** |                  **2.50x** |
+
+At a rate of **50 requests/sec** (Stage 2):
+
+| Configuration             | P50 TTFT (s) | P75 TTFT (s) | P90 TTFT (s) | Output tokens/sec | Output tokens/sec per node |
+| ------------------------- | -----------: | -----------: | -----------: | ----------------: | -------------------------: |
+| Random (4p1d)             |        48.79 |       204.55 |       255.93 |             4,266 |                        853 |
+| Prefix cache-aware (1p1d) |         2.33 |         6.25 |         8.46 |             9,756 |                      4,878 |
+| **Speedup**               |   **20.94x** |   **32.73x** |   **30.25x** |         **2.29x** |                  **5.72x** |
+
+At a rate of **80 requests/sec** (Stage 3):
+
+| Configuration             | P50 TTFT (s) | P75 TTFT (s) | P90 TTFT (s) | Output tokens/sec | Output tokens/sec per node |
+| ------------------------- | -----------: | -----------: | -----------: | ----------------: | -------------------------: |
+| Random (4p1d)             |        56.81 |       258.54 |       289.51 |             4,037 |                        807 |
+| Prefix cache-aware (1p1d) |         1.38 |         1.62 |         1.97 |             9,030 |                      4,515 |
+| **Speedup**               |   **41.17x** |  **159.59x** |  **146.96x** |         **2.24x** |                  **5.59x** |
+
+The key observations are as follows.
+
+- Applying prefix cache-aware routing increases the cache hit ratio and significantly reduces TTFT, especially under higher load, even with fewer prefill nodes.
+- Compared to using random routing on five nodes, applying prefix cache-aware routing on two nodes achieves higher throughput, delivering **2.5-5.6x** improvements in cost efficiency (output tokens/sec per node).
+- As a result, prefix cache- and load-aware routing delivers significant infrastructure cost savings while maintaining or improving service quality.
