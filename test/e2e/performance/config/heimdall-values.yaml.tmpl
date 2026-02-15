@@ -25,6 +25,7 @@ config:
           cacheSize: 500000
         tokenizersPoolConfig:
           modelName: "openai/gpt-oss-20b"
+          minPrefixOverlapRatio: 0
           local:
             autoDiscoveryDir: "/mnt/models"
           hf:
