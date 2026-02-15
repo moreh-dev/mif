@@ -82,18 +82,5 @@ tolerations:
   - key: amd.com/gpu
     operator: Exists
     effect: NoSchedule
-  - key: benchmark
-    operator: Exists
-    effect: NoSchedule
-
-affinity:
-  nodeAffinity:
-    requiredDuringSchedulingIgnoredDuringExecution:
-      nodeSelectorTerms:
-        - matchExpressions:
-            - key: kubernetes.io/hostname
-              operator: In
-              values:
-                - mi250-050
 
 {{- end }}
