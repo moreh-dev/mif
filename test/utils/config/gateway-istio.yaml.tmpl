@@ -19,7 +19,7 @@ data:
             - key: amd.com/gpu
               operator: Exists
               effect: NoSchedule
-            - key: "benchmark"
+            - key: "sim"
               operator: "Exists"
               effect: "NoSchedule"
           affinity:
@@ -30,7 +30,7 @@ data:
                       - key: kubernetes.io/hostname
                         operator: In
                         values:
-                          - mi250-050
+                          - mi250-045
           containers:
             - name: istio-proxy
               resources:
