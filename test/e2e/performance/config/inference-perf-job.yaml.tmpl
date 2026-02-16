@@ -89,6 +89,12 @@ spec:
             -c /tmp/config.yaml \
             --log-level INFO
 
+          {{- if not .IsKind }}
+          echo "=========================================="
+          echo "S3 upload path: s3://{{.S3Bucket}}/${S3_PREFIX}"
+          echo "=========================================="
+          {{- end }}
+
           cat reports*/*.json
         env:
           {{- if .HFToken }}

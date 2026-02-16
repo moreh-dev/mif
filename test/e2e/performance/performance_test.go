@@ -174,6 +174,9 @@ var _ = Describe("Inference Performance", Label("performance"), Ordered, func() 
 
 		By("waiting for inference-perf job to complete")
 		Expect(waitForInferencePerfJob(envs.WorkloadNamespace, jobName)).To(Succeed())
+
+		By("printing inference-perf job logs")
+		printInferencePerfJobLogs(envs.WorkloadNamespace, jobName)
 	})
 })
 
@@ -246,6 +249,16 @@ func deleteInferencePerfJob(namespace string, jobName string) {
 	cmd := exec.Command("kubectl", "delete", "job", jobName,
 		"-n", namespace, "--ignore-not-found=true")
 	_, _ = utils.Run(cmd)
+}
+
+func printInferencePerfJobLogs(namespace string, jobName string) {
+	cmd := exec.Command("kubectl", "logs", fmt.Sprintf("job/%s", jobName), "-n", namespace)
+	output, err := utils.Run(cmd)
+	if err != nil {
+		fmt.Printf("failed to get inference-perf job logs: %v\n", err)
+		return
+	}
+	fmt.Println(output)
 }
 
 func waitForInferencePerfJob(namespace string, jobName string) error {
