@@ -170,7 +170,11 @@ var _ = Describe("Inference Performance", Label("performance"), Ordered, func() 
 		isKind := !envs.SkipKind
 		jobName, err := createInferencePerfJob(envs.WorkloadNamespace, fmt.Sprintf("http://%s", serviceName), image, isKind)
 		Expect(err).NotTo(HaveOccurred(), "failed to create inference-perf job")
-		defer deleteInferencePerfJob(envs.WorkloadNamespace, jobName)
+		defer func() {
+			if !envs.SkipCleanup {
+				deleteInferencePerfJob(envs.WorkloadNamespace, jobName)
+			}
+		}()
 
 		By("waiting for inference-perf job to complete")
 		Expect(waitForInferencePerfJob(envs.WorkloadNamespace, jobName)).To(Succeed())
