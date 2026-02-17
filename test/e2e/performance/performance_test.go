@@ -102,7 +102,7 @@ var _ = Describe("Inference Performance", Label("performance"), Ordered, func() 
 			prefillData = utils.InferenceServiceData{
 				Name:         "prefill",
 				Namespace:    envs.WorkloadNamespace,
-				Replicas:     3,
+				Replicas:     0,
 				TemplateRefs: []string{"vllm-prefill", envs.TestTemplatePrefill, "vllm-hf-hub-offline"},
 				HFToken:      envs.HFToken,
 				HFEndpoint:   envs.HFEndpoint,
@@ -111,8 +111,8 @@ var _ = Describe("Inference Performance", Label("performance"), Ordered, func() 
 			decodeData = utils.InferenceServiceData{
 				Name:         "decode",
 				Namespace:    envs.WorkloadNamespace,
-				Replicas:     5,
-				TemplateRefs: []string{"vllm-decode", envs.TestTemplateDecode, "vllm-hf-hub-offline"},
+				Replicas:     8,
+				TemplateRefs: []string{"sim", "vllm-hf-hub-offline"},
 				HFToken:      envs.HFToken,
 				HFEndpoint:   envs.HFEndpoint,
 				IsKind:       isKind,
