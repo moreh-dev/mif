@@ -48,9 +48,9 @@ dependencies:
     condition: minio.enabled
   - name: loki
     version: 6.30.0
-    repository: https://moreh-dev.github.io/helm-charts
+    repository: https://grafana.github.io/helm-charts
     condition: loki.enabled
   - name: vector
     version: 0.39.0
-    repository: https://moreh-dev.github.io/helm-charts
+    repository: https://helm.vector.dev
     condition: vector.enabled

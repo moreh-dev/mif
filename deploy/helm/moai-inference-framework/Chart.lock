@@ -1,36 +1,36 @@
 dependencies:
-  - name: common
-    repository: oci://registry-1.docker.io/bitnamicharts
-    version: 2.31.4
-  - name: kube-prometheus-stack
-    repository: https://prometheus-community.github.io/helm-charts
-    version: 80.7.0
-  - name: lws
-    repository: oci://registry.k8s.io/lws/charts
-    version: 0.7.0
-  - name: odin
-    repository: https://moreh-dev.github.io/helm-charts
-    version: v0.6.0
-  - name: odin-crd
-    repository: https://moreh-dev.github.io/helm-charts
-    version: v0.6.0
-  - name: keda
-    repository: https://kedacore.github.io/charts
-    version: 2.18.0
-  - name: kubernetes-replicator
-    repository: https://helm.mittwald.de
-    version: 2.12.2
-  - name: node-feature-discovery
-    repository: oci://registry.k8s.io/nfd/charts
-    version: 0.18.3
-  - name: minio
-    repository: oci://registry-1.docker.io/bitnamicharts
-    version: 14.10.5
-  - name: loki
-    repository: https://moreh-dev.github.io/helm-charts
-    version: 6.30.0
-  - name: vector
-    repository: https://moreh-dev.github.io/helm-charts
-    version: 0.39.0
-digest: sha256:3b635653eed827815cf738ecaaa717f15a008a98d6cdaae0692cf54beee3c43a
-generated: "2026-02-20T18:09:04.847004395+09:00"
+- name: common
+  repository: oci://registry-1.docker.io/bitnamicharts
+  version: 2.31.4
+- name: kube-prometheus-stack
+  repository: https://prometheus-community.github.io/helm-charts
+  version: 80.7.0
+- name: lws
+  repository: oci://registry.k8s.io/lws/charts
+  version: 0.7.0
+- name: odin
+  repository: https://moreh-dev.github.io/helm-charts
+  version: v0.6.0
+- name: odin-crd
+  repository: https://moreh-dev.github.io/helm-charts
+  version: v0.6.0
+- name: keda
+  repository: https://kedacore.github.io/charts
+  version: 2.18.0
+- name: kubernetes-replicator
+  repository: https://helm.mittwald.de
+  version: 2.12.2
+- name: node-feature-discovery
+  repository: oci://registry.k8s.io/nfd/charts
+  version: 0.18.3
+- name: minio
+  repository: oci://registry-1.docker.io/bitnamicharts
+  version: 14.10.5
+- name: loki
+  repository: https://grafana.github.io/helm-charts
+  version: 6.30.0
+- name: vector
+  repository: https://helm.vector.dev
+  version: 0.39.0
+digest: sha256:4876629af1e182a8bbba444d098e9d82fd77d1fab46dca1dd3044059f7c129f3
+generated: "2026-02-20T18:36:14.669980012+09:00"

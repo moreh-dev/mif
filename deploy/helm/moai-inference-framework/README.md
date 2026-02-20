@@ -17,12 +17,12 @@ Moreh Inference Framework
 
 | Repository | Name | Version |
 |------------|------|---------|
+| https://grafana.github.io/helm-charts | loki | 6.30.0 |
 | https://helm.mittwald.de | replicator(kubernetes-replicator) | 2.12.2 |
+| https://helm.vector.dev | vector | 0.39.0 |
 | https://kedacore.github.io/charts | keda | 2.18.0 |
-| https://moreh-dev.github.io/helm-charts | loki | 6.30.0 |
 | https://moreh-dev.github.io/helm-charts | odin | v0.6.0 |
 | https://moreh-dev.github.io/helm-charts | odin-crd | v0.6.0 |
-| https://moreh-dev.github.io/helm-charts | vector | 0.39.0 |
 | https://prometheus-community.github.io/helm-charts | prometheus-stack(kube-prometheus-stack) | 80.7.0 |
 | oci://registry-1.docker.io/bitnamicharts | common | 2.31.4 |
 | oci://registry-1.docker.io/bitnamicharts | minio | 14.10.5 |
