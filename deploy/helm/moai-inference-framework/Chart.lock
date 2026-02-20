@@ -20,5 +20,8 @@ dependencies:
 - name: kubernetes-replicator
   repository: https://helm.mittwald.de
   version: 2.12.2
-digest: sha256:50ec4ad06dc24c0fac625c2d59ee0d3e0bc426d919b900c91a60e551683403d9
-generated: "2026-01-31T00:44:04.138335342+09:00"
+- name: node-feature-discovery
+  repository: oci://registry.k8s.io/nfd/charts
+  version: 0.18.3
+digest: sha256:d7f75e788dca4192775595637ec123afa390e09eebcaef9e9c0e40ff46c23e23
+generated: "2026-02-19T16:14:15.495286+09:00"

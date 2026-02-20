@@ -24,6 +24,7 @@ Moreh Inference Framework
 | https://prometheus-community.github.io/helm-charts | prometheus-stack(kube-prometheus-stack) | 80.7.0 |
 | oci://registry-1.docker.io/bitnamicharts | common | 2.31.4 |
 | oci://registry.k8s.io/lws/charts | lws | 0.7.0 |
+| oci://registry.k8s.io/nfd/charts | nfd(node-feature-discovery) | 0.18.3 |
 
 ## Values
 
@@ -54,6 +55,8 @@ Moreh Inference Framework
 | lws.enabled | bool | `true` | Enable kubernetes-sigs/lws. Set to false if already deployed. |
 | nameOverride | string | `""` | Chart name override. |
 | namespaceOverride | string | `""` | Namespace override. |
+| nfd.enabled | bool | `true` | Enable kubernetes-sigs/node-feature-discovery. Set to false if already deployed. |
+| nfd.worker.tolerations | list | `[{"effect":"NoSchedule","key":"amd.com/gpu","operator":"Exists"},{"effect":"NoSchedule","key":"nvidia.com/gpu","operator":"Exists"},{"effect":"NoExecute","key":"amd-dcm","operator":"Equal","value":"up"},{"effect":"NoSchedule","key":"amd-gpu-unhealthy","operator":"Exists"}]` | NFD Worker Tolerations to allow NFD workers to deploy to GPU nodes |
 | odin-crd.enabled | bool | `true` | Enable moreh/odin CRD. Set to false if already deployed. |
 | odin.enabled | bool | `true` | Enable moreh/odin. Set to false if already deployed. |
 | odin.image.pullSecrets[0].name | string | `"moreh-registry"` |  |

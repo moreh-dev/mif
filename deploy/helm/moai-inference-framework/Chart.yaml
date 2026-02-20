@@ -37,3 +37,8 @@ dependencies:
     version: 2.12.2
     repository: https://helm.mittwald.de
     condition: replicator.enabled
+  - name: node-feature-discovery
+    alias: nfd
+    version: 0.18.3
+    repository: oci://registry.k8s.io/nfd/charts
+    condition: nfd.enabled
