@@ -114,7 +114,7 @@ minio:
 
   # -- MinIO root user.
   rootUser: minio
-  # -- MinIO root password (required; set a strong password).
+  # -- MinIO root password. Override with a strong password in production.
   rootPassword: "minio123!"
 
   persistence:
@@ -137,7 +137,7 @@ minio:
   # set from this user's credentials.
   users:
     - accessKey: loki
-      # -- Password for the loki MinIO user (required; set a strong password).
+      # -- Password for the loki MinIO user. Override with a strong password in production.
       secretKey: "loki123!"
       policy: loki
 
