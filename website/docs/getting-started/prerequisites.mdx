@@ -90,7 +90,7 @@ loki:
 ```
 
 :::info
-The `<storage-class>` must match a StorageClass available in your cluster. Run `kubectl get storageclass` to list the available StorageClasses.
+`<storage-class>` must match a StorageClass available in your cluster. Run `kubectl get storageclass` to list available StorageClasses. If omitted, the cluster's default StorageClass is used; if no default exists, the PVC will remain in `Pending` state.
 :::
 
 :::info
