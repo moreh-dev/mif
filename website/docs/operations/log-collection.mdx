@@ -134,37 +134,37 @@ Open Grafana → **Explore** → select the **Loki** datasource.
 
 ### By namespace
 
-```logql
+```promql
 {namespace="default"}
 ```
 
 ### By inference service name
 
-```logql
+```promql
 {inference_service="llama-3-2-1b"}
 ```
 
 ### By pool name
 
-```logql
+```promql
 {pool_name="heimdall"}
 ```
 
 ### By role
 
-```logql
+```promql
 {role="decode"}
 ```
 
 ### Combined filter
 
-```logql
+```promql
 {namespace="default", inference_service="llama-3-2-1b", role="prefill"} |= "error"
 ```
 
 ### Filter by log level
 
-```logql
+```promql
 {namespace="default", level="error"}
 ```
 
