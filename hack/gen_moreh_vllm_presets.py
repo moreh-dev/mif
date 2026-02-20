@@ -18,9 +18,7 @@ import re
 import sys
 from typing import Optional
 
-ECR_IMAGE_BASE = (
-    "255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/unencrypted/moreh-vllm"
-)
+ECR_IMAGE_BASE = "255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/moreh-vllm"
 PRESET_PATH_BASE = "/app/moreh-vllm/presets"
 
 KNOWN_ACCEL_VENDORS = {"amd"}
