@@ -19,7 +19,11 @@ help: ## Display this help.
 
 .PHONY: helm-lint
 helm-lint: ## Lint Helm charts.
-	@helm lint ./deploy/helm/*
+	@for chart in ./deploy/helm/*; do \
+	  if [ -d "$$chart" ] && [ -f "$$chart/Chart.yaml" ]; then \
+	    helm lint "$$chart"; \
+	  fi; \
+	done
 
 .PHONY: helm-docs
 helm-docs: ## Generate Helm chart documentation.
