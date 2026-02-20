@@ -57,6 +57,13 @@ image:
 
 - title: ` ```<language> title="<title>"`
 - highlight: ` ```<language> {1,4-6}`
+- **Expected output**: Blocks showing command output must always specify both a language type and a title on the same opening fence. Use `shell` for terminal output:
+  ````mdx
+  ```shell title="Expected output (one pod per node, all `Running`)"
+  NAME           READY   STATUS    RESTARTS   AGE
+  vector-xxxxx   1/1     Running   0          2m
+  ```
+  ````
 - **Variables**:
   - Format as `<variableName>` (camelCase, no quotes).
   - Highlight lines containing variables in code blocks (e.g., ` ```yaml {2} `).
