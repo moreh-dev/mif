@@ -73,15 +73,17 @@ kubectl explain --api-version inference.networking.k8s.io/v1 inferencepools.spec
 
 ### EndpointPickerConfig
 
-| Field                | Type                                        | Description                                                                             |
-| :------------------- | :------------------------------------------ | :-------------------------------------------------------------------------------------- |
-| `data`               | [`DataLayerConfig`](#datalayerconfig)       | Data configures the DataLayer. It is required if the new DataLayer is enabled.          |
-| `featureGates`       | []string                                    | FeatureGates is a set of flags that enable various experimental features with the EPP.  |
-| `plugins`            | [`[]PluginSpec`](#pluginspec)               | Plugins is the list of plugins that will be instantiated.                               |
-| `saturationDetector` | [`SaturationDetector`](#saturationdetector) | SaturationDetector when present specifies the configuration of the Saturation detector. |
-| `schedulingProfiles` | [`[]SchedulingProfile`](#schedulingprofile) | SchedulingProfiles is the list of named SchedulingProfiles that will be created.        |
+| Field                | Type                                        | Description                                                                                              |
+| :------------------- | :------------------------------------------ | :------------------------------------------------------------------------------------------------------- |
+| `data`               | [`DataLayerConfig`](#datalayerconfig)       | Data configures the DataLayer. It is required if the new DataLayer is enabled.                           |
+| `featureGates`       | `[]string`                                  | FeatureGates is a set of flags that enable various experimental features with the EPP.                   |
+| `plugins`            | [`[]PluginSpec`](#pluginspec)               | Plugins is the list of plugins that will be instantiated. See [Plugins](./plugins.mdx) for more details. |
+| `saturationDetector` | [`SaturationDetector`](#saturationdetector) | SaturationDetector when present specifies the configuration of the Saturation detector.                  |
+| `schedulingProfiles` | [`[]SchedulingProfile`](#schedulingprofile) | SchedulingProfiles is the list of named SchedulingProfiles that will be created.                         |
 
 #### PluginSpec
+
+For more details on available plugins, see [Plugins](./plugins.mdx).
 
 | Field        | Type     | Description                                                                                                          |
 | :----------- | :------- | :------------------------------------------------------------------------------------------------------------------- |

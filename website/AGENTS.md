@@ -92,3 +92,7 @@ This is a warning
 - **Style**:
   - **Imperative**: Use command style for steps (e.g., "Create a file...").
   - **Concise**: Avoid marketing fluff. Link to prerequisites instead of repeating them.
+
+## 4. Content Guidelines
+
+- **Inference Deployment**: When documenting deployment of inference services (e.g., vLLM, SGLang), instructions MUST use the `InferenceService` resource with a preset.
