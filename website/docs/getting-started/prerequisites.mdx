@@ -67,31 +67,26 @@ The container images for the MoAI Inference Framework are distributed through a 
 
 Create a `moai-inference-framework-values.yaml` file as follows. Fill in all values marked as required.
 
-```yaml title="moai-inference-framework-values.yaml" {4-5,10,21,24}
+```yaml title="moai-inference-framework-values.yaml" {4-5,10,16,19}
 # ECR credentials — provided by Moreh at purchase or trial issuance.
 ecrTokenRefresher:
   aws:
-    accessKeyId: <AWS_ACCESS_KEY_ID> # required
-    secretAccessKey: <AWS_SECRET_ACCESS_KEY> # required
+    accessKeyId: <AWS_ACCESS_KEY_ID>
+    secretAccessKey: <AWS_SECRET_ACCESS_KEY>
 
 # MinIO: object storage backend for Loki log data.
 minio:
   persistence:
-    storageClass: <storage-class> # required; e.g. ceph-block
-  rootPassword: "minio123!" # Optional: override the default passwords.
-  users:
-    - accessKey: loki
-      secretKey: "loki123!" # Optional: override the default passwords.
-      policy: loki
+    storageClass: <storage-class>
 
 # Loki: log aggregation system. Uses MinIO as its object storage backend.
 loki:
   write:
     persistence:
-      storageClass: <storage-class> # required; same StorageClass as above
+      storageClass: <storage-class>
   backend:
     persistence:
-      storageClass: <storage-class> # required; same StorageClass as above
+      storageClass: <storage-class>
 ```
 
 :::info
