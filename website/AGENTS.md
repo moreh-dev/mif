@@ -1,6 +1,6 @@
 # Website (Docusaurus) — Agent Rules
 
-This file defines rules for contributors and automation agents working in `website/`.
+Rules specific to the `website/` directory. General contribution guidelines are in the root [`AGENTS.md`](/AGENTS.md).
 
 ## 1. Structure & Metadata
 
