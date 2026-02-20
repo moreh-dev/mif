@@ -17,6 +17,7 @@ Moreh Inference Framework
 
 | Repository | Name | Version |
 |------------|------|---------|
+| https://charts.min.io | minio | 5.4.0 |
 | https://grafana.github.io/helm-charts | loki | 6.30.0 |
 | https://helm.mittwald.de | replicator(kubernetes-replicator) | 2.12.2 |
 | https://helm.vector.dev | vector | 0.39.0 |
@@ -25,7 +26,6 @@ Moreh Inference Framework
 | https://moreh-dev.github.io/helm-charts | odin-crd | v0.6.0 |
 | https://prometheus-community.github.io/helm-charts | prometheus-stack(kube-prometheus-stack) | 80.7.0 |
 | oci://registry-1.docker.io/bitnamicharts | common | 2.31.4 |
-| oci://registry-1.docker.io/bitnamicharts | minio | 14.10.5 |
 | oci://registry.k8s.io/lws/charts | lws | 0.7.0 |
 | oci://registry.k8s.io/nfd/charts | nfd(node-feature-discovery) | 0.18.3 |
 
@@ -66,7 +66,6 @@ Moreh Inference Framework
 | loki.backend.resources.requests.cpu | string | `"500m"` |  |
 | loki.backend.resources.requests.memory | string | `"512Mi"` |  |
 | loki.enabled | bool | `true` | Enable grafana/loki. |
-| loki.fullnameOverride | string | `"loki"` |  |
 | loki.gateway.extraArgs[0] | string | `"-config.expand-env=true"` |  |
 | loki.gateway.extraEnvFrom[0].secretRef.name | string | `"loki-bucket"` |  |
 | loki.gateway.extraEnvFrom[1].configMapRef.name | string | `"loki-bucket"` |  |
@@ -127,27 +126,24 @@ Moreh Inference Framework
 | loki.write.resources.requests.cpu | string | `"500m"` |  |
 | loki.write.resources.requests.memory | string | `"512Mi"` |  |
 | lws.enabled | bool | `true` | Enable kubernetes-sigs/lws. Set to false if already deployed. |
-| minio.auth.rootPassword | string | `""` | MinIO root password (required; set a strong password). |
-| minio.auth.rootUser | string | `"minio"` | MinIO root user. |
-| minio.enabled | bool | `true` | Enable bitnami/minio as the S3-compatible object storage backend for Loki. Set to false if MinIO is already deployed; in that case, set minio.fullnameOverride to the existing service name so the loki-bucket ConfigMap resolves the correct host. |
-| minio.fullnameOverride | string | `"minio"` |  |
+| minio.buckets[0].name | string | `"loki"` |  |
+| minio.enabled | bool | `true` | Enable minio/minio as the S3-compatible object storage backend for Loki. Set to false if MinIO is already deployed; in that case, configure loki storage to point to the existing MinIO service. |
 | minio.mode | string | `"standalone"` |  |
 | minio.persistence.size | string | `"500Gi"` |  |
 | minio.persistence.storageClass | string | `""` | StorageClass for MinIO data volume (e.g. ceph-block, standard). |
-| minio.provisioning.buckets[0].name | string | `"loki"` |  |
-| minio.provisioning.enabled | bool | `true` |  |
-| minio.provisioning.policies[0].name | string | `"loki"` |  |
-| minio.provisioning.policies[0].statements[0].actions[0] | string | `"s3:*"` |  |
-| minio.provisioning.policies[0].statements[0].effect | string | `"Allow"` |  |
-| minio.provisioning.policies[0].statements[0].resources[0] | string | `"arn:aws:s3:::loki/*"` |  |
-| minio.provisioning.users[0].password | string | `""` | Password for the loki MinIO user (required; set a strong password). |
-| minio.provisioning.users[0].policies[0] | string | `"loki"` |  |
-| minio.provisioning.users[0].setPolicies | bool | `true` |  |
-| minio.provisioning.users[0].username | string | `"loki"` |  |
+| minio.policies[0].name | string | `"loki"` |  |
+| minio.policies[0].statements[0].actions[0] | string | `"s3:*"` |  |
+| minio.policies[0].statements[0].effect | string | `"Allow"` |  |
+| minio.policies[0].statements[0].resources[0] | string | `"arn:aws:s3:::loki/*"` |  |
 | minio.resources.limits.cpu | string | `"1.5"` |  |
 | minio.resources.limits.memory | string | `"3072Mi"` |  |
 | minio.resources.requests.cpu | string | `"1"` |  |
 | minio.resources.requests.memory | string | `"2048Mi"` |  |
+| minio.rootPassword | string | `"minio123!"` | MinIO root password. Override with a strong password in production. |
+| minio.rootUser | string | `"minio"` | MinIO root user. |
+| minio.users[0].accessKey | string | `"loki"` |  |
+| minio.users[0].policy | string | `"loki"` |  |
+| minio.users[0].secretKey | string | `"loki123!"` | Password for the loki MinIO user. Override with a strong password in production. |
 | nameOverride | string | `""` | Chart name override. |
 | namespaceOverride | string | `""` | Namespace override. |
 | nfd.enabled | bool | `true` | Enable kubernetes-sigs/node-feature-discovery. Set to false if already deployed. |
@@ -180,7 +176,7 @@ Moreh Inference Framework
 | vector.customConfig.api.enabled | bool | `true` |  |
 | vector.customConfig.data_dir | string | `"/vector-data"` |  |
 | vector.customConfig.sinks.loki.encoding.codec | string | `"json"` |  |
-| vector.customConfig.sinks.loki.endpoint | string | `"http://loki-gateway"` |  |
+| vector.customConfig.sinks.loki.endpoint | string | `"http://{{ .Release.Name }}-loki-gateway"` |  |
 | vector.customConfig.sinks.loki.inputs[0] | string | `"mif_log_transform"` |  |
 | vector.customConfig.sinks.loki.labels.app | string | `"{{`{{ app }}`}}"` |  |
 | vector.customConfig.sinks.loki.labels.inference_service | string | `"{{`{{ inference_service }}`}}"` |  |
