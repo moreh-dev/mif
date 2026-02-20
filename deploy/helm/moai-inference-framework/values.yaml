@@ -86,7 +86,7 @@ replicator:
 nfd:
   # -- Enable kubernetes-sigs/node-feature-discovery. Set to false if already deployed.
   enabled: true
-  
+
   worker:
     # -- NFD Worker Tolerations to allow NFD workers to deploy to GPU nodes
     tolerations:
@@ -103,6 +103,299 @@ nfd:
       - key: "amd-gpu-unhealthy"
         operator: "Exists"
         effect: "NoSchedule"
+
+minio:
+  # -- Enable bitnami/minio as the S3-compatible object storage backend for Loki.
+  # Set to false if MinIO is already deployed; in that case, set minio.fullnameOverride
+  # to the existing service name so the loki-bucket ConfigMap resolves the correct host.
+  enabled: true
+
+  # fullnameOverride fixes the service name to "minio" regardless of the Helm release
+  # name. The credentials template uses this value as BUCKET_HOST.
+  fullnameOverride: minio
+
+  mode: standalone
+
+  auth:
+    # -- MinIO root user.
+    rootUser: minio
+    # -- MinIO root password (required; set a strong password).
+    rootPassword: ""
+
+  persistence:
+    # -- StorageClass for MinIO data volume (e.g. ceph-block, standard).
+    storageClass: ""
+    size: 500Gi
+
+  provisioning:
+    enabled: true
+    # S3 policy granting the loki user access to the loki bucket only.
+    policies:
+      - name: loki
+        statements:
+          - resources:
+              - "arn:aws:s3:::loki/*"
+            effect: Allow
+            actions:
+              - "s3:*"
+    # Dedicated loki user with restricted S3 access (not the root user).
+    # AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in the loki-bucket Secret are
+    # set from this user's credentials.
+    users:
+      - username: loki
+        # -- Password for the loki MinIO user (required; set a strong password).
+        password: ""
+        policies:
+          - loki
+        setPolicies: true
+    buckets:
+      - name: loki
+
+  resources:
+    requests:
+      cpu: "1"
+      memory: 2048Mi
+    limits:
+      cpu: "1.5"
+      memory: 3072Mi
+
+loki:
+  # -- Enable grafana/loki.
+  enabled: true
+
+  # fullnameOverride makes all Loki service names predictable regardless of the
+  # Helm release name (e.g. loki-gateway instead of <release>-loki-gateway).
+  fullnameOverride: loki
+
+  global:
+    dnsService: coredns
+
+  loki:
+    auth_enabled: false
+    commonConfig:
+      replication_factor: 1
+    image:
+      tag: "3.5.1"
+    schemaConfig:
+      configs:
+        - from: "2024-06-24"
+          store: tsdb
+          object_store: s3
+          schema: v13
+          index:
+            prefix: loki_index_
+            period: 24h
+    storage:
+      bucketNames:
+        chunks: loki
+        ruler: loki
+        admin: loki
+      s3:
+        s3ForcePathStyle: true
+        # ${...} references are resolved by Loki at startup via -config.expand-env=true.
+        endpoint: "http://${BUCKET_HOST}:${BUCKET_PORT}"
+        region: "${BUCKET_REGION}"
+        accessKeyId: "${AWS_ACCESS_KEY_ID}"
+        secretAccessKey: "${AWS_SECRET_ACCESS_KEY}"
+    storage_config:
+      tsdb_shipper:
+        active_index_directory: /var/loki/tsdb-index
+        cache_location: /var/loki/tsdb-cache
+        cache_ttl: 168h
+    structuredConfig:
+      compactor:
+        retention_enabled: true
+        delete_request_store: s3
+      limits_config:
+        max_entries_limit_per_query: 50000
+        split_queries_by_interval: 24h
+        ingestion_rate_mb: 30
+        ingestion_burst_size_mb: 60
+        per_stream_rate_limit: 30MB
+        per_stream_rate_limit_burst: 60MB
+        max_query_series: 10000
+        retention_period: 2160h # 90 days
+
+  # Each component runs with -config.expand-env=true so that ${BUCKET_HOST} etc.
+  # in the Loki config are expanded from the loki-bucket ConfigMap and Secret.
+  gateway:
+    replicas: 1
+    extraArgs:
+      - -config.expand-env=true
+    extraEnvFrom:
+      - secretRef:
+          name: loki-bucket
+      - configMapRef:
+          name: loki-bucket
+    nodeSelector:
+      node-role.kubernetes.io/control-plane: ""
+    resources:
+      requests:
+        cpu: 500m
+        memory: 512Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+  read:
+    replicas: 1
+    extraArgs:
+      - -config.expand-env=true
+    extraEnvFrom:
+      - secretRef:
+          name: loki-bucket
+      - configMapRef:
+          name: loki-bucket
+    nodeSelector:
+      node-role.kubernetes.io/control-plane: ""
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+
+  write:
+    replicas: 1
+    extraArgs:
+      - -config.expand-env=true
+    extraEnvFrom:
+      - secretRef:
+          name: loki-bucket
+      - configMapRef:
+          name: loki-bucket
+    nodeSelector:
+      node-role.kubernetes.io/control-plane: ""
+    resources:
+      requests:
+        cpu: 500m
+        memory: 512Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    persistence:
+      # -- StorageClass for Loki write component (e.g. ceph-block, standard).
+      storageClass: ""
+
+  backend:
+    replicas: 1
+    extraArgs:
+      - -config.expand-env=true
+    extraEnvFrom:
+      - secretRef:
+          name: loki-bucket
+      - configMapRef:
+          name: loki-bucket
+    nodeSelector:
+      node-role.kubernetes.io/control-plane: ""
+    resources:
+      requests:
+        cpu: 500m
+        memory: 512Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    persistence:
+      # -- StorageClass for Loki backend component (e.g. ceph-block, standard).
+      storageClass: ""
+
+vector:
+  # -- Enable vector/vector as a DaemonSet log collector.
+  enabled: true
+
+  role: Agent
+
+  tolerations:
+    - key: node.kubernetes.io/unschedulable
+      operator: Exists
+      effect: NoExecute
+      tolerationSeconds: 5
+    - key: node-role.kubernetes.io/compute
+      operator: Equal
+      value: "true"
+      effect: NoSchedule
+    - key: amd.com/gpu
+      operator: Exists
+      effect: NoSchedule
+
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 10
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 100m
+      memory: 256Mi
+
+  customConfig:
+    data_dir: /vector-data
+    api:
+      enabled: true
+      address: "0.0.0.0:8686"
+    sources:
+      mif_logs:
+        type: kubernetes_logs
+    transforms:
+      mif_log_transform:
+        type: remap
+        inputs:
+          - mif_logs
+        source: |
+          .namespace          = .kubernetes.pod_namespace
+          .node_name          = "$VECTOR_SELF_NODE_NAME"
+          .app                = get(.kubernetes.pod_labels, ["app.kubernetes.io/name"])      ?? ""
+          .inference_service  = get(.kubernetes.pod_labels, ["app.kubernetes.io/instance"])  ?? ""
+          .pool_name          = get(.kubernetes.pod_labels, ["mif.moreh.io/pool"])           ?? ""
+          .role               = get(.kubernetes.pod_labels, ["mif.moreh.io/role"])           ?? ""
+
+          structured, err = parse_json(.message)
+          if err == null {
+            . = merge!(., structured)
+            msg, err = get(., ["msg"])
+            if err == null {
+              .message = msg
+              del(.msg)
+            }
+            time, err = get(., ["time"])
+            if err == null {
+              .timestamp = time
+              del(.time)
+            }
+          } else {
+            .level = "warn"
+          }
+
+          del(.file)
+          del(.source_type)
+          del(.stream)
+          del(.kubernetes)
+    sinks:
+      loki:
+        type: loki
+        # Vector and Loki are co-located in the same namespace, so the short
+        # service name resolves correctly without a namespace suffix.
+        endpoint: "http://loki-gateway"
+        inputs:
+          - mif_log_transform
+        encoding:
+          codec: json
+        labels:
+          # {{`{{ field }}`}} is Go raw-string escaping required because the
+          # Vector chart renders customConfig through Helm's tpl function.
+          # tpl sees {{`{{ namespace }}`}} → evaluates raw string → outputs {{ namespace }}
+          # which is Vector's own field-template syntax.
+          namespace: "{{`{{ namespace }}`}}"
+          inference_service: "{{`{{ inference_service }}`}}"
+          pool_name: "{{`{{ pool_name }}`}}"
+          role: "{{`{{ role }}`}}"
+          node_name: "{{`{{ node_name }}`}}"
+          app: "{{`{{ app }}`}}"
+          level: "{{`{{ level }}`}}"
 
 ecrTokenRefresher:
   # -- Enable ECR token refresher.

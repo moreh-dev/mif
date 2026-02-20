@@ -1,0 +1,26 @@
+{{- $ps := index .Values "prometheus-stack" }}
+{{- if and .Values.loki.enabled $ps.enabled $ps.grafana.enabled }}
+---
+# Grafana datasource ConfigMap for Loki.
+# The grafana-sidecar discovers ConfigMaps labelled grafana_datasource=1 and
+# provisions them as datasources automatically.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "common.names.name" . }}-datasource-loki
+  namespace: {{ include "common.names.namespace" . }}
+  labels:
+    grafana_datasource: "1"
+    {{- include "mif.labels" . | nindent 4 }}
+data:
+  loki-datasource.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Loki
+        type: loki
+        access: proxy
+        url: http://loki-gateway.{{ include "common.names.namespace" . }}.svc.cluster.local
+        isDefault: false
+        jsonData:
+          maxLines: 5000
+{{- end }}

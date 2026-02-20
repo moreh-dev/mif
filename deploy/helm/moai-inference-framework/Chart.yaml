@@ -42,3 +42,15 @@ dependencies:
     version: 0.18.3
     repository: oci://registry.k8s.io/nfd/charts
     condition: nfd.enabled
+  - name: minio
+    version: 14.10.5
+    repository: oci://registry-1.docker.io/bitnamicharts
+    condition: minio.enabled
+  - name: loki
+    version: 6.30.0
+    repository: https://moreh-dev.github.io/helm-charts
+    condition: loki.enabled
+  - name: vector
+    version: 0.39.0
+    repository: https://moreh-dev.github.io/helm-charts
+    condition: vector.enabled
