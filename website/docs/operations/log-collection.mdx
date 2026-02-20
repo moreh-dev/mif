@@ -48,48 +48,7 @@ MinIO, Loki, and Vector are all **enabled by default** in the `moai-inference-fr
 
 ## Installation
 
-### 1. Prepare the values file
-
-Add the following block to your `moai-inference-framework-values.yaml`.
-
-```yaml title="moai-inference-framework-values.yaml" {3,8,11}
-minio:
-  persistence:
-    storageClass: <storage-class> # required; e.g. ceph-block
-
-loki:
-  write:
-    persistence:
-      storageClass: <storage-class> # required; same StorageClass as above
-  backend:
-    persistence:
-      storageClass: <storage-class> # required; same StorageClass as above
-```
-
-:::info
-`minio.persistence.storageClass`, `loki.write.persistence.storageClass`, and `loki.backend.persistence.storageClass` must be set to a StorageClass available in your cluster.
-:::
-
-:::info
-MinIO creates a dedicated `loki` user with a policy scoped to the `loki` bucket. Loki uses these restricted credentials (not root) to access object storage. Default passwords are set out of the box; override `minio.rootPassword` and `minio.users[0].secretKey` in production.
-:::
-
-### 2. Install (or upgrade) the chart
-
-```shell
-helm upgrade -i mif moreh/moai-inference-framework \
-    --version v0.3.0 \
-    -n mif \
-    --create-namespace \
-    -f moai-inference-framework-values.yaml
-```
-
-The chart will:
-
-1. Create a `loki-bucket` ConfigMap and Secret in the `mif` namespace from the provided MinIO credentials.
-2. Install the Loki Helm chart (v6.30.0) with TSDB storage and 90-day log retention.
-3. Install the Vector Helm chart (v0.39.0) as a DaemonSet that collects logs from pods labelled `mif.moreh.io/log.collect=true`, transforms them, and ships them to Loki.
-4. Create a Grafana datasource ConfigMap so that Grafana automatically discovers Loki.
+Log collection is installed as part of the `moai-inference-framework` Helm chart. See [Prerequisites](../getting-started/prerequisites.mdx#moai-inference-framework) for the required values and install command.
 
 ---
 

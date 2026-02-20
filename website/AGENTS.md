@@ -30,8 +30,8 @@ Rules specific to the `website/` directory. General contribution guidelines are 
 https://docusaurus.io/docs/markdown-features/tabs
 
 ```mdx
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
 
 <Tabs groupId="fruits" queryString>
   <TabItem value="apple" label="Apple" default>
@@ -96,3 +96,9 @@ This is a warning
 ## 4. Content Guidelines
 
 - **Inference Deployment**: When documenting deployment of inference services (e.g., vLLM, SGLang), instructions MUST use the `InferenceService` resource with a preset.
+
+- **No duplicate installation steps**: Operation or feature docs must not repeat the values file example or `helm upgrade` command that already appears in `getting-started/prerequisites.mdx`. Instead, link directly to the relevant section:
+  ```mdx
+  See [Prerequisites](../getting-started/prerequisites.mdx#moai-inference-framework) for the required values and install command.
+  ```
+  Duplication causes the two pages to diverge whenever the chart version or values change.
