@@ -4,8 +4,8 @@ sidebar_label: Prerequisites
 sidebar_position: 1
 ---
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
 
 This document introduces the prerequisites for the MoAI Inference Framework and provides instructions on how to install them.
 
@@ -65,16 +65,43 @@ The container images for the MoAI Inference Framework are distributed through a 
 **The AWS credentials (`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`) should have been provided to you along with your purchase or trial issuance of the MoAI Inference Framework**. If you did not receive this information, please contact your point of purchase separately.
 :::
 
-Create a `moai-inference-framework-values.yaml` file as follows. **You need to replace `<AWS_ACCESS_KEY_ID>` and `<AWS_SECRET_ACCESS_KEY>` with your own values**.
+Create a `moai-inference-framework-values.yaml` file as follows. Fill in all values marked as required.
 
-```yaml title="moai-inference-framework-values.yaml" {3-4}
+```yaml title="moai-inference-framework-values.yaml" {4-5,10,12,16,22,25}
+# ECR credentials — provided by Moreh at purchase or trial issuance.
 ecrTokenRefresher:
   aws:
-    accessKeyId: <AWS_ACCESS_KEY_ID>
-    secretAccessKey: <AWS_SECRET_ACCESS_KEY>
+    accessKeyId: <AWS_ACCESS_KEY_ID> # required
+    secretAccessKey: <AWS_SECRET_ACCESS_KEY> # required
+
+# MinIO: object storage backend for Loki log data.
+minio:
+  auth:
+    rootPassword: <MINIO_ROOT_PASSWORD> # required; set a strong password (≥ 8 chars)
+  persistence:
+    storageClass: <storage-class> # required; e.g. ceph-block
+  provisioning:
+    users:
+      - username: loki
+        password: <LOKI_MINIO_PASSWORD> # required; set a strong password (≥ 8 chars)
+
+# Loki: log aggregation system. Uses MinIO as its object storage backend.
+loki:
+  write:
+    persistence:
+      storageClass: <storage-class> # required; same StorageClass as above
+  backend:
+    persistence:
+      storageClass: <storage-class> # required; same StorageClass as above
 ```
 
-In addition, if dependencies such as keda, kube-prometheus-stack, lws are already installed in your cluster, you should skip their installation by setting the corresponding values to `false` in the `moai-inference-framework-values.yaml` file. Refer to [moai-inference-framework README](https://github.com/moreh-dev/mif/tree/main/deploy/helm/moai-inference-framework) to see the full list of dependencies.
+:::info
+The `<storage-class>` must match a StorageClass available in your cluster. Run `kubectl get storageclass` to list the available StorageClasses.
+:::
+
+:::info
+If dependencies such as `keda`, `kube-prometheus-stack`, or `lws` are already installed in your cluster, skip their installation by setting the corresponding values to `false`. Refer to [moai-inference-framework README](https://github.com/moreh-dev/mif/tree/main/deploy/helm/moai-inference-framework) for the full list of dependencies.
+:::
 
 Then, deploy the `moai-inference-framework` chart using the following command:
 
@@ -136,7 +163,7 @@ deviceConfig:
   spec:
     driver:
       enable: true
-      version: '6.4.3'
+      version: "6.4.3"
       blacklist: true
       image: <registry>/amdgpu-driver
       imageRegistrySecret:
@@ -279,7 +306,7 @@ spec:
       app.kubernetes.io/instance: rdma-shared-device-plugin
   updateStrategy:
     rollingUpdate:
-      maxUnavailable: '30%'
+      maxUnavailable: "30%"
   template:
     metadata:
       labels:
@@ -415,8 +442,8 @@ Create a `istiod-values.yaml` file and install the Istio control plane.
 ```yaml title="istiod-values.yaml"
 pilot:
   env:
-    PILOT_ENABLE_ALPHA_GATEWAY_API: 'true'
-    ENABLE_GATEWAY_API_INFERENCE_EXTENSION: 'true'
+    PILOT_ENABLE_ALPHA_GATEWAY_API: "true"
+    ENABLE_GATEWAY_API_INFERENCE_EXTENSION: "true"
 ```
 
 ```shell
