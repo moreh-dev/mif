@@ -56,7 +56,7 @@ Moreh Inference Framework
 | nameOverride | string | `""` | Chart name override. |
 | namespaceOverride | string | `""` | Namespace override. |
 | nfd.enabled | bool | `true` | Enable kubernetes-sigs/node-feature-discovery. Set to false if already deployed. |
-| nfd.worker.tolerations | list | `[{"effect":"NoSchedule","key":"amd.com/gpu","operator":"Exists"},{"effect":"NoSchedule","key":"nvidia.com/gpu","operator":"Exists"}]` | NFD Worker Tolerations to allow NFD workers to deploy to GPU nodes |
+| nfd.worker.tolerations | list | `[{"effect":"NoSchedule","key":"amd.com/gpu","operator":"Exists"},{"effect":"NoSchedule","key":"nvidia.com/gpu","operator":"Exists"},{"effect":"NoExecute","key":"amd-dcm","operator":"Equal","value":"up"},{"effect":"NoSchedule","key":"amd-gpu-unhealthy","operator":"Exists"}]` | NFD Worker Tolerations to allow NFD workers to deploy to GPU nodes |
 | odin-crd.enabled | bool | `true` | Enable moreh/odin CRD. Set to false if already deployed. |
 | odin.enabled | bool | `true` | Enable moreh/odin. Set to false if already deployed. |
 | odin.image.pullSecrets[0].name | string | `"moreh-registry"` |  |

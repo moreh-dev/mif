@@ -96,6 +96,13 @@ nfd:
       - key: "nvidia.com/gpu"
         operator: "Exists"
         effect: "NoSchedule"
+      - key: "amd-dcm"
+        operator: "Equal"
+        value: "up"
+        effect: "NoExecute"
+      - key: "amd-gpu-unhealthy"
+        operator: "Exists"
+        effect: "NoSchedule"
 
 ecrTokenRefresher:
   # -- Enable ECR token refresher.
