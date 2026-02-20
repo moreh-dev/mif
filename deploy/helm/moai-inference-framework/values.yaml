@@ -83,6 +83,20 @@ replicator:
   # -- Enable mittwald/kubernetes-replicator. Set to false if already deployed.
   enabled: true
 
+nfd:
+  # -- Enable kubernetes-sigs/node-feature-discovery. Set to false if already deployed.
+  enabled: true
+  
+  worker:
+    # -- NFD Worker Tolerations to allow NFD workers to deploy to GPU nodes
+    tolerations:
+      - key: "amd.com/gpu"
+        operator: "Exists"
+        effect: "NoSchedule"
+      - key: "nvidia.com/gpu"
+        operator: "Exists"
+        effect: "NoSchedule"
+
 ecrTokenRefresher:
   # -- Enable ECR token refresher.
   enabled: true
