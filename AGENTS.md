@@ -99,3 +99,137 @@ The commit message should be structured as follows:
 - **Makefile and workflow integration**:
   - Provide separate Make targets per test purpose (for example `e2e-performance`, `e2e-quality`) so that CI can run them independently.
   - GitHub Actions and other workflows should invoke these targets directly, and new test categories should follow the same pattern when adding additional targets and workflows.
+
+## Agent Self-Improvement
+
+After completing any non-trivial task, evaluate whether the work involved:
+- A recurring pattern that will likely appear again in future tasks, or
+- A mistake that was corrected through user feedback, or
+- A design decision that required deliberate reasoning to reach the right answer.
+
+If any of the above applies, **record it in this file** (`AGENTS.md`) before closing the task. Entries should be concise, actionable, and placed under the most relevant existing section. If no section fits, create one.
+
+The goal is to make every repeated task faster and every repeated mistake impossible.
+
+## Design Principles
+
+### Minimum Necessary Complexity
+
+- **Do not add configuration options, fields, or abstractions for hypothetical future use cases.** Only add what the current task concretely requires.
+- Before introducing a new value field, ask: "Is there a real, current use case that cannot be handled without it?" If the answer is no, omit the field and handle the edge case through documentation instead.
+- Example: when considering whether to add a `minio.externalHost` field to support cross-namespace MinIO, the right answer was to document that users can set `minio.fullnameOverride` to a FQDN when `minio.enabled: false` — no new field needed.
+
+### Documentation over Code for Edge Cases
+
+- When a behavior difference only arises in a non-default, edge-case configuration, prefer documenting the workaround over adding a dedicated code path or configuration key.
+- Reserve code changes for cases where the default path is broken or the workaround is genuinely error-prone.
+
+### Reject Designs Before They Are Built
+
+- If an initial design is heading in the wrong direction (e.g., standalone prerequisites instead of sub-chart dependencies, `enabled: false` defaults, nested config instead of top-level sections), raise the issue and redesign before writing code. Retrofitting a wrong structure is always more costly.
+
+## Helm Chart Development
+
+### Sub-chart Integration
+
+- **All infrastructure components belong as sub-chart dependencies** of `moai-inference-framework`. Do not design them as standalone prerequisites that users install separately.
+- **Enablement convention**: Every sub-chart dependency must have both a `condition:` entry in `Chart.yaml` AND `enabled: true` in the default `values.yaml`. Setting `enabled: false` as the default breaks the "install everything in one chart" philosophy. Follow the same pattern as existing components (`keda`, `lws`, `odin`, etc.).
+
+  ```yaml
+  # Chart.yaml — always add condition:
+  - name: vector
+    version: 0.39.0
+    repository: https://moreh-dev.github.io/helm-charts
+    condition: vector.enabled
+
+  # values.yaml — always default to true
+  vector:
+    enabled: true
+  ```
+
+### Predictable Service Names
+
+- Set `fullnameOverride` on every sub-chart so that service names are deterministic regardless of the Helm release name. Without this, service names vary with the release name and break cross-component references.
+
+  ```yaml
+  minio:
+    fullnameOverride: minio # service is always "minio"
+  loki:
+    fullnameOverride: loki # gateway is always "loki-gateway"
+  ```
+
+### Separation of Concerns in values.yaml
+
+- **Large infrastructure components must be top-level sections**, not nested under their consumers. For example, MinIO configuration belongs at `minio:`, not at `loki.minio:`. This allows MinIO to be independently enabled/disabled and reused by other components in the future.
+
+### MinIO Provisioning Pattern
+
+- Use `provisioning` (not `defaultBuckets`) to create buckets, users, and policies. This allows fine-grained access control.
+- Create a **dedicated user per consuming service** with a policy scoped to only its bucket — do not use root credentials for service-to-service access.
+
+  ```yaml
+  minio:
+    provisioning:
+      enabled: true
+      policies:
+        - name: loki
+          statements:
+            - resources: ["arn:aws:s3:::loki/*"]
+              effect: Allow
+              actions: ["s3:*"]
+      users:
+        - username: loki
+          password: ""
+          policies: [loki]
+          setPolicies: true
+      buckets:
+        - name: loki
+  ```
+
+- Templates that read MinIO credentials must reference the **provisioned user**, not root:
+
+  ```yaml
+  # credentials.yaml
+  stringData:
+    AWS_ACCESS_KEY_ID:
+      { { (index .Values.minio.provisioning.users 0).username | quote } }
+    AWS_SECRET_ACCESS_KEY:
+      { { (index .Values.minio.provisioning.users 0).password | quote } }
+  ```
+
+### Helm `tpl` Passthrough — Vector Label Syntax
+
+- The moreh/vector chart renders `customConfig` through Helm's `tpl` function (`{{ tpl (toYaml .Values.customConfig) . | indent 4 }}`). This means any `{{ }}` expression in `customConfig` is evaluated as a Go template at render time.
+- To pass **Vector's own field-template syntax** (`{{ field }}`) through `tpl` without evaluation, use Go raw string literals:
+
+  ```yaml
+  # values.yaml — correct
+  labels:
+    namespace: "{{`{{ namespace }}`}}"
+
+  # values.yaml — WRONG: tpl evaluates {{ namespace }} as a Go template function
+  labels:
+    namespace: "{{ namespace }}"
+  ```
+
+- **Before using `customConfig` with any sub-chart, always verify whether the chart applies `tpl` to it** by running `helm pull <chart> --version <ver> --untar` and inspecting the ConfigMap template.
+
+### YAML Anchors
+
+- **Do not use YAML anchors at the root level of `values.yaml`** (e.g., `_defaults: &defaults`). Helm treats unknown root-level keys as invalid and may emit warnings or errors. Instead, duplicate shared configuration explicitly for each component.
+
+### MIF Pod Label Keys
+
+When filtering or labeling logs, metrics, or other signals by MIF-specific pod attributes, use these label keys:
+
+| Concept           | Label key                    | Example value       |
+| :---------------- | :--------------------------- | :------------------ |
+| Pool              | `mif.moreh.io/pool`          | `heimdall`          |
+| Role              | `mif.moreh.io/role`          | `prefill`, `decode` |
+| App name          | `app.kubernetes.io/name`     | `vllm`              |
+| Inference service | `app.kubernetes.io/instance` | `llama-3-2-1b`      |
+
+### Avoiding Unnecessary Environment Variables
+
+- Prefer static values or short DNS names over dynamically-injected environment variables when components are co-located in the same namespace.
+- For example, a Vector sink targeting a Loki gateway in the same namespace should use `http://loki-gateway` (short name), not `http://loki-gateway.${VECTOR_NAMESPACE}.svc.cluster.local` with an injected namespace variable.
