@@ -24,15 +24,15 @@ Inference Service Pods
 
 ### Labels available for log search
 
-| Label               | Source                                              | Example value          |
-| :------------------ | :-------------------------------------------------- | :--------------------- |
-| `namespace`         | `kubernetes.pod_namespace`                          | `default`              |
-| `inference_service` | pod label `app.kubernetes.io/instance`              | `llama-3-2-1b`         |
-| `pool_name`         | pod label `mif.moreh.io/pool`                       | `heimdall`             |
-| `role`              | pod label `mif.moreh.io/role`                       | `prefill`, `decode`    |
-| `app`               | pod label `app.kubernetes.io/name`                  | `vllm`                 |
-| `node_name`         | `VECTOR_SELF_NODE_NAME` env var (injected by Vector)| `gpu-node-01`          |
-| `level`             | parsed from JSON log field `level`                  | `info`, `warn`, `error`|
+| Label               | Source                                                                             | Example value           |
+| :------------------ | :--------------------------------------------------------------------------------- | :---------------------- |
+| `namespace`         | `kubernetes.pod_namespace`                                                         | `default`               |
+| `inference_service` | pod label `app.kubernetes.io/instance`                                             | `llama-3-2-1b`          |
+| `pool_name`         | pod label `mif.moreh.io/pool`                                                      | `heimdall`              |
+| `role`              | pod label `mif.moreh.io/role`                                                      | `prefill`, `decode`     |
+| `app`               | pod label `app.kubernetes.io/name`                                                 | `vllm`                  |
+| `node_name`         | `VECTOR_SELF_NODE_NAME` env var (injected by Vector)                               | `gpu-node-01`           |
+| `level`             | parsed from JSON log field `level` (pods with `mif.moreh.io/log.format=json` only) | `info`, `warn`, `error` |
 
 ---
 
@@ -52,32 +52,26 @@ MinIO, Loki, and Vector are all **enabled by default** in the `moai-inference-fr
 
 Add the following block to your `moai-inference-framework-values.yaml`.
 
-```yaml title="moai-inference-framework-values.yaml"
+```yaml title="moai-inference-framework-values.yaml" {3,8,11}
 minio:
-  auth:
-    rootPassword: <MINIO_ROOT_PASSWORD>   # required; set a strong password
   persistence:
-    storageClass: <storage-class>         # e.g. ceph-block
-  provisioning:
-    users:
-      - username: loki
-        password: <LOKI_MINIO_PASSWORD>   # required; set a strong password
+    storageClass: <storage-class> # required; e.g. ceph-block
 
 loki:
   write:
     persistence:
-      storageClass: <storage-class>
+      storageClass: <storage-class> # required; same StorageClass as above
   backend:
     persistence:
-      storageClass: <storage-class>
+      storageClass: <storage-class> # required; same StorageClass as above
 ```
 
 :::info
-`minio.persistence.storageClass`, `loki.write.persistence.storageClass`, and `loki.backend.persistence.storageClass` must be set to a StorageClass available in your cluster. The value used in the reference p-cluster is `ceph-block`.
+`minio.persistence.storageClass`, `loki.write.persistence.storageClass`, and `loki.backend.persistence.storageClass` must be set to a StorageClass available in your cluster.
 :::
 
 :::info
-MinIO provisioning creates a dedicated `loki` user with a policy scoped to the `loki` bucket. Loki uses these restricted credentials (not root) to access object storage. Both `minio.auth.rootPassword` and `minio.provisioning.users[0].password` are required.
+MinIO creates a dedicated `loki` user with a policy scoped to the `loki` bucket. Loki uses these restricted credentials (not root) to access object storage. Default passwords are set out of the box; override `minio.rootPassword` and `minio.users[0].secretKey` in production.
 :::
 
 ### 2. Install (or upgrade) the chart
@@ -94,7 +88,7 @@ The chart will:
 
 1. Create a `loki-bucket` ConfigMap and Secret in the `mif` namespace from the provided MinIO credentials.
 2. Install the Loki Helm chart (v6.30.0) with TSDB storage and 90-day log retention.
-3. Install the Vector Helm chart (v0.39.0) as a DaemonSet that collects container logs from all nodes, transforms them, and ships them to Loki.
+3. Install the Vector Helm chart (v0.39.0) as a DaemonSet that collects logs from pods labelled `mif.moreh.io/log.collect=true`, transforms them, and ships them to Loki.
 4. Create a Grafana datasource ConfigMap so that Grafana automatically discovers Loki.
 
 ---
@@ -136,6 +130,46 @@ Check Vector logs to confirm it is shipping to Loki without errors.
 ```shell
 kubectl logs -n mif -l app.kubernetes.io/name=vector --tail=50
 ```
+
+---
+
+## Enabling log collection for a pod
+
+Vector collects logs only from pods that explicitly opt in. Two pod labels control this behavior.
+
+### Opt-in label
+
+Add the `mif.moreh.io/log.collect=true` label to a pod to include its logs in Vector's collection. Pods without this label are ignored entirely.
+
+```yaml
+metadata:
+  labels:
+    mif.moreh.io/log.collect: "true"
+```
+
+### Log format label
+
+Add the `mif.moreh.io/log.format=json` label to enable structured JSON log parsing for a pod. When set, Vector parses each log line as JSON and promotes the following fields:
+
+| JSON field | Mapped to             |
+| :--------- | :-------------------- |
+| `msg`      | `message`             |
+| `time`     | `timestamp`           |
+| `level`    | `level` (Loki label)  |
+| others     | merged into the event |
+
+Without this label, the log line is forwarded as-is without any JSON parsing.
+
+```yaml
+metadata:
+  labels:
+    mif.moreh.io/log.collect: "true"
+    mif.moreh.io/log.format: "json"
+```
+
+:::info
+The `level` Loki label is only populated for pods with `mif.moreh.io/log.format=json`. For plain-text pods, `level` remains empty.
+:::
 
 ---
 
@@ -185,79 +219,80 @@ Open Grafana → **Explore** → select the **Loki** datasource.
 
 ### Loki
 
-| Property            | Value                                      |
-| :------------------ | :----------------------------------------- |
-| Helm chart          | `moreh/loki` v6.30.0 (upstream grafana/loki) |
-| App version         | 3.5.1                                      |
-| Storage backend     | S3 (MinIO), TSDB index                     |
-| Retention           | 90 days (2160 h)                           |
-| Ingestion limit     | 30 MB/s, 60 MB burst                       |
-| Max entries/query   | 50 000                                     |
-| Deployment          | Distributed (gateway / read / write / backend) |
+| Property          | Value                                          |
+| :---------------- | :--------------------------------------------- |
+| Helm chart        | `moreh/loki` v6.30.0 (upstream grafana/loki)   |
+| App version       | 3.5.1                                          |
+| Storage backend   | S3 (MinIO), TSDB index                         |
+| Retention         | 90 days (2160 h)                               |
+| Ingestion limit   | 30 MB/s, 60 MB burst                           |
+| Max entries/query | 50 000                                         |
+| Deployment        | Distributed (gateway / read / write / backend) |
 
 ### Vector
 
-| Property            | Value                                       |
-| :------------------ | :------------------------------------------ |
-| Helm chart          | `moreh/vector` v0.39.0                      |
-| Deployment          | DaemonSet (Agent mode, one pod per node)    |
-| Log source          | All container logs (`kubernetes_logs`)      |
-| Resource limits     | 100m CPU / 256Mi memory                     |
-| Tolerations         | unschedulable, compute, `amd.com/gpu`       |
+| Property        | Value                                                                     |
+| :-------------- | :------------------------------------------------------------------------ |
+| Helm chart      | `vector/vector` v0.39.0                                                   |
+| Deployment      | DaemonSet (Agent mode, one pod per node)                                  |
+| Log source      | Pods labelled `mif.moreh.io/log.collect=true` (`kubernetes_logs`)         |
+| Log format      | JSON parsing applied only to pods labelled `mif.moreh.io/log.format=json` |
+| Resource limits | 100m CPU / 256Mi memory                                                   |
+| Tolerations     | unschedulable, compute, `amd.com/gpu`                                     |
 
 ### MinIO
 
-| Property            | Value                                                        |
-| :------------------ | :----------------------------------------------------------- |
-| Helm chart          | `bitnami/minio` v14.10.5                                     |
-| Mode                | Standalone                                                   |
-| Bucket              | `loki` (created via provisioning on startup)                 |
-| Loki credentials    | Dedicated `loki` user with S3 policy scoped to `loki` bucket |
-| Resources           | 1 CPU / 2 Gi memory (requests), 1.5 CPU / 3 Gi (limits)     |
-| Persistence         | 500 Gi                                                       |
-| Deployment          | Single pod                                                   |
+| Property         | Value                                                        |
+| :--------------- | :----------------------------------------------------------- |
+| Helm chart       | `minio/minio` v5.4.0                                         |
+| Mode             | Standalone                                                   |
+| Bucket           | `loki` (created via post-install Job on startup)             |
+| Loki credentials | Dedicated `loki` user with S3 policy scoped to `loki` bucket |
+| Resources        | 1 CPU / 2 Gi memory (requests), 1.5 CPU / 3 Gi (limits)      |
+| Persistence      | 500 Gi                                                       |
+| Deployment       | Single pod                                                   |
 
 ### Component naming
 
-`fullnameOverride` is set for both MinIO and Loki so that service names are predictable regardless of the Helm release name:
+Service names are derived from the Helm release name. With the default release name `mif`:
 
-| Service             | Short name (same-namespace access) |
-| :------------------ | :--------------------------------- |
-| MinIO               | `minio`                            |
-| Loki gateway        | `loki-gateway`                     |
-| Loki read           | `loki-read`                        |
-| Loki write          | `loki-write`                       |
+| Service      | Name (same-namespace access) |
+| :----------- | :--------------------------- |
+| MinIO        | `mif-minio`                  |
+| Loki gateway | `mif-loki-gateway`           |
+| Loki read    | `mif-loki-read`              |
+| Loki write   | `mif-loki-write`             |
 
-Vector connects to Loki using the short service name `http://loki-gateway` since all components are co-located in the same namespace.
+Vector connects to Loki using the release-prefixed service name since all components are co-located in the same namespace.
 
 ---
 
 ## Using an external MinIO
 
-If MinIO is already deployed outside this chart, set `minio.enabled: false`. The `loki-bucket` ConfigMap and Secret are generated from `minio.fullnameOverride` and `minio.provisioning.users[0].*` values regardless of whether the sub-chart is enabled.
+If MinIO is already deployed outside this chart, set `minio.enabled: false`. The `loki-bucket` ConfigMap and Secret are still generated from `minio.users[0].*` values regardless of whether the sub-chart is enabled. The `BUCKET_HOST` is derived from the Helm release name (`<release>-minio`).
 
-**Same namespace** — set `fullnameOverride` to the existing service name:
+**Same namespace** — if the existing MinIO service name matches `<release>-minio`, no additional configuration is needed. Otherwise, set `minio.fullnameOverride` to override the name used as `BUCKET_HOST`:
 
-```yaml title="moai-inference-framework-values.yaml"
+```yaml title="moai-inference-framework-values.yaml" {3,5-6}
 minio:
   enabled: false
-  fullnameOverride: <existing-minio-service-name>   # e.g. minio
-  provisioning:
-    users:
-      - username: <loki-access-key>
-        password: <loki-secret-key>
+  fullnameOverride: <existing-minio-service-name>
+  users:
+    - accessKey: <lokiAccessKey>
+      secretKey: <lokiSecretKey>
+      policy: loki
 ```
 
-**Different namespace** — set `fullnameOverride` to the FQDN so that Loki can resolve it cross-namespace. When `minio.enabled` is `false`, the sub-chart is not deployed and the value is only used as `BUCKET_HOST` in the ConfigMap:
+**Different namespace** — set `minio.fullnameOverride` to the FQDN so that Loki can resolve it cross-namespace:
 
-```yaml title="moai-inference-framework-values.yaml"
+```yaml title="moai-inference-framework-values.yaml" {5-6}
 minio:
   enabled: false
-  fullnameOverride: minio.minio.svc.cluster.local   # FQDN for cross-namespace access
-  provisioning:
-    users:
-      - username: <loki-access-key>
-        password: <loki-secret-key>
+  fullnameOverride: minio.minio.svc.cluster.local
+  users:
+    - accessKey: <lokiAccessKey>
+      secretKey: <lokiSecretKey>
+      policy: loki
 ```
 
 ---
