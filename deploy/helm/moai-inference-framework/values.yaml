@@ -105,9 +105,9 @@ nfd:
         effect: "NoSchedule"
 
 minio:
-  # -- Enable bitnami/minio as the S3-compatible object storage backend for Loki.
-  # Set to false if MinIO is already deployed; in that case, set minio.fullnameOverride
-  # to the existing service name so the loki-bucket ConfigMap resolves the correct host.
+  # -- Enable minio/minio as the S3-compatible object storage backend for Loki.
+  # Set to false if MinIO is already deployed; in that case, configure loki storage
+  # to point to the existing MinIO service.
   enabled: true
 
   # fullnameOverride fixes the service name to "minio" regardless of the Helm release
@@ -116,40 +116,37 @@ minio:
 
   mode: standalone
 
-  auth:
-    # -- MinIO root user.
-    rootUser: minio
-    # -- MinIO root password (required; set a strong password).
-    rootPassword: ""
+  # -- MinIO root user.
+  rootUser: minio
+  # -- MinIO root password (required; set a strong password).
+  rootPassword: "minio123!"
 
   persistence:
     # -- StorageClass for MinIO data volume (e.g. ceph-block, standard).
     storageClass: ""
     size: 500Gi
 
-  provisioning:
-    enabled: true
-    # S3 policy granting the loki user access to the loki bucket only.
-    policies:
-      - name: loki
-        statements:
-          - resources:
-              - "arn:aws:s3:::loki/*"
-            effect: Allow
-            actions:
-              - "s3:*"
-    # Dedicated loki user with restricted S3 access (not the root user).
-    # AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in the loki-bucket Secret are
-    # set from this user's credentials.
-    users:
-      - username: loki
-        # -- Password for the loki MinIO user (required; set a strong password).
-        password: ""
-        policies:
-          - loki
-        setPolicies: true
-    buckets:
-      - name: loki
+  # S3 policy granting the loki user access to the loki bucket only.
+  policies:
+    - name: loki
+      statements:
+        - resources:
+            - "arn:aws:s3:::loki/*"
+          effect: Allow
+          actions:
+            - "s3:*"
+
+  # Dedicated loki user with restricted S3 access (not the root user).
+  # AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in the loki-bucket Secret are
+  # set from this user's credentials.
+  users:
+    - accessKey: loki
+      # -- Password for the loki MinIO user (required; set a strong password).
+      secretKey: "loki123!"
+      policy: loki
+
+  buckets:
+    - name: loki
 
   resources:
     requests:

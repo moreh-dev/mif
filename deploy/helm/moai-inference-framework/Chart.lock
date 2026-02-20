@@ -24,13 +24,13 @@ dependencies:
   repository: oci://registry.k8s.io/nfd/charts
   version: 0.18.3
 - name: minio
-  repository: oci://registry-1.docker.io/bitnamicharts
-  version: 14.10.5
+  repository: https://charts.min.io
+  version: 5.4.0
 - name: loki
   repository: https://grafana.github.io/helm-charts
   version: 6.30.0
 - name: vector
   repository: https://helm.vector.dev
   version: 0.39.0
-digest: sha256:4876629af1e182a8bbba444d098e9d82fd77d1fab46dca1dd3044059f7c129f3
-generated: "2026-02-20T18:36:14.669980012+09:00"
+digest: sha256:85af11696c630ed9ac9ef85a7a18c8b821187a76e949e535019fc5b91d929ee8
+generated: "2026-02-20T18:51:13.630416372+09:00"
