@@ -329,6 +329,8 @@ vector:
     sources:
       mif_logs:
         type: kubernetes_logs
+        # Only collect logs from pods that explicitly opt in to MIF log collection.
+        extra_label_selector: "mif.moreh.io/log.collect=true"
     transforms:
       mif_log_transform:
         type: remap
@@ -342,21 +344,23 @@ vector:
           .pool_name          = get(.kubernetes.pod_labels, ["mif.moreh.io/pool"])           ?? ""
           .role               = get(.kubernetes.pod_labels, ["mif.moreh.io/role"])           ?? ""
 
-          structured, err = parse_json(.message)
-          if err == null {
-            . = merge!(., structured)
-            msg, err = get(., ["msg"])
+          log_format = get(.kubernetes.pod_labels, ["mif.moreh.io/log.format"]) ?? ""
+
+          if log_format == "json" {
+            structured, err = parse_json(.message)
             if err == null {
-              .message = msg
-              del(.msg)
+              . = merge!(., structured)
+              msg, err = get(., ["msg"])
+              if err == null {
+                .message = msg
+                del(.msg)
+              }
+              time, err = get(., ["time"])
+              if err == null {
+                .timestamp = time
+                del(.time)
+              }
             }
-            time, err = get(., ["time"])
-            if err == null {
-              .timestamp = time
-              del(.time)
-            }
-          } else {
-            .level = "warn"
           }
 
           del(.file)
