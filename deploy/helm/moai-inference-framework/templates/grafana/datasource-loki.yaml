@@ -19,7 +19,7 @@ data:
       - name: Loki
         type: loki
         access: proxy
-        url: http://loki-gateway.{{ include "common.names.namespace" . }}.svc.cluster.local
+        url: http://{{ .Release.Name }}-loki-gateway.{{ include "common.names.namespace" . }}.svc.cluster.local
         isDefault: false
         jsonData:
           maxLines: 5000

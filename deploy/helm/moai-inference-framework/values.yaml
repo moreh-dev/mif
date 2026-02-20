@@ -110,10 +110,6 @@ minio:
   # to point to the existing MinIO service.
   enabled: true
 
-  # fullnameOverride fixes the service name to "minio" regardless of the Helm release
-  # name. The credentials template uses this value as BUCKET_HOST.
-  fullnameOverride: minio
-
   mode: standalone
 
   # -- MinIO root user.
@@ -159,10 +155,6 @@ minio:
 loki:
   # -- Enable grafana/loki.
   enabled: true
-
-  # fullnameOverride makes all Loki service names predictable regardless of the
-  # Helm release name (e.g. loki-gateway instead of <release>-loki-gateway).
-  fullnameOverride: loki
 
   global:
     dnsService: coredns
@@ -374,9 +366,9 @@ vector:
     sinks:
       loki:
         type: loki
-        # Vector and Loki are co-located in the same namespace, so the short
-        # service name resolves correctly without a namespace suffix.
-        endpoint: "http://loki-gateway"
+        # {{ .Release.Name }} is evaluated by the vector chart's tpl rendering,
+        # producing the correct release-prefixed Loki gateway service name.
+        endpoint: "http://{{ .Release.Name }}-loki-gateway"
         inputs:
           - mif_log_transform
         encoding:
