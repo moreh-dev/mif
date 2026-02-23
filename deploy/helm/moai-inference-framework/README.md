@@ -119,7 +119,8 @@ Moreh Inference Framework
 | minio.policies[0].name | string | `"loki"` |  |
 | minio.policies[0].statements[0].actions[0] | string | `"s3:*"` |  |
 | minio.policies[0].statements[0].effect | string | `"Allow"` |  |
-| minio.policies[0].statements[0].resources[0] | string | `"arn:aws:s3:::loki/*"` |  |
+| minio.policies[0].statements[0].resources[0] | string | `"arn:aws:s3:::loki"` |  |
+| minio.policies[0].statements[0].resources[1] | string | `"arn:aws:s3:::loki/*"` |  |
 | minio.resources.requests.memory | string | `"2Gi"` |  |
 | minio.rootPassword | string | `"minio123!"` | MinIO root password. Override with a strong password in production. |
 | minio.rootUser | string | `"minio"` | MinIO root user. |
