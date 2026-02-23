@@ -8,18 +8,20 @@ This document explains how to enable centralized log collection for the MoAI Inf
 
 ## Overview
 
-```
-Inference Service Pods
-        │  (container logs)
-        ▼
-   Vector DaemonSet           ← runs on every node
-        │  transforms + labels logs
-        │  (namespace, inference_service, pool_name, …)
-        ▼
-   Loki Gateway               ← stores logs in MinIO (S3)
-        │
-        ▼
-   Grafana (LogQL)            ← search and visualize logs
+```mermaid
+flowchart TB
+    pods["`**Inference Service Pods**`"]
+    vector["`**Vector**`"]
+    grafana["`**Grafana**`"]
+
+    subgraph log_storage["Log Storage"]
+        loki["`**Loki**`"]
+        minio[("**MinIO**")]
+    end
+
+    pods -->|"container logs"| vector
+    vector -->|"transforms + labels"| loki
+    loki -->|"LogQL"| grafana
 ```
 
 ### Labels available for log search
