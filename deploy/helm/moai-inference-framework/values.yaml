@@ -125,6 +125,7 @@ minio:
     - name: loki
       statements:
         - resources:
+            - "arn:aws:s3:::loki"
             - "arn:aws:s3:::loki/*"
           effect: Allow
           actions:
@@ -145,6 +146,18 @@ minio:
   resources:
     requests:
       memory: 2Gi
+
+# Settings for Loki's object storage bucket.
+# When minio.enabled: true, these default to the internal MinIO user credentials.
+# When minio.enabled: false (external MinIO), set all three fields explicitly.
+lokiBucket:
+  # -- MinIO service host for Loki storage. Defaults to <release>-minio.
+  # Use the FQDN (e.g. minio.minio.svc.cluster.local) for cross-namespace access.
+  host: ""
+  # -- MinIO access key for Loki storage. Defaults to minio.users[0].accessKey.
+  accessKey: ""
+  # -- MinIO secret key for Loki storage. Defaults to minio.users[0].secretKey.
+  secretKey: ""
 
 loki:
   # -- Enable grafana/loki.

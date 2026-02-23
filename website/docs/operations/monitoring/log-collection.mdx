@@ -178,7 +178,7 @@ Open Grafana → **Explore** → select the **Loki** datasource.
 
 | Property          | Value                                          |
 | :---------------- | :--------------------------------------------- |
-| Helm chart        | `moreh/loki` v6.30.0 (upstream grafana/loki)   |
+| Helm chart        | `grafana/loki` v6.30.0                         |
 | App version       | 3.5.1                                          |
 | Storage backend   | S3 (MinIO), TSDB index                         |
 | Retention         | 90 days (2160 h)                               |
@@ -204,7 +204,7 @@ Open Grafana → **Explore** → select the **Loki** datasource.
 | Mode             | Standalone                                                   |
 | Bucket           | `loki` (created via post-install Job on startup)             |
 | Loki credentials | Dedicated `loki` user with S3 policy scoped to `loki` bucket |
-| Resources        | 1 CPU / 2 Gi memory (requests), 1.5 CPU / 3 Gi (limits)      |
+| Resources        | 2 Gi memory (requests)                                       |
 | Persistence      | emptyDir (ephemeral by default)                              |
 | Deployment       | Single pod                                                   |
 
@@ -225,30 +225,27 @@ Vector connects to Loki using the release-prefixed service name since all compon
 
 ## Using an external MinIO
 
-If MinIO is already deployed outside this chart, set `minio.enabled: false`. The `loki-bucket` ConfigMap and Secret are still generated from `minio.users[0].*` values regardless of whether the sub-chart is enabled. The `BUCKET_HOST` is derived from the Helm release name (`<release>-minio`).
+If MinIO is already deployed outside this chart, set `minio.enabled: false` and configure `lokiBucket` with the host and credentials of a MinIO user that has read/write access to the `loki` bucket.
 
-**Same namespace** — if the existing MinIO service name matches `<release>-minio`, no additional configuration is needed. Otherwise, set `minio.fullnameOverride` to override the name used as `BUCKET_HOST`:
+**Same namespace** — if the existing MinIO service name matches `<release>-minio`, only credentials are required:
 
-```yaml title="moai-inference-framework-values.yaml" {3,5-6}
+```yaml title="moai-inference-framework-values.yaml" {4-5}
 minio:
   enabled: false
-  fullnameOverride: <existing-minio-service-name>
-  users:
-    - accessKey: <lokiAccessKey>
-      secretKey: <lokiSecretKey>
-      policy: loki
+lokiBucket:
+  accessKey: <accessKey>
+  secretKey: <secretKey>
 ```
 
-**Different namespace** — set `minio.fullnameOverride` to the FQDN so that Loki can resolve it cross-namespace:
+**Different namespace** — set `lokiBucket.host` to the FQDN so that Loki can resolve it cross-namespace:
 
-```yaml title="moai-inference-framework-values.yaml" {5-6}
+```yaml title="moai-inference-framework-values.yaml" {4-6}
 minio:
   enabled: false
-  fullnameOverride: minio.minio.svc.cluster.local
-  users:
-    - accessKey: <lokiAccessKey>
-      secretKey: <lokiSecretKey>
-      policy: loki
+lokiBucket:
+  host: <minio.minio.svc.cluster.local>
+  accessKey: <accessKey>
+  secretKey: <secretKey>
 ```
 
 ---
