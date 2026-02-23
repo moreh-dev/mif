@@ -144,11 +144,7 @@ minio:
 
   resources:
     requests:
-      cpu: "1"
-      memory: 2048Mi
-    limits:
-      cpu: "1.5"
-      memory: 3072Mi
+      memory: 2Gi
 
 loki:
   # -- Enable grafana/loki.
@@ -216,13 +212,6 @@ loki:
           name: loki-bucket
     nodeSelector:
       node-role.kubernetes.io/control-plane: ""
-    resources:
-      requests:
-        cpu: 500m
-        memory: 512Mi
-      limits:
-        cpu: 500m
-        memory: 512Mi
 
   read:
     replicas: 1
@@ -235,13 +224,6 @@ loki:
           name: loki-bucket
     nodeSelector:
       node-role.kubernetes.io/control-plane: ""
-    resources:
-      requests:
-        cpu: 500m
-        memory: 1Gi
-      limits:
-        cpu: 500m
-        memory: 1Gi
 
   write:
     replicas: 1
@@ -254,13 +236,6 @@ loki:
           name: loki-bucket
     nodeSelector:
       node-role.kubernetes.io/control-plane: ""
-    resources:
-      requests:
-        cpu: 500m
-        memory: 512Mi
-      limits:
-        cpu: 500m
-        memory: 512Mi
     persistence:
       volumeClaimsEnabled: false
 
@@ -275,13 +250,6 @@ loki:
           name: loki-bucket
     nodeSelector:
       node-role.kubernetes.io/control-plane: ""
-    resources:
-      requests:
-        cpu: 500m
-        memory: 512Mi
-      limits:
-        cpu: 500m
-        memory: 512Mi
     persistence:
       volumeClaimsEnabled: false
 
@@ -308,14 +276,6 @@ vector:
     type: RollingUpdate
     rollingUpdate:
       maxUnavailable: 10
-
-  resources:
-    requests:
-      cpu: 100m
-      memory: 256Mi
-    limits:
-      cpu: 100m
-      memory: 256Mi
 
   customConfig:
     data_dir: /vector-data

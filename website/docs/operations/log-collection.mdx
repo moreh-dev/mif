@@ -186,14 +186,13 @@ Open Grafana → **Explore** → select the **Loki** datasource.
 
 ### Vector
 
-| Property        | Value                                                                     |
-| :-------------- | :------------------------------------------------------------------------ |
-| Helm chart      | `vector/vector` v0.39.0                                                   |
-| Deployment      | DaemonSet (Agent mode, one pod per node)                                  |
-| Log source      | Pods labelled `mif.moreh.io/log.collect=true` (`kubernetes_logs`)         |
-| Log format      | JSON parsing applied only to pods labelled `mif.moreh.io/log.format=json` |
-| Resource limits | 100m CPU / 256Mi memory                                                   |
-| Tolerations     | unschedulable, compute, `amd.com/gpu`                                     |
+| Property    | Value                                                                     |
+| :---------- | :------------------------------------------------------------------------ |
+| Helm chart  | `vector/vector` v0.39.0                                                   |
+| Deployment  | DaemonSet (Agent mode, one pod per node)                                  |
+| Log source  | Pods labelled `mif.moreh.io/log.collect=true` (`kubernetes_logs`)         |
+| Log format  | JSON parsing applied only to pods labelled `mif.moreh.io/log.format=json` |
+| Tolerations | unschedulable, compute, `amd.com/gpu`                                     |
 
 ### MinIO
 
