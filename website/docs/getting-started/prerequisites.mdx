@@ -65,33 +65,14 @@ The container images for the MoAI Inference Framework are distributed through a 
 **The AWS credentials (`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`) should have been provided to you along with your purchase or trial issuance of the MoAI Inference Framework**. If you did not receive this information, please contact your point of purchase separately.
 :::
 
-Create a `moai-inference-framework-values.yaml` file as follows. Fill in all values marked as required.
+Create a `moai-inference-framework-values.yaml` file as follows. **You need to replace `<AWS_ACCESS_KEY_ID>` and `<AWS_SECRET_ACCESS_KEY>` with your own values**.
 
-```yaml title="moai-inference-framework-values.yaml" {4-5,10,16,19}
-# ECR credentials — provided by Moreh at purchase or trial issuance.
+```yaml title="moai-inference-framework-values.yaml" {3-4}
 ecrTokenRefresher:
   aws:
     accessKeyId: <AWS_ACCESS_KEY_ID>
     secretAccessKey: <AWS_SECRET_ACCESS_KEY>
-
-# MinIO: object storage backend for Loki log data.
-minio:
-  persistence:
-    storageClass: <storage-class>
-
-# Loki: log aggregation system. Uses MinIO as its object storage backend.
-loki:
-  write:
-    persistence:
-      storageClass: <storage-class>
-  backend:
-    persistence:
-      storageClass: <storage-class>
 ```
-
-:::info
-`<storage-class>` must match a StorageClass available in your cluster. Run `kubectl get storageclass` to list available StorageClasses. If omitted, the cluster's default StorageClass is used; if no default exists, the PVC will remain in `Pending` state.
-:::
 
 :::info
 If dependencies such as `keda`, `kube-prometheus-stack`, or `lws` are already installed in your cluster, skip their installation by setting the corresponding values to `false`. Refer to [moai-inference-framework README](https://github.com/moreh-dev/mif/tree/main/deploy/helm/moai-inference-framework) for the full list of dependencies.

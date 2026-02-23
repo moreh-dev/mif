@@ -118,9 +118,7 @@ minio:
   rootPassword: "minio123!"
 
   persistence:
-    # -- StorageClass for MinIO data volume (e.g. ceph-block, standard).
-    storageClass: ""
-    size: 500Gi
+    enabled: false
 
   # S3 policy granting the loki user access to the loki bucket only.
   policies:
@@ -264,8 +262,7 @@ loki:
         cpu: 500m
         memory: 512Mi
     persistence:
-      # -- StorageClass for Loki write component (e.g. ceph-block, standard).
-      storageClass: ""
+      volumeClaimsEnabled: false
 
   backend:
     replicas: 1
@@ -286,8 +283,7 @@ loki:
         cpu: 500m
         memory: 512Mi
     persistence:
-      # -- StorageClass for Loki backend component (e.g. ceph-block, standard).
-      storageClass: ""
+      volumeClaimsEnabled: false
 
 vector:
   # -- Enable vector/vector as a DaemonSet log collector.

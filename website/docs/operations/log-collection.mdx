@@ -41,7 +41,7 @@ Inference Service Pods
 - The `moai-inference-framework` Helm chart installed (or being installed).
 
 :::info
-MinIO, Loki, and Vector are all **enabled by default** in the `moai-inference-framework` chart. The only required configuration steps are setting the MinIO credentials and StorageClass.
+MinIO, Loki, and Vector are all **enabled by default** in the `moai-inference-framework` chart. No additional configuration is required to get started.
 :::
 
 ---
@@ -204,7 +204,7 @@ Open Grafana → **Explore** → select the **Loki** datasource.
 | Bucket           | `loki` (created via post-install Job on startup)             |
 | Loki credentials | Dedicated `loki` user with S3 policy scoped to `loki` bucket |
 | Resources        | 1 CPU / 2 Gi memory (requests), 1.5 CPU / 3 Gi (limits)      |
-| Persistence      | 500 Gi                                                       |
+| Persistence      | emptyDir (ephemeral by default)                              |
 | Deployment       | Single pod                                                   |
 
 ### Component naming
