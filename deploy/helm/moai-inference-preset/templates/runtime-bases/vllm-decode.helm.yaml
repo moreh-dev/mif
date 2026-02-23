@@ -5,6 +5,7 @@ metadata:
   namespace: {{ include "common.names.namespace" . }}
   labels:
     {{- include "mif.runtimeBase.labels" . | nindent 4 }}
+    mif.moreh.io/role: decode
 spec:
   template:
     metadata:
