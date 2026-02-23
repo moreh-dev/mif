@@ -23,5 +23,14 @@ dependencies:
 - name: node-feature-discovery
   repository: oci://registry.k8s.io/nfd/charts
   version: 0.18.3
-digest: sha256:d7f75e788dca4192775595637ec123afa390e09eebcaef9e9c0e40ff46c23e23
-generated: "2026-02-19T16:14:15.495286+09:00"
+- name: minio
+  repository: https://charts.min.io
+  version: 5.4.0
+- name: loki
+  repository: https://grafana.github.io/helm-charts
+  version: 6.30.0
+- name: vector
+  repository: https://helm.vector.dev
+  version: 0.39.0
+digest: sha256:85af11696c630ed9ac9ef85a7a18c8b821187a76e949e535019fc5b91d929ee8
+generated: "2026-02-20T18:51:13.630416372+09:00"

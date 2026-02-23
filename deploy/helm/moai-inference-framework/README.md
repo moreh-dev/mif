@@ -17,7 +17,10 @@ Moreh Inference Framework
 
 | Repository | Name | Version |
 |------------|------|---------|
+| https://charts.min.io | minio | 5.4.0 |
+| https://grafana.github.io/helm-charts | loki | 6.30.0 |
 | https://helm.mittwald.de | replicator(kubernetes-replicator) | 2.12.2 |
+| https://helm.vector.dev | vector | 0.39.0 |
 | https://kedacore.github.io/charts | keda | 2.18.0 |
 | https://moreh-dev.github.io/helm-charts | odin | v0.6.0 |
 | https://moreh-dev.github.io/helm-charts | odin-crd | v0.6.0 |
@@ -52,7 +55,74 @@ Moreh Inference Framework
 | global | object | `{"imagePullSecrets":[]}` | global values are shared across all sub-charts if the value's key matches. |
 | global.imagePullSecrets | list | `[]` | Image pull secrets. |
 | keda.enabled | bool | `true` | Enable kedacore/keda. Set to false if already deployed. |
+| loki.backend.extraArgs[0] | string | `"-config.expand-env=true"` |  |
+| loki.backend.extraEnvFrom[0].secretRef.name | string | `"loki-bucket"` |  |
+| loki.backend.extraEnvFrom[1].configMapRef.name | string | `"loki-bucket"` |  |
+| loki.backend.nodeSelector."node-role.kubernetes.io/control-plane" | string | `""` |  |
+| loki.backend.persistence.volumeClaimsEnabled | bool | `false` |  |
+| loki.backend.replicas | int | `1` |  |
+| loki.enabled | bool | `true` | Enable grafana/loki. |
+| loki.gateway.extraArgs[0] | string | `"-config.expand-env=true"` |  |
+| loki.gateway.extraEnvFrom[0].secretRef.name | string | `"loki-bucket"` |  |
+| loki.gateway.extraEnvFrom[1].configMapRef.name | string | `"loki-bucket"` |  |
+| loki.gateway.nodeSelector."node-role.kubernetes.io/control-plane" | string | `""` |  |
+| loki.gateway.replicas | int | `1` |  |
+| loki.loki.auth_enabled | bool | `false` |  |
+| loki.loki.commonConfig.replication_factor | int | `1` |  |
+| loki.loki.image.tag | string | `"3.5.1"` |  |
+| loki.loki.schemaConfig.configs[0].from | string | `"2024-06-24"` |  |
+| loki.loki.schemaConfig.configs[0].index.period | string | `"24h"` |  |
+| loki.loki.schemaConfig.configs[0].index.prefix | string | `"loki_index_"` |  |
+| loki.loki.schemaConfig.configs[0].object_store | string | `"s3"` |  |
+| loki.loki.schemaConfig.configs[0].schema | string | `"v13"` |  |
+| loki.loki.schemaConfig.configs[0].store | string | `"tsdb"` |  |
+| loki.loki.storage.bucketNames.admin | string | `"loki"` |  |
+| loki.loki.storage.bucketNames.chunks | string | `"loki"` |  |
+| loki.loki.storage.bucketNames.ruler | string | `"loki"` |  |
+| loki.loki.storage.s3.accessKeyId | string | `"${AWS_ACCESS_KEY_ID}"` |  |
+| loki.loki.storage.s3.endpoint | string | `"http://${BUCKET_HOST}:${BUCKET_PORT}"` |  |
+| loki.loki.storage.s3.region | string | `"${BUCKET_REGION}"` |  |
+| loki.loki.storage.s3.s3ForcePathStyle | bool | `true` |  |
+| loki.loki.storage.s3.secretAccessKey | string | `"${AWS_SECRET_ACCESS_KEY}"` |  |
+| loki.loki.storage_config.tsdb_shipper.active_index_directory | string | `"/var/loki/tsdb-index"` |  |
+| loki.loki.storage_config.tsdb_shipper.cache_location | string | `"/var/loki/tsdb-cache"` |  |
+| loki.loki.storage_config.tsdb_shipper.cache_ttl | string | `"168h"` |  |
+| loki.loki.structuredConfig.compactor.delete_request_store | string | `"s3"` |  |
+| loki.loki.structuredConfig.compactor.retention_enabled | bool | `true` |  |
+| loki.loki.structuredConfig.limits_config.ingestion_burst_size_mb | int | `60` |  |
+| loki.loki.structuredConfig.limits_config.ingestion_rate_mb | int | `30` |  |
+| loki.loki.structuredConfig.limits_config.max_entries_limit_per_query | int | `50000` |  |
+| loki.loki.structuredConfig.limits_config.max_query_series | int | `10000` |  |
+| loki.loki.structuredConfig.limits_config.per_stream_rate_limit | string | `"30MB"` |  |
+| loki.loki.structuredConfig.limits_config.per_stream_rate_limit_burst | string | `"60MB"` |  |
+| loki.loki.structuredConfig.limits_config.retention_period | string | `"2160h"` |  |
+| loki.loki.structuredConfig.limits_config.split_queries_by_interval | string | `"24h"` |  |
+| loki.read.extraArgs[0] | string | `"-config.expand-env=true"` |  |
+| loki.read.extraEnvFrom[0].secretRef.name | string | `"loki-bucket"` |  |
+| loki.read.extraEnvFrom[1].configMapRef.name | string | `"loki-bucket"` |  |
+| loki.read.nodeSelector."node-role.kubernetes.io/control-plane" | string | `""` |  |
+| loki.read.replicas | int | `1` |  |
+| loki.write.extraArgs[0] | string | `"-config.expand-env=true"` |  |
+| loki.write.extraEnvFrom[0].secretRef.name | string | `"loki-bucket"` |  |
+| loki.write.extraEnvFrom[1].configMapRef.name | string | `"loki-bucket"` |  |
+| loki.write.nodeSelector."node-role.kubernetes.io/control-plane" | string | `""` |  |
+| loki.write.persistence.volumeClaimsEnabled | bool | `false` |  |
+| loki.write.replicas | int | `1` |  |
 | lws.enabled | bool | `true` | Enable kubernetes-sigs/lws. Set to false if already deployed. |
+| minio.buckets[0].name | string | `"loki"` |  |
+| minio.enabled | bool | `true` | Enable minio/minio as the S3-compatible object storage backend for Loki. Set to false if MinIO is already deployed; in that case, configure loki storage to point to the existing MinIO service. |
+| minio.mode | string | `"standalone"` |  |
+| minio.persistence.enabled | bool | `false` |  |
+| minio.policies[0].name | string | `"loki"` |  |
+| minio.policies[0].statements[0].actions[0] | string | `"s3:*"` |  |
+| minio.policies[0].statements[0].effect | string | `"Allow"` |  |
+| minio.policies[0].statements[0].resources[0] | string | `"arn:aws:s3:::loki/*"` |  |
+| minio.resources.requests.memory | string | `"2Gi"` |  |
+| minio.rootPassword | string | `"minio123!"` | MinIO root password. Override with a strong password in production. |
+| minio.rootUser | string | `"minio"` | MinIO root user. |
+| minio.users[0].accessKey | string | `"loki"` |  |
+| minio.users[0].policy | string | `"loki"` |  |
+| minio.users[0].secretKey | string | `"loki123!"` | Password for the loki MinIO user. Override with a strong password in production. |
 | nameOverride | string | `""` | Chart name override. |
 | namespaceOverride | string | `""` | Namespace override. |
 | nfd.enabled | bool | `true` | Enable kubernetes-sigs/node-feature-discovery. Set to false if already deployed. |
@@ -81,6 +151,40 @@ Moreh Inference Framework
 | prometheus-stack.thanosRuler.enabled | bool | `false` |  |
 | prometheus-stack.windowsMonitoring.enabled | bool | `false` |  |
 | replicator.enabled | bool | `true` | Enable mittwald/kubernetes-replicator. Set to false if already deployed. |
+| vector.customConfig.api.address | string | `"0.0.0.0:8686"` |  |
+| vector.customConfig.api.enabled | bool | `true` |  |
+| vector.customConfig.data_dir | string | `"/vector-data"` |  |
+| vector.customConfig.sinks.loki.encoding.codec | string | `"json"` |  |
+| vector.customConfig.sinks.loki.endpoint | string | `"http://{{ .Release.Name }}-loki-gateway"` |  |
+| vector.customConfig.sinks.loki.inputs[0] | string | `"mif_log_transform"` |  |
+| vector.customConfig.sinks.loki.labels.app | string | `"{{`{{ app }}`}}"` |  |
+| vector.customConfig.sinks.loki.labels.inference_service | string | `"{{`{{ inference_service }}`}}"` |  |
+| vector.customConfig.sinks.loki.labels.level | string | `"{{`{{ level }}`}}"` |  |
+| vector.customConfig.sinks.loki.labels.namespace | string | `"{{`{{ namespace }}`}}"` |  |
+| vector.customConfig.sinks.loki.labels.node_name | string | `"{{`{{ node_name }}`}}"` |  |
+| vector.customConfig.sinks.loki.labels.pool_name | string | `"{{`{{ pool_name }}`}}"` |  |
+| vector.customConfig.sinks.loki.labels.role | string | `"{{`{{ role }}`}}"` |  |
+| vector.customConfig.sinks.loki.type | string | `"loki"` |  |
+| vector.customConfig.sources.mif_logs.extra_label_selector | string | `"mif.moreh.io/log.collect=true"` |  |
+| vector.customConfig.sources.mif_logs.type | string | `"kubernetes_logs"` |  |
+| vector.customConfig.transforms.mif_log_transform.inputs[0] | string | `"mif_logs"` |  |
+| vector.customConfig.transforms.mif_log_transform.source | string | `".namespace          = .kubernetes.pod_namespace\n.node_name          = \"$VECTOR_SELF_NODE_NAME\"\n.app                = get(.kubernetes.pod_labels, [\"app.kubernetes.io/name\"])      ?? \"\"\n.inference_service  = get(.kubernetes.pod_labels, [\"app.kubernetes.io/instance\"])  ?? \"\"\n.pool_name          = get(.kubernetes.pod_labels, [\"mif.moreh.io/pool\"])           ?? \"\"\n.role               = get(.kubernetes.pod_labels, [\"mif.moreh.io/role\"])           ?? \"\"\n\nlog_format = get(.kubernetes.pod_labels, [\"mif.moreh.io/log.format\"]) ?? \"\"\n\nif log_format == \"json\" {\n  structured, err = parse_json(.message)\n  if err == null {\n    . = merge!(., structured)\n    msg, err = get(., [\"msg\"])\n    if err == null {\n      .message = msg\n      del(.msg)\n    }\n    time, err = get(., [\"time\"])\n    if err == null {\n      .timestamp = time\n      del(.time)\n    }\n  }\n}\n\ndel(.file)\ndel(.source_type)\ndel(.stream)\ndel(.kubernetes)\n"` |  |
+| vector.customConfig.transforms.mif_log_transform.type | string | `"remap"` |  |
+| vector.enabled | bool | `true` | Enable vector/vector as a DaemonSet log collector. |
+| vector.role | string | `"Agent"` |  |
+| vector.tolerations[0].effect | string | `"NoExecute"` |  |
+| vector.tolerations[0].key | string | `"node.kubernetes.io/unschedulable"` |  |
+| vector.tolerations[0].operator | string | `"Exists"` |  |
+| vector.tolerations[0].tolerationSeconds | int | `5` |  |
+| vector.tolerations[1].effect | string | `"NoSchedule"` |  |
+| vector.tolerations[1].key | string | `"node-role.kubernetes.io/compute"` |  |
+| vector.tolerations[1].operator | string | `"Equal"` |  |
+| vector.tolerations[1].value | string | `"true"` |  |
+| vector.tolerations[2].effect | string | `"NoSchedule"` |  |
+| vector.tolerations[2].key | string | `"amd.com/gpu"` |  |
+| vector.tolerations[2].operator | string | `"Exists"` |  |
+| vector.updateStrategy.rollingUpdate.maxUnavailable | int | `10` |  |
+| vector.updateStrategy.type | string | `"RollingUpdate"` |  |
 
 ----------------------------------------------
 Autogenerated from chart metadata using [helm-docs v1.14.2](https://github.com/norwoodj/helm-docs/releases/v1.14.2)

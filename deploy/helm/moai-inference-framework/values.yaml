@@ -86,7 +86,7 @@ replicator:
 nfd:
   # -- Enable kubernetes-sigs/node-feature-discovery. Set to false if already deployed.
   enabled: true
-  
+
   worker:
     # -- NFD Worker Tolerations to allow NFD workers to deploy to GPU nodes
     tolerations:
@@ -103,6 +103,245 @@ nfd:
       - key: "amd-gpu-unhealthy"
         operator: "Exists"
         effect: "NoSchedule"
+
+minio:
+  # -- Enable minio/minio as the S3-compatible object storage backend for Loki.
+  # Set to false if MinIO is already deployed; in that case, configure loki storage
+  # to point to the existing MinIO service.
+  enabled: true
+
+  mode: standalone
+
+  # -- MinIO root user.
+  rootUser: minio
+  # -- MinIO root password. Override with a strong password in production.
+  rootPassword: "minio123!"
+
+  persistence:
+    enabled: false
+
+  # S3 policy granting the loki user access to the loki bucket only.
+  policies:
+    - name: loki
+      statements:
+        - resources:
+            - "arn:aws:s3:::loki/*"
+          effect: Allow
+          actions:
+            - "s3:*"
+
+  # Dedicated loki user with restricted S3 access (not the root user).
+  # AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in the loki-bucket Secret are
+  # set from this user's credentials.
+  users:
+    - accessKey: loki
+      # -- Password for the loki MinIO user. Override with a strong password in production.
+      secretKey: "loki123!"
+      policy: loki
+
+  buckets:
+    - name: loki
+
+  resources:
+    requests:
+      memory: 2Gi
+
+loki:
+  # -- Enable grafana/loki.
+  enabled: true
+
+  loki:
+    auth_enabled: false
+    commonConfig:
+      replication_factor: 1
+    image:
+      tag: "3.5.1"
+    schemaConfig:
+      configs:
+        - from: "2024-06-24"
+          store: tsdb
+          object_store: s3
+          schema: v13
+          index:
+            prefix: loki_index_
+            period: 24h
+    storage:
+      bucketNames:
+        chunks: loki
+        ruler: loki
+        admin: loki
+      s3:
+        s3ForcePathStyle: true
+        # ${...} references are resolved by Loki at startup via -config.expand-env=true.
+        endpoint: "http://${BUCKET_HOST}:${BUCKET_PORT}"
+        region: "${BUCKET_REGION}"
+        accessKeyId: "${AWS_ACCESS_KEY_ID}"
+        secretAccessKey: "${AWS_SECRET_ACCESS_KEY}"
+    storage_config:
+      tsdb_shipper:
+        active_index_directory: /var/loki/tsdb-index
+        cache_location: /var/loki/tsdb-cache
+        cache_ttl: 168h
+    structuredConfig:
+      compactor:
+        retention_enabled: true
+        delete_request_store: s3
+      limits_config:
+        max_entries_limit_per_query: 50000
+        split_queries_by_interval: 24h
+        ingestion_rate_mb: 30
+        ingestion_burst_size_mb: 60
+        per_stream_rate_limit: 30MB
+        per_stream_rate_limit_burst: 60MB
+        max_query_series: 10000
+        retention_period: 2160h # 90 days
+
+  # Each component runs with -config.expand-env=true so that ${BUCKET_HOST} etc.
+  # in the Loki config are expanded from the loki-bucket ConfigMap and Secret.
+  gateway:
+    replicas: 1
+    extraArgs:
+      - -config.expand-env=true
+    extraEnvFrom:
+      - secretRef:
+          name: loki-bucket
+      - configMapRef:
+          name: loki-bucket
+    nodeSelector:
+      node-role.kubernetes.io/control-plane: ""
+
+  read:
+    replicas: 1
+    extraArgs:
+      - -config.expand-env=true
+    extraEnvFrom:
+      - secretRef:
+          name: loki-bucket
+      - configMapRef:
+          name: loki-bucket
+    nodeSelector:
+      node-role.kubernetes.io/control-plane: ""
+
+  write:
+    replicas: 1
+    extraArgs:
+      - -config.expand-env=true
+    extraEnvFrom:
+      - secretRef:
+          name: loki-bucket
+      - configMapRef:
+          name: loki-bucket
+    nodeSelector:
+      node-role.kubernetes.io/control-plane: ""
+    persistence:
+      volumeClaimsEnabled: false
+
+  backend:
+    replicas: 1
+    extraArgs:
+      - -config.expand-env=true
+    extraEnvFrom:
+      - secretRef:
+          name: loki-bucket
+      - configMapRef:
+          name: loki-bucket
+    nodeSelector:
+      node-role.kubernetes.io/control-plane: ""
+    persistence:
+      volumeClaimsEnabled: false
+
+vector:
+  # -- Enable vector/vector as a DaemonSet log collector.
+  enabled: true
+
+  role: Agent
+
+  tolerations:
+    - key: node.kubernetes.io/unschedulable
+      operator: Exists
+      effect: NoExecute
+      tolerationSeconds: 5
+    - key: node-role.kubernetes.io/compute
+      operator: Equal
+      value: "true"
+      effect: NoSchedule
+    - key: amd.com/gpu
+      operator: Exists
+      effect: NoSchedule
+
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 10
+
+  customConfig:
+    data_dir: /vector-data
+    api:
+      enabled: true
+      address: "0.0.0.0:8686"
+    sources:
+      mif_logs:
+        type: kubernetes_logs
+        # Only collect logs from pods that explicitly opt in to MIF log collection.
+        extra_label_selector: "mif.moreh.io/log.collect=true"
+    transforms:
+      mif_log_transform:
+        type: remap
+        inputs:
+          - mif_logs
+        source: |
+          .namespace          = .kubernetes.pod_namespace
+          .node_name          = "$VECTOR_SELF_NODE_NAME"
+          .app                = get(.kubernetes.pod_labels, ["app.kubernetes.io/name"])      ?? ""
+          .inference_service  = get(.kubernetes.pod_labels, ["app.kubernetes.io/instance"])  ?? ""
+          .pool_name          = get(.kubernetes.pod_labels, ["mif.moreh.io/pool"])           ?? ""
+          .role               = get(.kubernetes.pod_labels, ["mif.moreh.io/role"])           ?? ""
+
+          log_format = get(.kubernetes.pod_labels, ["mif.moreh.io/log.format"]) ?? ""
+
+          if log_format == "json" {
+            structured, err = parse_json(.message)
+            if err == null {
+              . = merge!(., structured)
+              msg, err = get(., ["msg"])
+              if err == null {
+                .message = msg
+                del(.msg)
+              }
+              time, err = get(., ["time"])
+              if err == null {
+                .timestamp = time
+                del(.time)
+              }
+            }
+          }
+
+          del(.file)
+          del(.source_type)
+          del(.stream)
+          del(.kubernetes)
+    sinks:
+      loki:
+        type: loki
+        # {{ .Release.Name }} is evaluated by the vector chart's tpl rendering,
+        # producing the correct release-prefixed Loki gateway service name.
+        endpoint: "http://{{ .Release.Name }}-loki-gateway"
+        inputs:
+          - mif_log_transform
+        encoding:
+          codec: json
+        labels:
+          # {{`{{ field }}`}} is Go raw-string escaping required because the
+          # Vector chart renders customConfig through Helm's tpl function.
+          # tpl sees {{`{{ namespace }}`}} → evaluates raw string → outputs {{ namespace }}
+          # which is Vector's own field-template syntax.
+          namespace: "{{`{{ namespace }}`}}"
+          inference_service: "{{`{{ inference_service }}`}}"
+          pool_name: "{{`{{ pool_name }}`}}"
+          role: "{{`{{ role }}`}}"
+          node_name: "{{`{{ node_name }}`}}"
+          app: "{{`{{ app }}`}}"
+          level: "{{`{{ level }}`}}"
 
 ecrTokenRefresher:
   # -- Enable ECR token refresher.

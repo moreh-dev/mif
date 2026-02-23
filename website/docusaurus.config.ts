@@ -82,7 +82,7 @@ const config: Config = {
       ],
     },
     prism: {
-      additionalLanguages: ['bash', 'toml', 'yaml'],
+      additionalLanguages: ['bash', 'toml', 'yaml', 'promql'],
       theme: themes.nightOwlLight,
       darkTheme: themes.vsDark,
     },

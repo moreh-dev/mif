@@ -57,45 +57,44 @@ The commit message should be structured as follows:
 
 ### E2E Test
 
-- **Version scope**:
-  - E2E tests cover only `vX.Y.Z` (release) and `vX.Y.Z-rc.N` (release candidate) version formats.
-  - Other version formats (e.g. dev builds, custom tags) are out of scope and should not be tested in E2E.
+See [`test/AGENTS.md`](test/AGENTS.md).
 
-- **Do not test resource specifications**:
-  - Do not validate individual fields of the YAML file declaring the resource (resource spec).
-  - Instead, create the resource and verify that its status reaches the expected state.
+## Agent Self-Improvement
 
-- **Assume fully controlled cluster**:
-  - Do not check if components are already installed.
-  - Assume the cluster is fully controlled by the test and installed components are safe to overwrite or delete.
+After completing any non-trivial task, evaluate whether the work involved:
+- A recurring pattern that will likely appear again in future tasks, or
+- A mistake that was corrected through user feedback, or
+- A design decision that required deliberate reasoning to reach the right answer.
 
-- **Test suite layout**:
-  - Split tests by purpose under `test/e2e`, for example `test/e2e/performance` and `test/e2e/quality`.
-  - In each directory, define shared Ginkgo configuration (labels, timeouts, common hooks) in `suite_test.go`, and keep scenarios in separate `*_test.go` files.
-  - Shared configuration values must come from the `test/utils/settings` package instead of hard-coded constants in test files.
+If any of the above applies, **record it in the most relevant `AGENTS.md`** before closing the task — this file for general patterns, [`test/AGENTS.md`](test/AGENTS.md) for test-specific patterns, [`deploy/helm/AGENTS.md`](deploy/helm/AGENTS.md) for Helm chart patterns, and [`website/AGENTS.md`](website/AGENTS.md) for documentation patterns. Entries should be concise, actionable, and placed under the most relevant existing section. If no section fits, create one.
 
-- **Environment variable management**:
-  - Manage all E2E environment variables centrally in `test/e2e/envs/env_vars.go`.
-  - When a new environment variable is required:
-    - Add it to the `envVars` slice with default value, description, category, and type.
-    - Expose it via public variables (for example `TestModel`, `HFToken`) and access it only through those variables.
-    - Do not call `os.Getenv` directly in test code.
-  - Keep the documentation consistent: changes must pass the `validateEnvVars()` check.
+The goal is to make every repeated task faster and every repeated mistake impossible.
 
-- **Resource templates and settings**:
-  - Manage Kubernetes resource specifications for Gateway, InferenceService, Jobs, and similar resources as Go templates (`.yaml.tmpl`) under `test/config/**`.
-  - Tests must read template paths and default values from constants in `test/utils/settings/constants.go`.
-  - When adding a new benchmark or performance test Job:
-    - Add the template file under an appropriate `test/config/<domain>` subdirectory.
-    - Define the corresponding path and default parameters in the `settings` package.
+### Creating Sub-directory AGENTS.md Files
 
-- **Utility reuse**:
-  - Implement all cluster manipulation logic (namespace creation, Gateway create/delete, Heimdall install/uninstall, InferenceService(Template) create/delete, etc.) in the `test/utils` package and call only those helpers from tests.
-  - Follow this pattern for scenario flow:
-    - `BeforeAll`: create namespace → install Gateway → install Heimdall → create InferenceServiceTemplates → create InferenceServices → wait until they are Ready.
-    - `AfterAll`: if `envs.SkipCleanup` is `false`, clean up the above resources in reverse order.
-    - `It(...)`: render the Job template → create the Job with `kubectl create -f -` → wait for completion with `kubectl wait` → collect logs and perform domain-specific assertions.
+When a directory accumulates enough domain-specific rules to warrant separation, create a dedicated `AGENTS.md` in that directory. Follow this checklist:
 
-- **Makefile and workflow integration**:
-  - Provide separate Make targets per test purpose (for example `e2e-performance`, `e2e-quality`) so that CI can run them independently.
-  - GitHub Actions and other workflows should invoke these targets directly, and new test categories should follow the same pattern when adding additional targets and workflows.
+1. **Create `AGENTS.md`** in the target directory with a header that links back to this root file:
+   ```markdown
+   # <Domain> — Agent Rules
+
+   Rules specific to the `<dir>/` directory. General contribution guidelines are in the root [`AGENTS.md`](/AGENTS.md).
+   ```
+
+2. **Create a `CLAUDE.md` symlink** pointing to `AGENTS.md` in the same directory. Cursor reads `CLAUDE.md` as context; the symlink ensures both tools see the same content:
+   ```shell
+   cd <dir> && ln -s AGENTS.md CLAUDE.md
+   ```
+
+3. **Move the relevant sections** from the root `AGENTS.md` (or parent `AGENTS.md`) into the new file. Replace the moved content in the parent with a one-line reference:
+   ```markdown
+   ### E2E Test
+
+   See [`test/AGENTS.md`](test/AGENTS.md).
+   ```
+
+4. **Update the Agent Self-Improvement section** in the parent to mention the new file as a recording target.
+
+## Helm Charts
+
+See [`deploy/helm/AGENTS.md`](deploy/helm/AGENTS.md) for design principles and chart development rules.

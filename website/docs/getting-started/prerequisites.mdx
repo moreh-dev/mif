@@ -4,8 +4,8 @@ sidebar_label: Prerequisites
 sidebar_position: 1
 ---
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
 
 This document introduces the prerequisites for the MoAI Inference Framework and provides instructions on how to install them.
 
@@ -74,7 +74,9 @@ ecrTokenRefresher:
     secretAccessKey: <AWS_SECRET_ACCESS_KEY>
 ```
 
-In addition, if dependencies such as keda, kube-prometheus-stack, lws are already installed in your cluster, you should skip their installation by setting the corresponding values to `false` in the `moai-inference-framework-values.yaml` file. Refer to [moai-inference-framework README](https://github.com/moreh-dev/mif/tree/main/deploy/helm/moai-inference-framework) to see the full list of dependencies.
+:::info
+If dependencies such as `keda`, `kube-prometheus-stack`, or `lws` are already installed in your cluster, skip their installation by setting the corresponding values to `false`. Refer to [moai-inference-framework README](https://github.com/moreh-dev/mif/tree/main/deploy/helm/moai-inference-framework) for the full list of dependencies.
+:::
 
 Then, deploy the `moai-inference-framework` chart using the following command:
 
@@ -136,7 +138,7 @@ deviceConfig:
   spec:
     driver:
       enable: true
-      version: '6.4.3'
+      version: "6.4.3"
       blacklist: true
       image: <registry>/amdgpu-driver
       imageRegistrySecret:
@@ -279,7 +281,7 @@ spec:
       app.kubernetes.io/instance: rdma-shared-device-plugin
   updateStrategy:
     rollingUpdate:
-      maxUnavailable: '30%'
+      maxUnavailable: "30%"
   template:
     metadata:
       labels:
@@ -415,8 +417,8 @@ Create a `istiod-values.yaml` file and install the Istio control plane.
 ```yaml title="istiod-values.yaml"
 pilot:
   env:
-    PILOT_ENABLE_ALPHA_GATEWAY_API: 'true'
-    ENABLE_GATEWAY_API_INFERENCE_EXTENSION: 'true'
+    PILOT_ENABLE_ALPHA_GATEWAY_API: "true"
+    ENABLE_GATEWAY_API_INFERENCE_EXTENSION: "true"
 ```
 
 ```shell

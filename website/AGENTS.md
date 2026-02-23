@@ -1,6 +1,6 @@
 # Website (Docusaurus) — Agent Rules
 
-This file defines rules for contributors and automation agents working in `website/`.
+Rules specific to the `website/` directory. General contribution guidelines are in the root [`AGENTS.md`](/AGENTS.md).
 
 ## 1. Structure & Metadata
 
@@ -30,8 +30,8 @@ This file defines rules for contributors and automation agents working in `websi
 https://docusaurus.io/docs/markdown-features/tabs
 
 ```mdx
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
 
 <Tabs groupId="fruits" queryString>
   <TabItem value="apple" label="Apple" default>
@@ -57,6 +57,13 @@ image:
 
 - title: ` ```<language> title="<title>"`
 - highlight: ` ```<language> {1,4-6}`
+- **Expected output**: Blocks showing command output must always specify both a language type and a title on the same opening fence. Use `shell` for terminal output:
+  ````mdx
+  ```shell title="Expected output (one pod per node, all `Running`)"
+  NAME           READY   STATUS    RESTARTS   AGE
+  vector-xxxxx   1/1     Running   0          2m
+  ```
+  ````
 - **Variables**:
   - Format as `<variableName>` (camelCase, no quotes).
   - Highlight lines containing variables in code blocks (e.g., ` ```yaml {2} `).
@@ -96,3 +103,9 @@ This is a warning
 ## 4. Content Guidelines
 
 - **Inference Deployment**: When documenting deployment of inference services (e.g., vLLM, SGLang), instructions MUST use the `InferenceService` resource with a preset.
+
+- **No duplicate installation steps**: Operation or feature docs must not repeat the values file example or `helm upgrade` command that already appears in `getting-started/prerequisites.mdx`. Instead, link directly to the relevant section:
+  ```mdx
+  See [Prerequisites](../getting-started/prerequisites.mdx#moai-inference-framework) for the required values and install command.
+  ```
+  Duplication causes the two pages to diverge whenever the chart version or values change.

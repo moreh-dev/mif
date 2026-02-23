@@ -1,0 +1,265 @@
+---
+title: Log Collection (Loki + Vector)
+sidebar_label: Logs
+sidebar_position: 3
+---
+
+This document explains how to enable centralized log collection for the MoAI Inference Framework using [Loki](https://grafana.com/oss/loki/) (log aggregation) and [Vector](https://vector.dev/) (log collection agent).
+
+## Overview
+
+```mermaid
+flowchart TB
+    pods["`**Inference Service Pods**`"]
+    vector["`**Vector**`"]
+    grafana["`**Grafana**`"]
+
+    subgraph log_storage["Log Storage"]
+        loki["`**Loki**`"]
+        minio[("**MinIO**")]
+    end
+
+    pods -->|"container logs"| vector
+    vector -->|"transforms + labels"| loki
+    loki -->|"LogQL"| grafana
+```
+
+### Labels available for log search
+
+| Label               | Source                                                                             | Example value           |
+| :------------------ | :--------------------------------------------------------------------------------- | :---------------------- |
+| `namespace`         | `kubernetes.pod_namespace`                                                         | `default`               |
+| `inference_service` | pod label `app.kubernetes.io/instance`                                             | `llama-3-2-1b`          |
+| `pool_name`         | pod label `mif.moreh.io/pool`                                                      | `heimdall`              |
+| `role`              | pod label `mif.moreh.io/role`                                                      | `prefill`, `decode`     |
+| `app`               | pod label `app.kubernetes.io/name`                                                 | `vllm`                  |
+| `node_name`         | `VECTOR_SELF_NODE_NAME` env var (injected by Vector)                               | `gpu-node-01`           |
+| `level`             | parsed from JSON log field `level` (pods with `mif.moreh.io/log.format=json` only) | `info`, `warn`, `error` |
+
+---
+
+## Prerequisites
+
+- The `moai-inference-framework` Helm chart installed (or being installed).
+
+:::info
+MinIO, Loki, and Vector are all **enabled by default** in the `moai-inference-framework` chart. No additional configuration is required to get started.
+:::
+
+---
+
+## Installation
+
+Log collection is installed as part of the `moai-inference-framework` Helm chart. See [Prerequisites](../getting-started/prerequisites.mdx#moai-inference-framework) for the required values and install command.
+
+---
+
+## Verifying the installation
+
+Check that all Loki components are running.
+
+```shell
+kubectl get pods -n mif -l app.kubernetes.io/name=loki
+```
+
+```shell title="Expected output (all pods Running)"
+NAME                           READY   STATUS    RESTARTS   AGE
+loki-backend-0                 1/1     Running   0          2m
+loki-gateway-xxxxxxxxx-xxxxx   1/1     Running   0          2m
+loki-read-xxxxxxxxx-xxxxx      1/1     Running   0          2m
+loki-write-0                   1/1     Running   0          2m
+```
+
+Check that Vector is running on all nodes.
+
+```shell
+kubectl get pods -n mif -l app.kubernetes.io/name=vector
+```
+
+```shell title="Expected output (one pod per node, all Running)"
+NAME           READY   STATUS    RESTARTS   AGE
+vector-xxxxx   1/1     Running   0          2m
+vector-yyyyy   1/1     Running   0          2m
+```
+
+Check Vector logs to confirm it is shipping to Loki without errors.
+
+```shell
+kubectl logs -n mif -l app.kubernetes.io/name=vector --tail=50
+```
+
+---
+
+## Enabling log collection for a pod
+
+Vector collects logs only from pods that explicitly opt in. Two pod labels control this behavior.
+
+### Opt-in label
+
+Add the `mif.moreh.io/log.collect=true` label to a pod to include its logs in Vector's collection. Pods without this label are ignored entirely.
+
+```yaml
+metadata:
+  labels:
+    mif.moreh.io/log.collect: "true"
+```
+
+### Log format label
+
+Add the `mif.moreh.io/log.format=json` label to enable structured JSON log parsing for a pod. When set, Vector parses each log line as JSON and promotes the following fields:
+
+| JSON field | Mapped to             |
+| :--------- | :-------------------- |
+| `msg`      | `message`             |
+| `time`     | `timestamp`           |
+| `level`    | `level` (Loki label)  |
+| others     | merged into the event |
+
+Without this label, the log line is forwarded as-is without any JSON parsing.
+
+```yaml
+metadata:
+  labels:
+    mif.moreh.io/log.collect: "true"
+    mif.moreh.io/log.format: "json"
+```
+
+:::info
+The `level` Loki label is only populated for pods with `mif.moreh.io/log.format=json`. For plain-text pods, `level` remains empty.
+:::
+
+---
+
+## Searching logs in Grafana
+
+Open Grafana → **Explore** → select the **Loki** datasource.
+
+### By namespace
+
+```promql
+{namespace="default"}
+```
+
+### By inference service name
+
+```promql
+{inference_service="llama-3-2-1b"}
+```
+
+### By pool name
+
+```promql
+{pool_name="heimdall"}
+```
+
+### By role
+
+```promql
+{role="decode"}
+```
+
+### Combined filter
+
+```promql
+{namespace="default", inference_service="llama-3-2-1b", role="prefill"} |= "error"
+```
+
+### Filter by log level
+
+```promql
+{namespace="default", level="error"}
+```
+
+---
+
+## Architecture details
+
+### Loki
+
+| Property          | Value                                          |
+| :---------------- | :--------------------------------------------- |
+| Helm chart        | `moreh/loki` v6.30.0 (upstream grafana/loki)   |
+| App version       | 3.5.1                                          |
+| Storage backend   | S3 (MinIO), TSDB index                         |
+| Retention         | 90 days (2160 h)                               |
+| Ingestion limit   | 30 MB/s, 60 MB burst                           |
+| Max entries/query | 50 000                                         |
+| Deployment        | Distributed (gateway / read / write / backend) |
+
+### Vector
+
+| Property    | Value                                                                     |
+| :---------- | :------------------------------------------------------------------------ |
+| Helm chart  | `vector/vector` v0.39.0                                                   |
+| Deployment  | DaemonSet (Agent mode, one pod per node)                                  |
+| Log source  | Pods labelled `mif.moreh.io/log.collect=true` (`kubernetes_logs`)         |
+| Log format  | JSON parsing applied only to pods labelled `mif.moreh.io/log.format=json` |
+| Tolerations | unschedulable, compute, `amd.com/gpu`                                     |
+
+### MinIO
+
+| Property         | Value                                                        |
+| :--------------- | :----------------------------------------------------------- |
+| Helm chart       | `minio/minio` v5.4.0                                         |
+| Mode             | Standalone                                                   |
+| Bucket           | `loki` (created via post-install Job on startup)             |
+| Loki credentials | Dedicated `loki` user with S3 policy scoped to `loki` bucket |
+| Resources        | 1 CPU / 2 Gi memory (requests), 1.5 CPU / 3 Gi (limits)      |
+| Persistence      | emptyDir (ephemeral by default)                              |
+| Deployment       | Single pod                                                   |
+
+### Component naming
+
+Service names are derived from the Helm release name. With the default release name `mif`:
+
+| Service      | Name (same-namespace access) |
+| :----------- | :--------------------------- |
+| MinIO        | `mif-minio`                  |
+| Loki gateway | `mif-loki-gateway`           |
+| Loki read    | `mif-loki-read`              |
+| Loki write   | `mif-loki-write`             |
+
+Vector connects to Loki using the release-prefixed service name since all components are co-located in the same namespace.
+
+---
+
+## Using an external MinIO
+
+If MinIO is already deployed outside this chart, set `minio.enabled: false`. The `loki-bucket` ConfigMap and Secret are still generated from `minio.users[0].*` values regardless of whether the sub-chart is enabled. The `BUCKET_HOST` is derived from the Helm release name (`<release>-minio`).
+
+**Same namespace** — if the existing MinIO service name matches `<release>-minio`, no additional configuration is needed. Otherwise, set `minio.fullnameOverride` to override the name used as `BUCKET_HOST`:
+
+```yaml title="moai-inference-framework-values.yaml" {3,5-6}
+minio:
+  enabled: false
+  fullnameOverride: <existing-minio-service-name>
+  users:
+    - accessKey: <lokiAccessKey>
+      secretKey: <lokiSecretKey>
+      policy: loki
+```
+
+**Different namespace** — set `minio.fullnameOverride` to the FQDN so that Loki can resolve it cross-namespace:
+
+```yaml title="moai-inference-framework-values.yaml" {5-6}
+minio:
+  enabled: false
+  fullnameOverride: minio.minio.svc.cluster.local
+  users:
+    - accessKey: <lokiAccessKey>
+      secretKey: <lokiSecretKey>
+      policy: loki
+```
+
+---
+
+## Disabling log collection
+
+```yaml title="moai-inference-framework-values.yaml"
+minio:
+  enabled: false
+loki:
+  enabled: false
+vector:
+  enabled: false
+```
