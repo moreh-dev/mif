@@ -150,9 +150,6 @@ loki:
   # -- Enable grafana/loki.
   enabled: true
 
-  global:
-    dnsService: coredns
-
   loki:
     auth_enabled: false
     commonConfig:

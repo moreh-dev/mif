@@ -59,23 +59,14 @@ Moreh Inference Framework
 | loki.backend.extraEnvFrom[0].secretRef.name | string | `"loki-bucket"` |  |
 | loki.backend.extraEnvFrom[1].configMapRef.name | string | `"loki-bucket"` |  |
 | loki.backend.nodeSelector."node-role.kubernetes.io/control-plane" | string | `""` |  |
-| loki.backend.persistence.storageClass | string | `""` | StorageClass for Loki backend component (e.g. ceph-block, standard). |
+| loki.backend.persistence.volumeClaimsEnabled | bool | `false` |  |
 | loki.backend.replicas | int | `1` |  |
-| loki.backend.resources.limits.cpu | string | `"500m"` |  |
-| loki.backend.resources.limits.memory | string | `"512Mi"` |  |
-| loki.backend.resources.requests.cpu | string | `"500m"` |  |
-| loki.backend.resources.requests.memory | string | `"512Mi"` |  |
 | loki.enabled | bool | `true` | Enable grafana/loki. |
 | loki.gateway.extraArgs[0] | string | `"-config.expand-env=true"` |  |
 | loki.gateway.extraEnvFrom[0].secretRef.name | string | `"loki-bucket"` |  |
 | loki.gateway.extraEnvFrom[1].configMapRef.name | string | `"loki-bucket"` |  |
 | loki.gateway.nodeSelector."node-role.kubernetes.io/control-plane" | string | `""` |  |
 | loki.gateway.replicas | int | `1` |  |
-| loki.gateway.resources.limits.cpu | string | `"500m"` |  |
-| loki.gateway.resources.limits.memory | string | `"512Mi"` |  |
-| loki.gateway.resources.requests.cpu | string | `"500m"` |  |
-| loki.gateway.resources.requests.memory | string | `"512Mi"` |  |
-| loki.global.dnsService | string | `"coredns"` |  |
 | loki.loki.auth_enabled | bool | `false` |  |
 | loki.loki.commonConfig.replication_factor | int | `1` |  |
 | loki.loki.image.tag | string | `"3.5.1"` |  |
@@ -111,34 +102,22 @@ Moreh Inference Framework
 | loki.read.extraEnvFrom[1].configMapRef.name | string | `"loki-bucket"` |  |
 | loki.read.nodeSelector."node-role.kubernetes.io/control-plane" | string | `""` |  |
 | loki.read.replicas | int | `1` |  |
-| loki.read.resources.limits.cpu | string | `"500m"` |  |
-| loki.read.resources.limits.memory | string | `"1Gi"` |  |
-| loki.read.resources.requests.cpu | string | `"500m"` |  |
-| loki.read.resources.requests.memory | string | `"1Gi"` |  |
 | loki.write.extraArgs[0] | string | `"-config.expand-env=true"` |  |
 | loki.write.extraEnvFrom[0].secretRef.name | string | `"loki-bucket"` |  |
 | loki.write.extraEnvFrom[1].configMapRef.name | string | `"loki-bucket"` |  |
 | loki.write.nodeSelector."node-role.kubernetes.io/control-plane" | string | `""` |  |
-| loki.write.persistence.storageClass | string | `""` | StorageClass for Loki write component (e.g. ceph-block, standard). |
+| loki.write.persistence.volumeClaimsEnabled | bool | `false` |  |
 | loki.write.replicas | int | `1` |  |
-| loki.write.resources.limits.cpu | string | `"500m"` |  |
-| loki.write.resources.limits.memory | string | `"512Mi"` |  |
-| loki.write.resources.requests.cpu | string | `"500m"` |  |
-| loki.write.resources.requests.memory | string | `"512Mi"` |  |
 | lws.enabled | bool | `true` | Enable kubernetes-sigs/lws. Set to false if already deployed. |
 | minio.buckets[0].name | string | `"loki"` |  |
 | minio.enabled | bool | `true` | Enable minio/minio as the S3-compatible object storage backend for Loki. Set to false if MinIO is already deployed; in that case, configure loki storage to point to the existing MinIO service. |
 | minio.mode | string | `"standalone"` |  |
-| minio.persistence.size | string | `"500Gi"` |  |
-| minio.persistence.storageClass | string | `""` | StorageClass for MinIO data volume (e.g. ceph-block, standard). |
+| minio.persistence.enabled | bool | `false` |  |
 | minio.policies[0].name | string | `"loki"` |  |
 | minio.policies[0].statements[0].actions[0] | string | `"s3:*"` |  |
 | minio.policies[0].statements[0].effect | string | `"Allow"` |  |
 | minio.policies[0].statements[0].resources[0] | string | `"arn:aws:s3:::loki/*"` |  |
-| minio.resources.limits.cpu | string | `"1.5"` |  |
-| minio.resources.limits.memory | string | `"3072Mi"` |  |
-| minio.resources.requests.cpu | string | `"1"` |  |
-| minio.resources.requests.memory | string | `"2048Mi"` |  |
+| minio.resources.requests.memory | string | `"2Gi"` |  |
 | minio.rootPassword | string | `"minio123!"` | MinIO root password. Override with a strong password in production. |
 | minio.rootUser | string | `"minio"` | MinIO root user. |
 | minio.users[0].accessKey | string | `"loki"` |  |
@@ -192,10 +171,6 @@ Moreh Inference Framework
 | vector.customConfig.transforms.mif_log_transform.source | string | `".namespace          = .kubernetes.pod_namespace\n.node_name          = \"$VECTOR_SELF_NODE_NAME\"\n.app                = get(.kubernetes.pod_labels, [\"app.kubernetes.io/name\"])      ?? \"\"\n.inference_service  = get(.kubernetes.pod_labels, [\"app.kubernetes.io/instance\"])  ?? \"\"\n.pool_name          = get(.kubernetes.pod_labels, [\"mif.moreh.io/pool\"])           ?? \"\"\n.role               = get(.kubernetes.pod_labels, [\"mif.moreh.io/role\"])           ?? \"\"\n\nlog_format = get(.kubernetes.pod_labels, [\"mif.moreh.io/log.format\"]) ?? \"\"\n\nif log_format == \"json\" {\n  structured, err = parse_json(.message)\n  if err == null {\n    . = merge!(., structured)\n    msg, err = get(., [\"msg\"])\n    if err == null {\n      .message = msg\n      del(.msg)\n    }\n    time, err = get(., [\"time\"])\n    if err == null {\n      .timestamp = time\n      del(.time)\n    }\n  }\n}\n\ndel(.file)\ndel(.source_type)\ndel(.stream)\ndel(.kubernetes)\n"` |  |
 | vector.customConfig.transforms.mif_log_transform.type | string | `"remap"` |  |
 | vector.enabled | bool | `true` | Enable vector/vector as a DaemonSet log collector. |
-| vector.resources.limits.cpu | string | `"100m"` |  |
-| vector.resources.limits.memory | string | `"256Mi"` |  |
-| vector.resources.requests.cpu | string | `"100m"` |  |
-| vector.resources.requests.memory | string | `"256Mi"` |  |
 | vector.role | string | `"Agent"` |  |
 | vector.tolerations[0].effect | string | `"NoExecute"` |  |
 | vector.tolerations[0].key | string | `"node.kubernetes.io/unschedulable"` |  |
