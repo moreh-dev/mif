@@ -108,6 +108,9 @@ Moreh Inference Framework
 | loki.write.nodeSelector."node-role.kubernetes.io/control-plane" | string | `""` |  |
 | loki.write.persistence.volumeClaimsEnabled | bool | `false` |  |
 | loki.write.replicas | int | `1` |  |
+| lokiBucket.accessKey | string | `""` | MinIO access key for Loki storage. Defaults to minio.users[0].accessKey. |
+| lokiBucket.host | string | `""` | MinIO service host for Loki storage. Defaults to <release>-minio. Use the FQDN (e.g. minio.minio.svc.cluster.local) for cross-namespace access. |
+| lokiBucket.secretKey | string | `""` | MinIO secret key for Loki storage. Defaults to minio.users[0].secretKey. |
 | lws.enabled | bool | `true` | Enable kubernetes-sigs/lws. Set to false if already deployed. |
 | minio.buckets[0].name | string | `"loki"` |  |
 | minio.enabled | bool | `true` | Enable minio/minio as the S3-compatible object storage backend for Loki. Set to false if MinIO is already deployed; in that case, configure loki storage to point to the existing MinIO service. |
