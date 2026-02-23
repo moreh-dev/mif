@@ -61,11 +61,11 @@ kubectl get pods -n mif -l app.kubernetes.io/name=loki
 ```
 
 ```shell title="Expected output (all pods Running)"
-NAME READY STATUS RESTARTS AGE
-loki-backend-0 1/1 Running 0 2m
-loki-gateway-xxxxxxxxx-xxxxx 1/1 Running 0 2m
-loki-read-xxxxxxxxx-xxxxx 1/1 Running 0 2m
-loki-write-0 1/1 Running 0 2m
+NAME                           READY   STATUS    RESTARTS   AGE
+loki-backend-0                 1/1     Running   0          2m
+loki-gateway-xxxxxxxxx-xxxxx   1/1     Running   0          2m
+loki-read-xxxxxxxxx-xxxxx      1/1     Running   0          2m
+loki-write-0                   1/1     Running   0          2m
 ```
 
 Check that Vector is running on all nodes.
@@ -75,9 +75,9 @@ kubectl get pods -n mif -l app.kubernetes.io/name=vector
 ```
 
 ```shell title="Expected output (one pod per node, all Running)"
-NAME READY STATUS RESTARTS AGE
-vector-xxxxx 1/1 Running 0 2m
-vector-yyyyy 1/1 Running 0 2m
+NAME           READY   STATUS    RESTARTS   AGE
+vector-xxxxx   1/1     Running   0          2m
+vector-yyyyy   1/1     Running   0          2m
 ```
 
 Check Vector logs to confirm it is shipping to Loki without errors.
