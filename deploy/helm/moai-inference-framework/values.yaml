@@ -125,6 +125,7 @@ minio:
     - name: loki
       statements:
         - resources:
+            - "arn:aws:s3:::loki"
             - "arn:aws:s3:::loki/*"
           effect: Allow
           actions:
