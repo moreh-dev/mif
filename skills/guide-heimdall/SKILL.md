@@ -6,7 +6,9 @@ description: >-
   profiles, plugins (filters, scorers, pickers, profile handlers),
   EndpointPickerConfig, InferencePool resources, heimdall-values.yaml files,
   Gateway API Inference Extension integration, or troubleshooting Heimdall
-  routing behavior in Kubernetes clusters.
+  routing behavior in Kubernetes clusters. Also use when questions involve
+  inference request routing, load balancing across inference pods, choosing
+  which pod serves a request, or scheduling latency optimization.
 ---
 
 # Heimdall Scheduler — Expert Guide
@@ -127,6 +129,7 @@ The `config` section is the core of Heimdall configuration. It maps directly to 
 config:
   apiVersion: inference.networking.x-k8s.io/v1alpha1
   kind: EndpointPickerConfig
+  featureGates: []            # optional, experimental EPP feature flags
   plugins:              # Plugin instantiation list
     - type: <pluginType>
       name: <instanceName>        # optional, defaults to type
@@ -147,6 +150,8 @@ config:
         extractors:
           - pluginRef: <instanceName>
 ```
+
+The `featureGates` field enables experimental EPP features (empty by default). The `data` section configures the DataLayer for `precise-prefix-cache-scorer` — each source references a plugin instance, and extractors define how data is extracted. See the API reference (`website/docs/reference/heimdall/api-reference.mdx`) for the full `DataLayerConfig` schema.
 
 ### `gateway` section
 
@@ -254,6 +259,8 @@ Start simple. Add complexity only when metrics justify it.
 | `weighted-random-picker` | Score-proportional random selection | Load distribution with score influence |
 | `random-picker` | Uniform random, ignores scores | Pure round-robin-like distribution |
 
+All pickers support a `maxNumOfEndpoints` parameter (default: `1`, type: `int`) that controls how many endpoints are returned per pick. Increase this when the gateway supports multi-endpoint routing.
+
 **Recommendation:** Start with `max-score-picker`. Switch to `weighted-random-picker` if you need stochastic load balancing.
 
 ### Step 4: Add filters (if needed)
@@ -265,11 +272,13 @@ Start simple. Add complexity only when metrics justify it.
 | `by-label` | Custom filtering by any label key/values |
 | `by-label-selector` | Custom filtering by `matchLabels` map |
 
-### Step 5: Add response plugins (optional)
+### Step 5: Add lifecycle plugins (optional)
 
-| Plugin | Purpose |
-| --- | --- |
-| `response-header-handler` | Adds `x-decoder-host-port` and `x-prefiller-host-port` headers to response |
+The architecture supports pre-request and post-response plugins. Currently, only one post-response plugin is available:
+
+| Plugin | Category | Purpose |
+| --- | --- | --- |
+| `response-header-handler` | Post-response | Adds `x-decoder-host-port` and `x-prefiller-host-port` headers to response |
 
 ---
 
@@ -329,103 +338,15 @@ config:
 
 ### Pattern 3: Production PD with KV cache awareness [verified]
 
-Adds `kv-cache-utilization-scorer` to avoid routing to pods with high KV cache pressure.
-
-```yaml
-config:
-  apiVersion: inference.networking.x-k8s.io/v1alpha1
-  kind: EndpointPickerConfig
-  plugins:
-    - type: pd-profile-handler
-    - type: prefill-filter
-    - type: decode-filter
-    - type: queue-scorer
-    - type: kv-cache-utilization-scorer
-    - type: max-score-picker
-  schedulingProfiles:
-    - name: prefill
-      plugins:
-        - pluginRef: prefill-filter
-        - pluginRef: queue-scorer
-          weight: 1
-        - pluginRef: kv-cache-utilization-scorer
-          weight: 1
-        - pluginRef: max-score-picker
-    - name: decode
-      plugins:
-        - pluginRef: decode-filter
-        - pluginRef: queue-scorer
-          weight: 1
-        - pluginRef: kv-cache-utilization-scorer
-          weight: 1
-        - pluginRef: max-score-picker
-```
-
-**When to use:** Production environments with varying workloads where KV cache utilization differs across pods. The plugin and scoring profile setup above is the **Helm chart default configuration** — tune scorer weights to shift priority between queue depth and KV cache pressure.
-
-**Optional: saturation detection.** Add a `saturationDetector` block to reject requests to overloaded pods (not included in chart defaults):
-
-```yaml
-  saturationDetector:
-    queueDepthThreshold: 128
-    kvCacheUtilThreshold: 0.9
-    metricsStalenessThreshold: 30s
-```
+Extends Pattern 2 with `kv-cache-utilization-scorer` to avoid routing to pods with high KV cache pressure. This is the **Helm chart default configuration**. Optionally add a `saturationDetector` block to reject requests to overloaded pods. See [references/config-recipes.md](references/config-recipes.md#recipe-3-production-pd-with-kv-cache-awareness-verified) for the full YAML.
 
 ### Pattern 4: Prefix-cache-aware with session affinity [unverified]
 
-Combines prefix locality with session stickiness for multi-turn conversational workloads. This pattern is constructed from plugin specs and has not been validated in production. Weight values are illustrative and should be tuned for your workload.
-
-```yaml
-config:
-  apiVersion: inference.networking.x-k8s.io/v1alpha1
-  kind: EndpointPickerConfig
-  plugins:
-    - type: single-profile-handler
-    - type: queue-scorer
-    - type: prefix-cache-scorer
-    - type: session-affinity-scorer
-    - type: max-score-picker
-  schedulingProfiles:
-    - name: default
-      plugins:
-        - pluginRef: queue-scorer
-          weight: 1
-        - pluginRef: prefix-cache-scorer
-          weight: 3
-        - pluginRef: session-affinity-scorer
-          weight: 5
-        - pluginRef: max-score-picker
-```
-
-**When to use:** Chatbot / multi-turn applications where vLLM has `--enable-prefix-caching` and clients manage `x-session-token` headers. Weights prioritize session affinity > prefix locality > queue depth.
+Combines `prefix-cache-scorer` + `session-affinity-scorer` + `queue-scorer` for multi-turn chatbot workloads. Requires vLLM `--enable-prefix-caching` and client-managed `x-session-token` headers. See [references/config-recipes.md](references/config-recipes.md#recipe-4-prefix-cache-aware-with-session-affinity-unverified) for the full YAML.
 
 ### Pattern 5: LoRA affinity routing [unverified]
 
-Routes requests to pods that already have the required LoRA adapter loaded, reducing adapter swap overhead. This pattern is constructed from plugin specs and has not been validated in production. Weight values are illustrative and should be tuned for your workload.
-
-```yaml
-config:
-  apiVersion: inference.networking.x-k8s.io/v1alpha1
-  kind: EndpointPickerConfig
-  plugins:
-    - type: single-profile-handler
-    - type: queue-scorer
-    - type: lora-affinity-scorer
-    - type: max-score-picker
-  schedulingProfiles:
-    - name: default
-      plugins:
-        - pluginRef: queue-scorer
-          weight: 1
-        - pluginRef: lora-affinity-scorer
-          weight: 3
-        - pluginRef: max-score-picker
-```
-
-**When to use:** Multi-LoRA serving where pods load different adapters and routing to a pod with the adapter already loaded reduces swap latency. Requires LoRA-enabled vLLM.
-
-See [references/config-recipes.md](references/config-recipes.md) for complete `heimdall-values.yaml` reference examples.
+Routes requests to pods with the required LoRA adapter already loaded, reducing swap overhead. See [references/config-recipes.md](references/config-recipes.md#recipe-5-lora-affinity-routing-unverified) for the full YAML.
 
 ---
 
@@ -462,26 +383,7 @@ helm upgrade -i heimdall moreh/heimdall \
 kubectl get all -n <namespace> -l app.kubernetes.io/instance=heimdall
 ```
 
-Expected resources:
-- Pod: `heimdall-*` (1/1 Running)
-- Service: `heimdall` with ports 9002/TCP (gRPC), 9090/TCP (metrics), 5557/TCP (ZMQ)
-- Deployment: `heimdall`
-- ReplicaSet: `heimdall-*`
-
-Additional resources created (not shown by `get all`):
-- ConfigMap: stores the rendered EndpointPickerConfig
-- InferencePool: pod selector for routing targets
-- HTTPRoute: binds Heimdall to the Gateway
-- ClusterRole + ClusterRoleBinding: RBAC for InferencePool/Pod access
-- ServiceMonitor (if enabled): Prometheus scrape target
-- PodMonitor (if enabled): monitors model serving pods
-- DestinationRule (Istio only): traffic policy
-
-Container ports (internal):
-- 9002: gRPC (Endpoint Picker Protocol)
-- 9003: gRPC health check
-- 9090: Prometheus metrics
-- 5557: ZMQ (KV events for precise-prefix-cache-scorer)
+Expected: Pod `heimdall-*` (1/1 Running), Service with ports 9002 (gRPC), 9090 (metrics), 5557 (ZMQ), Deployment, ReplicaSet. The chart also creates ConfigMap, InferencePool, HTTPRoute, ClusterRole/Binding, and optionally ServiceMonitor, PodMonitor, and DestinationRule (Istio).
 
 ### Uninstall
 

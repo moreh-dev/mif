@@ -6,7 +6,9 @@ description: >-
   InferenceService, InferenceServiceTemplate, templateRefs, parallelism
   (tensor, pipeline, data, expert), workerTemplate, runtime-bases, presets,
   LeaderWorkerSet, rolloutStrategy, or troubleshooting Odin workloads in
-  Kubernetes clusters.
+  Kubernetes clusters. Also use when questions involve deploying a model on
+  Kubernetes, serving LLMs with vLLM, GPU resource configuration for
+  inference, multi-node model deployment, or HuggingFace model serving.
 ---
 
 # Odin Inference Operator — Expert Guide
@@ -162,9 +164,9 @@ Templates are merged using **Kubernetes strategic merge patch** in the order spe
 
 ```mermaid
 flowchart LR
-    T0["templateRefs[0]\n(base)"] --> T1["templateRefs[1]\n(overlay)"]
-    T1 --> TN["templateRefs[N]\n(overlay)"]
-    TN --> SPEC["spec.template /\nworkerTemplate\n(final override)"]
+    T0["templateRefs[0] (base)"] --> T1["templateRefs[1] (overlay)"]
+    T1 --> TN["templateRefs[N] (overlay)"]
+    TN --> SPEC["InferenceService spec (final override)"]
     style SPEC fill:#f9f,stroke:#333,stroke-width:2px
 ```
 
@@ -221,7 +223,6 @@ The presence and configuration of parallelism determines the workload type and p
 | `workerTemplate` | Parallelism | Workload type | Pod topology |
 | --- | --- | --- | --- |
 | Not set | None or tensor only | **Deployment** | `replicas` independent pods |
-| Not set | N/A | **Deployment** | Simple pod replication |
 | Set | `data` | **LeaderWorkerSet** | `replicas` groups, each with `data/dataLocal` workers |
 | Set | `pipeline` | **LeaderWorkerSet** | `replicas` groups, each with `pipeline` workers |
 
@@ -299,7 +300,17 @@ Runtime-bases define the container startup logic, parallelism wiring, and pod st
 | `vllm-prefill-dp` | LeaderWorkerSet | `workerTemplate` | Prefill-only with data parallelism |
 | `vllm-prefill-pp` | LeaderWorkerSet | `workerTemplate` | Prefill-only with pipeline parallelism |
 
-> **Critical:** When using `*-dp` or `*-pp` runtime-bases, override with `spec.workerTemplate` (not `spec.template`), because the runtime-base defines the pod spec in `workerTemplate`.
+### Choosing `template` vs. `workerTemplate`
+
+This is the most common source of misconfiguration. The rule is simple: **override the same field the runtime-base uses**. If the runtime-base puts its pod spec in `workerTemplate`, your overrides (env vars, resources, volumes) must also go in `spec.workerTemplate`. Putting them in `spec.template` instead creates a separate, unused field — the merge has no effect and overrides are silently ignored.
+
+| Runtime-base suffix | Override in | Workload type |
+| --- | --- | --- |
+| (none): `vllm`, `vllm-decode`, `vllm-prefill` | `spec.template` | Deployment |
+| `-dp`: `vllm-dp`, `vllm-decode-dp`, `vllm-prefill-dp` | `spec.workerTemplate` | LeaderWorkerSet |
+| `-pp`: `vllm-pp`, `vllm-decode-pp`, `vllm-prefill-pp` | `spec.workerTemplate` | LeaderWorkerSet |
+
+The container name in overrides must be `main` to match the runtime-base's merge key (Kubernetes strategic merge patch merges containers by `name`).
 
 ### Listing available templates
 
@@ -319,6 +330,8 @@ kubectl get inferenceservicetemplate -n mif -l mif.moreh.io/template.type=preset
 | `ISVC_MODEL_PATH` | Local model path or HF ID | defaults to `$ISVC_MODEL_NAME` |
 | `ISVC_EXTRA_ARGS` | Additional vLLM engine arguments | (set by preset) |
 | `ISVC_PRE_PROCESS_SCRIPT` | Script to run before engine starts | (none) |
+| `ISVC_USE_KV_EVENTS` | Publish KV cache events to Heimdall via ZMQ (for `precise-prefix-cache-scorer`) | `false` |
+| `ISVC_PRESET_PATH` | Path to preset configuration file sourced at startup | (empty) |
 | `HF_TOKEN` | HuggingFace API token | (user must provide) |
 | `HF_HOME` | HuggingFace cache directory | `/mnt/models` (for PV usage) |
 | `HF_HUB_OFFLINE` | Disable HF Hub network access | `1` (for PV usage) |
@@ -407,133 +420,15 @@ spec:
 
 ### Pattern 3: Custom preset creation [verified]
 
-Create a reusable preset from a custom configuration.
-
-Source: `website/docs/features/preset.mdx`
-
-```yaml
-apiVersion: odin.moreh.io/v1alpha1
-kind: InferenceServiceTemplate
-metadata:
-  name: custom-prefill-dp16ep
-spec:
-  parallelism:
-    data: 16
-    dataLocal: 8
-    expert: true
-  workerTemplate:
-    spec:
-      containers:
-        - name: main
-          env:
-            - name: ISVC_MODEL_NAME
-              value: deepseek-ai/DeepSeek-R1
-            - name: ISVC_EXTRA_ARGS
-              value: >-
-                --disable-uvicorn-access-log
-                --no-enable-log-requests
-          resources:
-            limits:
-              amd.com/gpu: "8"
-            requests:
-              amd.com/gpu: "8"
-      nodeSelector:
-        moai.moreh.io/accelerator.vendor: amd
-        moai.moreh.io/accelerator.model: mi300x
-      tolerations:
-        - key: amd.com/gpu
-          operator: Exists
-          effect: NoSchedule
-```
-
-Use it:
-```yaml
-spec:
-  templateRefs:
-    - name: vllm-prefill-dp
-    - name: custom-prefill-dp16ep
-```
+Create a reusable `InferenceServiceTemplate` from a custom configuration (model, GPU resources, parallelism), then reference it alongside a runtime-base in `templateRefs`. See [Recipe 5 in config-recipes.md](references/config-recipes.md#recipe-5-custom-reusable-preset-verified) for the full YAML.
 
 ### Pattern 4: PV-based offline model loading [verified]
 
-For production: pre-download models to a PersistentVolume, load offline.
-
-Source: `website/docs/operations/hf-model-management-with-pv.mdx`
-
-```yaml
-apiVersion: odin.moreh.io/v1alpha1
-kind: InferenceService
-metadata:
-  name: vllm-offline
-spec:
-  replicas: 2
-  inferencePoolRefs:
-    - name: heimdall
-  templateRefs:
-    - name: vllm
-    - name: <preset>
-  template:
-    spec:
-      containers:
-        - name: main
-          env:
-            - name: HF_HOME
-              value: /mnt/models
-            - name: HF_HUB_OFFLINE
-              value: "1"
-          volumeMounts:
-            - name: models
-              mountPath: /mnt/models
-      volumes:
-        - name: models
-          persistentVolumeClaim:
-            claimName: models    # RWX PVC with pre-downloaded models
-```
+Pre-download models to a RWX PersistentVolume, serve offline with `HF_HOME=/mnt/models` and `HF_HUB_OFFLINE=1`. See [Recipe 4 in config-recipes.md](references/config-recipes.md#recipe-4-offline-model-from-persistentvolume-verified) for the full YAML.
 
 ### Pattern 5: Pipeline parallel deployment [unverified]
 
-Splits the model across pipeline stages, each on a separate pod. Uses `vllm-pp` or `vllm-decode-pp` runtime-base. This pattern is constructed from API specs and has not been validated in production.
-
-```yaml
-apiVersion: odin.moreh.io/v1alpha1
-kind: InferenceService
-metadata:
-  name: vllm-pipeline
-spec:
-  replicas: 1
-  inferencePoolRefs:
-    - name: heimdall
-  templateRefs:
-    - name: vllm-pp
-  parallelism:
-    pipeline: 4    # number of pipeline stages
-    tensor: 2
-  workerTemplate:
-    spec:
-      containers:
-        - name: main
-          env:
-            - name: ISVC_MODEL_NAME
-              value: <modelName>
-            - name: HF_TOKEN
-              value: <huggingFaceToken>
-          resources:
-            limits:
-              amd.com/gpu: 2
-            requests:
-              amd.com/gpu: 2
-      nodeSelector:
-        moai.moreh.io/accelerator.vendor: amd
-        moai.moreh.io/accelerator.model: <acceleratorModel>
-      tolerations:
-        - key: amd.com/gpu
-          operator: Exists
-          effect: NoSchedule
-```
-
-**When to use:** Models too large for tensor parallelism alone, split across multiple pods by pipeline stage. Note: `pipeline` and `data` are mutually exclusive.
-
-See [references/config-recipes.md](references/config-recipes.md) for complete deployment examples.
+Splits the model across pipeline stages on separate pods using `vllm-pp` or `vllm-decode-pp`. Uses `workerTemplate` and `parallelism.pipeline`. Note: `pipeline` and `data` are mutually exclusive. See [Recipe 6 in config-recipes.md](references/config-recipes.md#recipe-6-pipeline-parallel-deployment-unverified) for the full YAML.
 
 ---
 
@@ -552,20 +447,9 @@ odin:
     - --zap-log-level=info
 ```
 
-### Resources created by the operator chart
+The chart creates: Deployment (controller manager), Service (webhook 443 + metrics 8443), ClusterRole/Binding, MutatingWebhookConfiguration (defaults `dataLocal` from `data`), ValidatingWebhookConfiguration (validates InferenceService and Template), and cert-manager Issuer/Certificates.
 
-| Resource | Purpose |
-| --- | --- |
-| Deployment | Odin controller manager |
-| Service | Webhook (443) + metrics (8443) endpoints |
-| ClusterRole + Binding | RBAC for InferenceService, InferencePool, Deployment, LWS |
-| MutatingWebhookConfiguration | Defaults `dataLocal` from `data` |
-| ValidatingWebhookConfiguration | Validates InferenceService and Template |
-| Issuer + Certificates | cert-manager TLS for webhook and metrics |
-
-### Inference-service Helm chart (legacy)
-
-> **Note:** The `moreh/inference-service` Helm chart is a legacy deployment path that deploys inference workloads directly via Helm, bypassing the Odin operator. Its source is **not in the MIF repository**. For new deployments, use the InferenceService CRD approach described in this guide. See the [v0.0.0 docs](website/versioned_docs/version-v0.0.0/) for legacy chart usage.
+The legacy `moreh/inference-service` Helm chart (not in this repository) bypasses Odin and is not recommended for new deployments.
 
 ---
 
@@ -585,6 +469,62 @@ This opt-in mechanism prevents forced affinity injection on templates that don't
 ### Pod labels injected
 
 The InferencePool's `matchLabels` are propagated to pods. Typically this includes `mif.moreh.io/pool: heimdall`, which Heimdall uses to discover routable pods.
+
+---
+
+## Prefill-Decode Disaggregation Architecture
+
+When using PD-disaggregated deployment (separate prefill and decode InferenceServices), the decode runtime-bases include a **Heimdall proxy sidecar** that sits between the gateway and the vLLM engine. Understanding this proxy layer is important for debugging, port configuration, and monitoring.
+
+### Proxy architecture (decode only)
+
+```mermaid
+flowchart LR
+    GW[Gateway] --> H[Heimdall]
+    H -->|port 8000| Proxy
+    subgraph Decode Pod
+        Proxy["heimdall-proxy :8000"] -->|port 8200| vLLM[":8200"]
+    end
+    H -->|port 8000| PF["Prefill Pod :8000"]
+```
+
+- **Decode bases** (`vllm-decode`, `vllm-decode-dp`) include a `heimdall-proxy` initContainer with `restartPolicy: Always` (native sidecar). The proxy listens on port 8000 (user-facing) and forwards to the vLLM backend on port 8200.
+- **Prefill bases** (`vllm-prefill`, `vllm-prefill-dp`) serve directly on port 8000 — no proxy involved.
+- The proxy uses the `vllm/nixl` PD coordinator protocol to bridge prefill and decode phases.
+
+For data-parallel decode (`vllm-decode-dp`), the proxy receives `--data-parallel-size` and manages multiple backends (ports 8200, 8201, ..., mapped to user-facing ports 8000, 8001, ...).
+
+### Port mapping summary
+
+| Runtime-base | User-facing port | Backend port | Proxy |
+| --- | --- | --- | --- |
+| `vllm-decode`, `vllm-decode-pp` | 8000 (proxy) | 8200 (vLLM) | Yes |
+| `vllm-decode-dp` | 8000-8007 (proxy) | 8200-8207 (vLLM) | Yes |
+| `vllm-prefill`, `vllm-prefill-pp` | 8000 (vLLM direct) | — | No |
+| `vllm-prefill-dp` | 8000-8007 (vLLM direct) | — | No |
+
+### KV cache events
+
+All runtime-bases support publishing KV cache events to Heimdall for use with the `precise-prefix-cache-scorer` plugin. Enable via the `ISVC_USE_KV_EVENTS` environment variable:
+
+```yaml
+env:
+  - name: ISVC_USE_KV_EVENTS
+    value: "true"
+```
+
+When enabled, each pod publishes KV cache events via ZMQ to `tcp://<inferencePoolRef-name>:5557` with topic `kv@<POD_IP>:<port>@<ISVC_MODEL_NAME>`. This requires `inferencePoolRefs` and `ISVC_MODEL_NAME` to be set — the pod exits with an error if either is missing.
+
+### Pod role labels
+
+Runtime-bases inject role labels used by Heimdall's `prefill-filter` and `decode-filter`:
+
+| Label | Set by | Values |
+| --- | --- | --- |
+| `mif.moreh.io/role` | Runtime-base | `prefill`, `decode` |
+| `heimdall.moreh.io/role` | Runtime-base (deprecated) | `prefill`, `decode` |
+
+The `mif.moreh.io/role` label is the current standard. `heimdall.moreh.io/role` is retained for backward compatibility with older Heimdall versions.
 
 ---
 
@@ -670,7 +610,7 @@ kubectl get isvc --all-namespaces -o json | jq -r '
 ## Best Practices
 
 1. **Use presets when available.** Check `kubectl get ist -n mif -l mif.moreh.io/template.type=preset` before manually configuring.
-2. **Match `template` vs. `workerTemplate` to the runtime-base.** Use `workerTemplate` for `*-dp` and `*-pp` bases; use `template` for others. Getting this wrong results in missing configuration.
+2. **Match `template` vs. `workerTemplate` to the runtime-base.** See "Choosing template vs. workerTemplate" above for the quick-reference table.
 3. **Set `inferencePoolRefs` for Heimdall routing.** Without this, pods won't register with the InferencePool and won't receive traffic.
 4. **Pre-download models for production.** Use PersistentVolumes with `HF_HOME` and `HF_HUB_OFFLINE=1` to avoid HuggingFace downloads at startup.
 5. **Override `ISVC_EXTRA_ARGS` carefully.** It completely replaces the preset's default args — copy the full default value and modify only what you need.
