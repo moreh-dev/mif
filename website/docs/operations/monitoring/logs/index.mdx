@@ -24,17 +24,56 @@ flowchart TB
     loki -->|"LogQL"| grafana
 ```
 
-### Labels available for log search
+---
 
-| Label               | Source                                                                             | Example value           |
-| :------------------ | :--------------------------------------------------------------------------------- | :---------------------- |
-| `namespace`         | `kubernetes.pod_namespace`                                                         | `default`               |
-| `inference_service` | pod label `app.kubernetes.io/instance`                                             | `llama-3-2-1b`          |
-| `pool_name`         | pod label `mif.moreh.io/pool`                                                      | `heimdall`              |
-| `role`              | pod label `mif.moreh.io/role`                                                      | `prefill`, `decode`     |
-| `app`               | pod label `app.kubernetes.io/name`                                                 | `vllm`                  |
-| `node_name`         | `VECTOR_SELF_NODE_NAME` env var (injected by Vector)                               | `gpu-node-01`           |
-| `level`             | parsed from JSON log field `level` (pods with `mif.moreh.io/log.format=json` only) | `info`, `warn`, `error` |
+## Architecture details
+
+### Loki
+
+| Property          | Value                                          |
+| :---------------- | :--------------------------------------------- |
+| Helm chart        | `grafana/loki` v6.30.0                         |
+| App version       | 3.5.1                                          |
+| Storage backend   | S3 (MinIO), TSDB index                         |
+| Retention         | 90 days (2160 h)                               |
+| Ingestion limit   | 30 MB/s, 60 MB burst                           |
+| Max entries/query | 50 000                                         |
+| Deployment        | Distributed (gateway / read / write / backend) |
+
+### Vector
+
+| Property    | Value                                                                     |
+| :---------- | :------------------------------------------------------------------------ |
+| Helm chart  | `vector/vector` v0.39.0                                                   |
+| Deployment  | DaemonSet (Agent mode, one pod per node)                                  |
+| Log source  | Pods labelled `mif.moreh.io/log.collect=true` (`kubernetes_logs`)         |
+| Log format  | JSON parsing applied only to pods labelled `mif.moreh.io/log.format=json` |
+| Tolerations | unschedulable, compute, `amd.com/gpu`                                     |
+
+### MinIO
+
+| Property         | Value                                                        |
+| :--------------- | :----------------------------------------------------------- |
+| Helm chart       | `minio/minio` v5.4.0                                         |
+| Mode             | Standalone                                                   |
+| Bucket           | `loki` (created via post-install Job on startup)             |
+| Loki credentials | Dedicated `loki` user with S3 policy scoped to `loki` bucket |
+| Resources        | 2 Gi memory (requests)                                       |
+| Persistence      | emptyDir (ephemeral by default)                              |
+| Deployment       | Single pod                                                   |
+
+### Component naming
+
+Service names are derived from the Helm release name. With the default release name `mif`:
+
+| Service      | Name (same-namespace access) |
+| :----------- | :--------------------------- |
+| MinIO        | `mif-minio`                  |
+| Loki gateway | `mif-loki-gateway`           |
+| Loki read    | `mif-loki-read`              |
+| Loki write   | `mif-loki-write`             |
+
+Vector connects to Loki using the release-prefixed service name since all components are co-located in the same namespace.
 
 ---
 
@@ -134,7 +173,7 @@ The `level` Loki label is only populated for pods with `mif.moreh.io/log.format=
 
 ### Accessing Grafana
 
-If you have not yet accessed Grafana, follow the [Accessing Grafana](/operations/monitoring/metrics#accessing-grafana) guide to retrieve admin credentials, set up port forwarding, and log in.
+If you have not yet accessed Grafana, follow the [Accessing Grafana](/operations/monitoring/metrics/index.mdx#accessing-grafana) guide to retrieve admin credentials, set up port forwarding, and log in.
 
 ### Opening the Explore view
 
@@ -156,43 +195,42 @@ The query editor defaults to **Builder** mode, which provides a visual query bui
 
 ### Running a log query
 
-Enter a LogQL query in the query editor and click **Run query** (or press `Shift+Enter`). The screenshot below shows log search results containing both plain-text and JSON-formatted logs collected from pods in the same namespace:
+Enter a LogQL query in the query editor and click **Run query** (or press `Shift+Enter`). For example, `{namespace="default"}` returns all logs from the `default` namespace. The screenshot below shows the results, which include both plain-text and JSON-formatted logs collected from different pods:
 
 ![Log search results in Grafana](./loki-logs.png)
 
-The following examples demonstrate common query patterns.
+### Labels available for log search
 
-#### By namespace
+Vector enriches every log entry with the following labels, which can be used as LogQL selectors:
+
+| Label               | Source                                                                             | Example value           |
+| :------------------ | :--------------------------------------------------------------------------------- | :---------------------- |
+| `namespace`         | `kubernetes.pod_namespace`                                                         | `default`               |
+| `inference_service` | pod label `app.kubernetes.io/instance`                                             | `llama-3-2-1b`          |
+| `pool_name`         | pod label `mif.moreh.io/pool`                                                      | `heimdall`              |
+| `role`              | pod label `mif.moreh.io/role`                                                      | `prefill`, `decode`     |
+| `app`               | pod label `app.kubernetes.io/name`                                                 | `vllm`                  |
+| `node_name`         | `VECTOR_SELF_NODE_NAME` env var (injected by Vector)                               | `gpu-node-01`           |
+| `level`             | parsed from JSON log field `level` (pods with `mif.moreh.io/log.format=json` only) | `info`, `warn`, `error` |
+
+### Query examples
+
+Filter by a single label:
 
 ```promql
 {namespace="default"}
-```
-
-#### By inference service name
-
-```promql
 {inference_service="llama-3-2-1b"}
-```
-
-#### By pool name
-
-```promql
 {pool_name="heimdall"}
-```
-
-#### By role
-
-```promql
 {role="decode"}
 ```
 
-#### Combined filter
+Combine multiple labels and search for a keyword in the log line:
 
 ```promql
 {namespace="default", inference_service="llama-3-2-1b", role="prefill"} |= "error"
 ```
 
-#### Filter by log level
+Filter by log level (available only for JSON-formatted pods):
 
 ```promql
 {namespace="default", level="error"}
@@ -205,57 +243,6 @@ The `level` label is only available for pods with the `mif.moreh.io/log.format=j
 {namespace="default"} |= "ERROR"
 ```
 :::
-
----
-
-## Architecture details
-
-### Loki
-
-| Property          | Value                                          |
-| :---------------- | :--------------------------------------------- |
-| Helm chart        | `grafana/loki` v6.30.0                         |
-| App version       | 3.5.1                                          |
-| Storage backend   | S3 (MinIO), TSDB index                         |
-| Retention         | 90 days (2160 h)                               |
-| Ingestion limit   | 30 MB/s, 60 MB burst                           |
-| Max entries/query | 50 000                                         |
-| Deployment        | Distributed (gateway / read / write / backend) |
-
-### Vector
-
-| Property    | Value                                                                     |
-| :---------- | :------------------------------------------------------------------------ |
-| Helm chart  | `vector/vector` v0.39.0                                                   |
-| Deployment  | DaemonSet (Agent mode, one pod per node)                                  |
-| Log source  | Pods labelled `mif.moreh.io/log.collect=true` (`kubernetes_logs`)         |
-| Log format  | JSON parsing applied only to pods labelled `mif.moreh.io/log.format=json` |
-| Tolerations | unschedulable, compute, `amd.com/gpu`                                     |
-
-### MinIO
-
-| Property         | Value                                                        |
-| :--------------- | :----------------------------------------------------------- |
-| Helm chart       | `minio/minio` v5.4.0                                         |
-| Mode             | Standalone                                                   |
-| Bucket           | `loki` (created via post-install Job on startup)             |
-| Loki credentials | Dedicated `loki` user with S3 policy scoped to `loki` bucket |
-| Resources        | 2 Gi memory (requests)                                       |
-| Persistence      | emptyDir (ephemeral by default)                              |
-| Deployment       | Single pod                                                   |
-
-### Component naming
-
-Service names are derived from the Helm release name. With the default release name `mif`:
-
-| Service      | Name (same-namespace access) |
-| :----------- | :--------------------------- |
-| MinIO        | `mif-minio`                  |
-| Loki gateway | `mif-loki-gateway`           |
-| Loki read    | `mif-loki-read`              |
-| Loki write   | `mif-loki-write`             |
-
-Vector connects to Loki using the release-prefixed service name since all components are co-located in the same namespace.
 
 ---
 
