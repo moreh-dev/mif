@@ -1,50 +1,51 @@
-import type {Config} from '@docusaurus/types';
-import type * as Preset from '@docusaurus/preset-classic';
-import {themes} from 'prism-react-renderer';
+import type {Config} from "@docusaurus/types";
+import type * as Preset from "@docusaurus/preset-classic";
+import {themes} from "prism-react-renderer";
 
 const config: Config = {
-  title: 'Moreh',
-  tagline: 'MoAI Inference Framework documentation',
-  url: 'https://test-docs.moreh.io/',
-  baseUrl: '/',
+  title: "Moreh",
+  tagline: "MoAI Inference Framework documentation",
+  url: "https://test-docs.moreh.io/",
+  baseUrl: "/",
   trailingSlash: true,
-  favicon: '/moreh-icon.png',
-  staticDirectories: ['static'],
-  onBrokenLinks: 'throw',
+  favicon: "/moreh-icon.png",
+  staticDirectories: ["static"],
+  onBrokenLinks: "throw",
   plugins: [
     [
-      '@cmfcmf/docusaurus-search-local',
+      "@cmfcmf/docusaurus-search-local",
       {
         indexBlog: false,
-        language: 'en',
+        language: "en",
       },
     ],
+    "docusaurus-plugin-image-zoom",
   ],
 
   markdown: {
     mermaid: true,
     hooks: {
-      onBrokenMarkdownLinks: 'warn',
+      onBrokenMarkdownLinks: "warn",
     },
   },
-  themes: ['@docusaurus/theme-mermaid'],
+  themes: ["@docusaurus/theme-mermaid"],
 
   presets: [
     [
-      'classic',
+      "classic",
       {
         docs: {
-          sidebarPath: require.resolve('./sidebars'),
-          routeBasePath: '/',
+          sidebarPath: require.resolve("./sidebars"),
+          routeBasePath: "/",
           versions: {
             current: {
-              label: 'Dev 🚧',
-              path: 'dev',
+              label: "Dev 🚧",
+              path: "dev",
             },
           },
         },
         theme: {
-          customCss: require.resolve('./css/custom.css'),
+          customCss: require.resolve("./css/custom.css"),
         },
         blog: false,
       } satisfies Preset.Options,
@@ -52,46 +53,53 @@ const config: Config = {
   ],
   themeConfig: {
     colorMode: {
-      defaultMode: 'dark',
+      defaultMode: "dark",
       respectPrefersColorScheme: true,
       disableSwitch: false,
     },
     navbar: {
-      title: '',
+      title: "",
       logo: {
-        alt: 'Moreh logo',
-        src: '/moreh-logo.svg',
-        srcDark: '/moreh-logo-white.svg',
+        alt: "Moreh logo",
+        src: "/moreh-logo.svg",
+        srcDark: "/moreh-logo-white.svg",
       },
       items: [
         {
-          type: 'docsVersionDropdown',
-          position: 'right',
+          type: "docsVersionDropdown",
+          position: "right",
         },
         {
-          href: 'https://moreh.io/',
-          label: 'Website',
-          position: 'right',
+          href: "https://moreh.io/",
+          label: "Website",
+          position: "right",
         },
         {
-          href: 'https://github.com/moreh-dev/mif',
-          position: 'right',
-          className: 'header-github-link',
-          'aria-label': 'GitHub repository',
+          href: "https://github.com/moreh-dev/mif",
+          position: "right",
+          className: "header-github-link",
+          "aria-label": "GitHub repository",
         },
       ],
     },
     prism: {
-      additionalLanguages: ['bash', 'toml', 'yaml', 'promql'],
+      additionalLanguages: ["bash", "toml", "yaml", "promql"],
       theme: themes.nightOwlLight,
       darkTheme: themes.vsDark,
     },
     footer: {
-      style: 'dark',
+      style: "dark",
       copyright:
-        '© Copyright ' +
+        "© Copyright " +
         new Date().getFullYear() +
-        ' Moreh, Inc. All rights reserved.',
+        " Moreh, Inc. All rights reserved.",
+    },
+    zoom: {
+      selector: ".markdown img",
+      background: {
+        light: "rgb(255, 255, 255)",
+        dark: "rgb(50, 50, 50)",
+      },
     },
   },
 };
