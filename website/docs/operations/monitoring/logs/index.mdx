@@ -1,7 +1,7 @@
 ---
 title: Log Collection (Loki + Vector)
 sidebar_label: Logs
-sidebar_position: 3
+sidebar_position: 2
 ---
 
 This document explains how to enable centralized log collection for the MoAI Inference Framework using [Loki](https://grafana.com/oss/loki/) (log aggregation) and [Vector](https://vector.dev/) (log collection agent).
@@ -132,43 +132,79 @@ The `level` Loki label is only populated for pods with `mif.moreh.io/log.format=
 
 ## Searching logs in Grafana
 
-Open Grafana → **Explore** → select the **Loki** datasource.
+### Accessing Grafana
 
-### By namespace
+If you have not yet accessed Grafana, follow the [Accessing Grafana](/operations/monitoring/metrics#accessing-grafana) guide to retrieve admin credentials, set up port forwarding, and log in.
+
+### Opening the Explore view
+
+After logging in to Grafana, click on the **Explore** icon (compass) in the left sidebar. You will see the Explore view with a query editor:
+
+![Grafana Explore view](./loki-home.png)
+
+### Selecting the Loki datasource
+
+If the datasource is not already set to **Loki**, click the datasource dropdown at the top of the page and select **Loki**:
+
+![Selecting the Loki datasource](./select-source.png)
+
+### Switching to Code mode
+
+The query editor defaults to **Builder** mode, which provides a visual query builder. To write [LogQL](https://grafana.com/docs/loki/latest/query/log_queries/) queries directly, click the **Code** button to switch to Code mode:
+
+![Switching to Code mode](./loki-code.png)
+
+### Running a log query
+
+Enter a LogQL query in the query editor and click **Run query** (or press `Shift+Enter`). The screenshot below shows log search results containing both plain-text and JSON-formatted logs collected from pods in the same namespace:
+
+![Log search results in Grafana](./loki-logs.png)
+
+The following examples demonstrate common query patterns.
+
+#### By namespace
 
 ```promql
 {namespace="default"}
 ```
 
-### By inference service name
+#### By inference service name
 
 ```promql
 {inference_service="llama-3-2-1b"}
 ```
 
-### By pool name
+#### By pool name
 
 ```promql
 {pool_name="heimdall"}
 ```
 
-### By role
+#### By role
 
 ```promql
 {role="decode"}
 ```
 
-### Combined filter
+#### Combined filter
 
 ```promql
 {namespace="default", inference_service="llama-3-2-1b", role="prefill"} |= "error"
 ```
 
-### Filter by log level
+#### Filter by log level
 
 ```promql
 {namespace="default", level="error"}
 ```
+
+:::info
+The `level` label is only available for pods with the `mif.moreh.io/log.format=json` label. To filter plain-text logs by level, use a pipeline filter instead:
+
+```promql
+{namespace="default"} |= "ERROR"
+```
+:::
 
 ---
 
