@@ -1,0 +1,52 @@
+{
+  "skill_name": "guide-odin",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "I need to deploy DeepSeek-R1 (a MoE model) with data parallelism on MIF using Odin. I have AMD MI300X GPUs with 8 GPUs per node. I want data parallel size 16 with dataLocal 8, expert parallelism enabled, and tensor parallelism 8. The model should be served in prefill-only mode for a PD-disaggregated setup. Create both a custom InferenceServiceTemplate preset and the InferenceService that uses it, with Heimdall integration.",
+      "expected_output": "An InferenceServiceTemplate with parallelism (data: 16, dataLocal: 8, expert: true), workerTemplate (not template) with container name 'main', ISVC_MODEL_NAME, GPU resources, and node selectors. Plus an InferenceService using templateRefs [vllm-prefill-dp, custom-preset], parallelism.tensor: 8, workerTemplate override for HF_TOKEN, and inferencePoolRefs to heimdall.",
+      "files": [],
+      "assertions": [
+        "InferenceServiceTemplate uses apiVersion: odin.moreh.io/v1alpha1 and kind: InferenceServiceTemplate",
+        "Template uses workerTemplate (not template) since it's a *-dp runtime-base pattern",
+        "Template container name is 'main' (required for strategic merge patch)",
+        "Template includes parallelism with data: 16, dataLocal: 8, and expert: true",
+        "InferenceService uses apiVersion: odin.moreh.io/v1alpha1 and kind: InferenceService",
+        "InferenceService templateRefs includes a vllm-prefill-dp runtime-base (not vllm or vllm-dp)",
+        "InferenceService sets parallelism.tensor: 8",
+        "InferenceService has inferencePoolRefs with name: heimdall",
+        "GPU resources specified as amd.com/gpu (not nvidia.com/gpu)",
+        "Node selector uses moai.moreh.io/accelerator labels for AMD MI300X"
+      ]
+    },
+    {
+      "id": 1,
+      "prompt": "I have a model that's too large to fit on a single node with 8 GPUs. I need to split it across 4 nodes using pipeline parallelism with tensor parallelism of 8 per node. Which Odin runtime-base should I use, what does the InferenceService spec look like, and what is the resulting workload topology? Also explain why I can't use data parallelism together with pipeline parallelism.",
+      "expected_output": "Use vllm-pp runtime-base. InferenceService with parallelism.pipeline: 4, parallelism.tensor: 8, workerTemplate (not template). Results in a LeaderWorkerSet with 4 workers per group. Pipeline and data are mutually exclusive (enforced by validating webhook).",
+      "files": [],
+      "assertions": [
+        "Recommends vllm-pp (or vllm-decode-pp/vllm-prefill-pp) as the runtime-base",
+        "Sets parallelism.pipeline: 4 for 4 pipeline stages across 4 nodes",
+        "Sets parallelism.tensor: 8 for 8 GPUs per node",
+        "Uses workerTemplate (not template) since *-pp is a LeaderWorkerSet runtime-base",
+        "Explains that the workload type is LeaderWorkerSet with 4 workers per group",
+        "Explains that pipeline and data parallelism are mutually exclusive (enforced by validating webhook)",
+        "Mentions that LeaderWorkerSet uses LeaderCreatedStartupPolicy (leader starts first)"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I deployed an InferenceService with templateRefs [vllm-dp, my-preset] and set env vars in spec.template.spec.containers, but my env overrides are being ignored. The pods are using the default values from the preset instead. What's going wrong and how do I fix it?",
+      "expected_output": "The issue is using spec.template instead of spec.workerTemplate. The vllm-dp runtime-base defines its pod spec in workerTemplate, so overrides must go in spec.workerTemplate to match the merge target. Using spec.template creates a separate unused field that doesn't merge with the runtime-base.",
+      "files": [],
+      "assertions": [
+        "Identifies the root cause: using spec.template instead of spec.workerTemplate for a *-dp runtime-base",
+        "Explains that vllm-dp defines its pod spec in workerTemplate, not template",
+        "Explains the fix: move overrides from spec.template to spec.workerTemplate",
+        "Mentions that templates merge by container name (strategic merge patch with 'name' as merge key)",
+        "Mentions that the container name must be 'main' to match the runtime-base",
+        "Explains the templateRefs merge order (left-to-right, InferenceService spec applied last)"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "name": "mif",
+  "owner": {
+    "name": "Moreh",
+    "email": "contact@moreh.io"
+  },
+  "plugins": [
+    {
+      "name": "mif-skills",
+      "source": "./skills/",
+      "description": "Domain-specific expert skills for the MoAI Inference Framework (Heimdall scheduler, Odin operator)",
+      "version": "1.0.0"
+    }
+  ]
+}

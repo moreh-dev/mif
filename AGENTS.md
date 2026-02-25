@@ -40,6 +40,7 @@ The commit message should be structured as follows:
 - `preset`: Changes related to preset files.
 - `website`: Changes related to website.
 - `e2e`: Changes related to end-to-end tests.
+- `skills`: Changes related to agent skills.
 
 ## Code Style Guidelines
 
@@ -50,6 +51,10 @@ The commit message should be structured as follows:
   - Explain non-obvious business logic, edge cases, or complex algorithms.
   - Avoid restating the obvious or detailing implementation steps if the code is clear.
 - **API Documentation**: Exported functions should have concise doc comments explaining their purpose.
+
+### Diagrams
+
+- **Format**: Use [Mermaid](https://mermaid.js.org/) fenced code blocks (` ```mermaid `) for diagrams. Do not use plain-text arrow diagrams in fenced code blocks; directory trees and inline prose are exempt.
 
 ### Go Templates
 
@@ -66,7 +71,7 @@ After completing any non-trivial task, evaluate whether the work involved:
 - A mistake that was corrected through user feedback, or
 - A design decision that required deliberate reasoning to reach the right answer.
 
-If any of the above applies, **record it in the most relevant `AGENTS.md`** before closing the task — this file for general patterns, [`test/AGENTS.md`](test/AGENTS.md) for test-specific patterns, [`deploy/helm/AGENTS.md`](deploy/helm/AGENTS.md) for Helm chart patterns, and [`website/AGENTS.md`](website/AGENTS.md) for documentation patterns. Entries should be concise, actionable, and placed under the most relevant existing section. If no section fits, create one.
+If any of the above applies, **record it in the most relevant `AGENTS.md`** before closing the task — this file for general patterns, [`test/AGENTS.md`](test/AGENTS.md) for test-specific patterns, [`deploy/helm/AGENTS.md`](deploy/helm/AGENTS.md) for Helm chart patterns, [`website/AGENTS.md`](website/AGENTS.md) for documentation patterns, and [`skills/`](skills/) for domain-specific expert knowledge. Entries should be concise, actionable, and placed under the most relevant existing section. If no section fits, create one.
 
 The goal is to make every repeated task faster and every repeated mistake impossible.
 
@@ -98,3 +103,14 @@ When a directory accumulates enough domain-specific rules to warrant separation,
 ## Helm Charts
 
 See [`deploy/helm/AGENTS.md`](deploy/helm/AGENTS.md) for design principles and chart development rules.
+
+## Agent Skills
+
+Domain-specific expert guides for AI agents are in [`skills/`](skills/). See [`skills/README.md`](skills/README.md) for installation and available skills.
+
+The `skills/` directory intentionally does not have its own `AGENTS.md`. Skills are distributed as a Claude Code plugin, and the directory structure follows the plugin specification rather than the sub-directory `AGENTS.md` convention.
+
+When working on a specific MIF component, consult the relevant skill:
+
+- **Heimdall scheduler**: [`skills/guide-heimdall/SKILL.md`](skills/guide-heimdall/SKILL.md)
+- **Odin inference operator**: [`skills/guide-odin/SKILL.md`](skills/guide-odin/SKILL.md)

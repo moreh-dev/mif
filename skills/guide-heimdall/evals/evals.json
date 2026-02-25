@@ -1,0 +1,54 @@
+{
+  "skill_name": "guide-heimdall",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "Write a complete heimdall-values.yaml for a production PD-disaggregated deployment with KV cache awareness. The deployment uses Istio as the gateway controller, the Gateway resource is named 'mif', and the namespace has a moreh-registry image pull secret. Include both prefill and decode scheduling profiles with queue-scorer and kv-cache-utilization-scorer.",
+      "expected_output": "A complete heimdall-values.yaml with global, config (EndpointPickerConfig with pd-profile-handler, prefill-filter, decode-filter, queue-scorer, kv-cache-utilization-scorer, max-score-picker), gateway (gatewayClassName: istio), and inferencePool sections. Should have two scheduling profiles (prefill and decode) each with their respective filter, both scorers with weights, and max-score-picker.",
+      "files": [],
+      "assertions": [
+        "Config uses apiVersion: inference.networking.x-k8s.io/v1alpha1 and kind: EndpointPickerConfig",
+        "Uses pd-profile-handler (not single-profile-handler) as the profile handler",
+        "Includes both prefill-filter and decode-filter in plugins list",
+        "Includes both queue-scorer and kv-cache-utilization-scorer",
+        "Has two scheduling profiles named 'prefill' and 'decode'",
+        "The prefill profile includes prefill-filter, and the decode profile includes decode-filter",
+        "Both profiles include queue-scorer and kv-cache-utilization-scorer with weight values",
+        "Gateway section has gatewayClassName set to istio (not kgateway)",
+        "Gateway name is 'mif'",
+        "InferencePool targetPorts includes port 8000",
+        "Global section includes imagePullSecrets with moreh-registry"
+      ]
+    },
+    {
+      "id": 1,
+      "prompt": "I'm deploying a multi-turn chatbot service on MIF using Heimdall. The chatbot uses vLLM with prefix caching enabled. Users have long conversations and I want to: (1) keep sessions sticky to the same pod, (2) benefit from shared prefix caching, (3) still consider queue depth for load balancing. All pods serve both prefill and decode (aggregate mode). Which Heimdall plugins should I use, how should I configure the scheduling profile, and what should the relative scorer weights be?",
+      "expected_output": "Recommendation to use single-profile-handler, queue-scorer, prefix-cache-scorer, session-affinity-scorer, and max-score-picker. The scheduling profile should weight session-affinity-scorer highest (e.g., 5), prefix-cache-scorer medium (e.g., 3), and queue-scorer lowest (e.g., 1). Should mention that clients need to send x-session-token header for session affinity to work.",
+      "files": [],
+      "assertions": [
+        "Recommends single-profile-handler (not pd-profile-handler) since all pods serve both roles",
+        "Recommends session-affinity-scorer for session stickiness",
+        "Recommends prefix-cache-scorer for prefix caching benefit",
+        "Recommends queue-scorer for load balancing",
+        "Suggests session-affinity-scorer should have the highest weight among the three scorers",
+        "Mentions that prefix-cache-scorer requires --enable-prefix-caching in vLLM",
+        "Mentions that session-affinity-scorer requires clients to send x-session-token header",
+        "Recommends max-score-picker or weighted-random-picker as the picker"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I've deployed Heimdall with PD-disaggregated configuration but requests are not being routed to prefill pods at all. All requests seem to go to decode pods only. The Heimdall pod itself is running fine. How do I diagnose and fix this issue?",
+      "expected_output": "A systematic troubleshooting guide covering: checking pod labels (mif.moreh.io/role must be 'prefill'), verifying pd-profile-handler is used (not single-profile-handler), confirming prefill-filter is included in the prefill scheduling profile, and checking InferencePool selector matches pod labels.",
+      "files": [],
+      "assertions": [
+        "Suggests checking pod labels for mif.moreh.io/role set to 'prefill'",
+        "Suggests verifying pd-profile-handler is the profile handler (not single-profile-handler)",
+        "Suggests confirming prefill-filter is in the prefill scheduling profile",
+        "Suggests checking InferencePool selector matches pod labels (mif.moreh.io/pool)",
+        "Mentions that decode-filter allows pods with role 'decode', 'both', or unlabeled - which explains why decode still works",
+        "Provides kubectl commands for diagnosis (e.g., checking pod labels, inspecting InferencePool)"
+      ]
+    }
+  ]
+}
