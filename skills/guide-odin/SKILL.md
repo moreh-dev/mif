@@ -478,7 +478,50 @@ spec:
             claimName: models    # RWX PVC with pre-downloaded models
 ```
 
-See `references/config-recipes.yaml` for complete deployment examples.
+### Pattern 5: Pipeline parallel deployment [unverified]
+
+Splits the model across pipeline stages, each on a separate pod. Uses `vllm-pp` or `vllm-decode-pp` runtime-base. This pattern is constructed from API specs and has not been validated in production.
+
+```yaml
+apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceService
+metadata:
+  name: vllm-pipeline
+spec:
+  replicas: 1
+  inferencePoolRefs:
+    - name: heimdall
+  templateRefs:
+    - name: vllm-pp
+  parallelism:
+    pipeline: 4    # number of pipeline stages
+    tensor: 2
+  workerTemplate:
+    spec:
+      containers:
+        - name: main
+          env:
+            - name: ISVC_MODEL_NAME
+              value: <modelName>
+            - name: HF_TOKEN
+              value: <huggingFaceToken>
+          resources:
+            limits:
+              amd.com/gpu: 2
+            requests:
+              amd.com/gpu: 2
+      nodeSelector:
+        moai.moreh.io/accelerator.vendor: amd
+        moai.moreh.io/accelerator.model: <acceleratorModel>
+      tolerations:
+        - key: amd.com/gpu
+          operator: Exists
+          effect: NoSchedule
+```
+
+**When to use:** Models too large for tensor parallelism alone, split across multiple pods by pipeline stage. Note: `pipeline` and `data` are mutually exclusive.
+
+See [references/config-recipes.md](references/config-recipes.md) for complete deployment examples.
 
 ---
 

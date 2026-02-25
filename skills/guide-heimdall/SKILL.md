@@ -266,7 +266,7 @@ Start simple. Add complexity only when metrics justify it.
 
 > **Note:** The Helm chart's default values.yaml ships with Pattern 3 (PD-disaggregated + KV cache awareness). Pattern 1 is the quickstart override for simplicity. Choose the pattern that matches your deployment topology.
 
-### Pattern 1: Basic aggregate (quickstart)
+### Pattern 1: Basic aggregate (quickstart) [verified]
 
 The simplest configuration. All pods are equal; route to the one with the shortest queue.
 
@@ -287,7 +287,7 @@ config:
 
 **When to use:** Getting started, small deployments, homogeneous pods.
 
-### Pattern 2: PD-disaggregated
+### Pattern 2: PD-disaggregated [verified]
 
 Separate prefill and decode pods for higher throughput. Each phase has its own scheduling profile.
 
@@ -316,7 +316,7 @@ config:
 
 **When to use:** Large-scale deployments where prefill and decode have distinct resource profiles.
 
-### Pattern 3: Production PD with KV cache awareness
+### Pattern 3: Production PD with KV cache awareness [verified]
 
 Adds `kv-cache-utilization-scorer` to avoid routing to pods with high KV cache pressure.
 
@@ -361,7 +361,7 @@ config:
     metricsStalenessThreshold: 30s
 ```
 
-### Pattern 4: Prefix-cache-aware with session affinity (unverified)
+### Pattern 4: Prefix-cache-aware with session affinity [unverified]
 
 Combines prefix locality with session stickiness for multi-turn conversational workloads. This pattern is constructed from plugin specs and has not been validated in production. Weight values are illustrative and should be tuned for your workload.
 
@@ -389,7 +389,32 @@ config:
 
 **When to use:** Chatbot / multi-turn applications where vLLM has `--enable-prefix-caching` and clients manage `x-session-token` headers. Weights prioritize session affinity > prefix locality > queue depth.
 
-See `references/config-recipes.yaml` for complete `heimdall-values.yaml` reference examples.
+### Pattern 5: LoRA affinity routing [unverified]
+
+Routes requests to pods that already have the required LoRA adapter loaded, reducing adapter swap overhead. This pattern is constructed from plugin specs and has not been validated in production. Weight values are illustrative and should be tuned for your workload.
+
+```yaml
+config:
+  apiVersion: inference.networking.x-k8s.io/v1alpha1
+  kind: EndpointPickerConfig
+  plugins:
+    - type: single-profile-handler
+    - type: queue-scorer
+    - type: lora-affinity-scorer
+    - type: max-score-picker
+  schedulingProfiles:
+    - name: default
+      plugins:
+        - pluginRef: queue-scorer
+          weight: 1
+        - pluginRef: lora-affinity-scorer
+          weight: 3
+        - pluginRef: max-score-picker
+```
+
+**When to use:** Multi-LoRA serving where pods load different adapters and routing to a pod with the adapter already loaded reduces swap latency. Requires LoRA-enabled vLLM.
+
+See [references/config-recipes.md](references/config-recipes.md) for complete `heimdall-values.yaml` reference examples.
 
 ---
 
