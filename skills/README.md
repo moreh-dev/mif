@@ -59,7 +59,7 @@ claude plugin marketplace add moreh-dev/mif
 claude plugin install mif-skills@mif
 ```
 
-Or interactively via the plugin manager:
+The same commands are available interactively inside Claude Code:
 
 ```
 /plugin marketplace add moreh-dev/mif
@@ -76,20 +76,22 @@ claude plugin install mif-skills@mif --scope user
 claude plugin install mif-skills@mif --scope project
 ```
 
-**Management commands:**
+**Management commands (CLI):**
 
 ```shell
-# List installed plugins
-/plugin
+claude plugin list                         # List installed plugins
+claude plugin disable mif-skills@mif       # Disable without uninstalling
+claude plugin uninstall mif-skills@mif     # Remove completely
+claude plugin marketplace update mif       # Update marketplace to pick up new skills
+```
 
-# Disable without uninstalling
-claude plugin disable mif-skills@mif
+**Management commands (interactive):**
 
-# Remove completely
-claude plugin uninstall mif-skills@mif
-
-# Update marketplace to pick up new skills
-/plugin marketplace update mif
+```
+/plugin                           # List installed plugins
+/plugin disable mif-skills@mif    # Disable without uninstalling
+/plugin uninstall mif-skills@mif  # Remove completely
+/plugin marketplace update mif    # Update marketplace to pick up new skills
 ```
 
 **Local testing (development):**
@@ -129,8 +131,8 @@ guide-<component>/
 
 ```yaml
 ---
-name: guide-<component>          # Must match the directory name
-description: >-                  # Describes what the skill does and when to use it
+name: guide-<component> # Must match the directory name
+description: >- # Describes what the skill does and when to use it
   Expert guide for ...
 ---
 ```

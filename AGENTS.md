@@ -108,6 +108,8 @@ See [`deploy/helm/AGENTS.md`](deploy/helm/AGENTS.md) for design principles and c
 
 Domain-specific expert guides for AI agents are in [`skills/`](skills/). See [`skills/README.md`](skills/README.md) for installation and available skills.
 
+The `skills/` directory intentionally does not have its own `AGENTS.md`. Skills are distributed as a Claude Code plugin, and the directory structure follows the plugin specification rather than the sub-directory `AGENTS.md` convention.
+
 When working on a specific MIF component, consult the relevant skill:
 
 - **Heimdall scheduler**: [`skills/guide-heimdall/SKILL.md`](skills/guide-heimdall/SKILL.md)
