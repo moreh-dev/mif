@@ -38,6 +38,18 @@ Odin introduces a **template composition system** (`InferenceServiceTemplate`) t
 - `deploy/helm/moai-inference-preset/templates/presets/` — model-specific presets
 - `test/e2e/*/config/inference-service.yaml.tmpl` — E2E test InferenceService patterns
 
+**Additional references — when to consult:**
+
+When you need field-level details beyond this guide (e.g., exact CRD validation rules, all supported env variables, template variable list), consult the reference docs below. Prefer the local file path when filesystem access is available (faster, complete). Use the URL as a fallback when filesystem access is unavailable.
+
+| Topic | Local path | URL (fallback) |
+| --- | --- | --- |
+| API field reference (CRD spec) | `website/docs/reference/odin/api-reference.mdx` | https://test-docs.moreh.io/dev/reference/odin/api-reference/ |
+| Template composition & presets | `website/docs/features/preset.mdx` | https://test-docs.moreh.io/dev/features/preset/ |
+| End-to-end quickstart | `website/docs/getting-started/quickstart.mdx` | https://test-docs.moreh.io/dev/getting-started/quickstart/ |
+| PV-based model management | `website/docs/operations/hf-model-management-with-pv.mdx` | https://test-docs.moreh.io/dev/operations/hf-model-management-with-pv/ |
+| Monitoring & metrics | `website/docs/operations/monitoring/metrics/index.mdx` | https://test-docs.moreh.io/dev/operations/monitoring/metrics/ |
+
 ---
 
 ## Architecture Overview

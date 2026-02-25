@@ -1,0 +1,13 @@
+{
+  "name": "mif-skills",
+  "description": "Domain-specific expert skills for the MoAI Inference Framework (Heimdall scheduler, Odin operator)",
+  "version": "1.0.0",
+  "author": {
+    "name": "Moreh",
+    "url": "https://github.com/moreh-dev"
+  },
+  "repository": "https://github.com/moreh-dev/mif",
+  "license": "Apache-2.0",
+  "keywords": ["mif", "inference", "kubernetes", "heimdall", "odin", "scheduling", "vllm"],
+  "skills": "./"
+}

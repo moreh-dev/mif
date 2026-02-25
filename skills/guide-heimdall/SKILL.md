@@ -33,6 +33,17 @@ Heimdall is Moreh's implementation of the EPP within the broader Kubernetes infe
 - `test/e2e/*/config/heimdall-values.yaml.tmpl` — real-world config templates
 - `test/utils/heimdall.go` — Helm install/uninstall test utilities
 
+**Additional references — when to consult:**
+
+When you need parameter-level details beyond this guide (e.g., exact plugin parameters, scorer formulas, default values), consult the reference docs below. Prefer the local file path when filesystem access is available (faster, complete). Use the URL as a fallback when filesystem access is unavailable.
+
+| Topic | Local path | URL (fallback) |
+| --- | --- | --- |
+| Plugin parameters & scoring details | `website/docs/reference/heimdall/plugins.mdx` | https://test-docs.moreh.io/dev/reference/heimdall/plugins/ |
+| API field reference (CRD spec) | `website/docs/reference/heimdall/api-reference.mdx` | https://test-docs.moreh.io/dev/reference/heimdall/api-reference/ |
+| End-to-end quickstart | `website/docs/getting-started/quickstart.mdx` | https://test-docs.moreh.io/dev/getting-started/quickstart/ |
+| Monitoring & metrics | `website/docs/operations/monitoring/metrics/index.mdx` | https://test-docs.moreh.io/dev/operations/monitoring/metrics/ |
+
 ---
 
 ## Architecture Overview
