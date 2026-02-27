@@ -4,8 +4,6 @@ sidebar_label: PD Disaggregation
 sidebar_position: 2
 ---
 
-# Prefill-decode disaggregation
-
 During LLM inference, computation occurs in two stages: prefill and decode. In the prefill phase, the model processes the entire input prompt to generate the first token &mdash; a highly parallel, compute-bound process. The decode phase then predicts one token at a time, reusing the growing KV cache, and is memory-bound.
 
 Because these phases have fundamentally different characteristics, prefill-decode (PD) disaggregation executes them on separate GPU resources. The prefill runs first on compute-optimized machines, then the KV cache is transferred to memory-optimized ones for decoding. This separation allows each phase to use its optimal parallelization, batch size, and configurations, while preventing interference between concurrent requests.
