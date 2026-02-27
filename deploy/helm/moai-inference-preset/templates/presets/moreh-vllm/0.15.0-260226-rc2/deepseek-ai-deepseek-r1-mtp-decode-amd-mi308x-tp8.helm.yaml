@@ -11,7 +11,7 @@ metadata:
     mif.moreh.io/role: decode
     mif.moreh.io/accelerator.vendor: amd
     mif.moreh.io/accelerator.model: mi308x
-    mif.moreh.io/parallelism: tp8
+    mif.moreh.io/parallelism: "tp8"
 spec:
   parallelism:
     tensor: 8

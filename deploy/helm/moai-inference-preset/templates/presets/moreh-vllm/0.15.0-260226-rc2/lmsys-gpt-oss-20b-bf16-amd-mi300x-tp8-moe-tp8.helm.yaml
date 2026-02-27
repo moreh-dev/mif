@@ -10,7 +10,7 @@ metadata:
     mif.moreh.io/role: e2e
     mif.moreh.io/accelerator.vendor: amd
     mif.moreh.io/accelerator.model: mi300x
-    mif.moreh.io/parallelism: tp8-moe-tp8
+    mif.moreh.io/parallelism: "tp8-moe-tp8"
 spec:
   parallelism:
     tensor: 8

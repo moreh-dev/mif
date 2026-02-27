@@ -10,7 +10,7 @@ metadata:
     mif.moreh.io/role: decode
     mif.moreh.io/accelerator.vendor: amd
     mif.moreh.io/accelerator.model: mi300x
-    mif.moreh.io/parallelism: tp4-moe-tp4
+    mif.moreh.io/parallelism: "tp4-moe-tp4"
 spec:
   parallelism:
     tensor: 4

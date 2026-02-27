@@ -15,6 +15,7 @@ Usage:
 import argparse
 import os
 import re
+import shutil
 import sys
 from typing import Optional
 
@@ -309,7 +310,7 @@ def _generate_content(
     lines.append(f"    mif.moreh.io/role: {role}")
     lines.append(f"    mif.moreh.io/accelerator.vendor: {accel_vendor}")
     lines.append(f"    mif.moreh.io/accelerator.model: {accel_model}")
-    lines.append(f"    mif.moreh.io/parallelism: {parallelism_label}")
+    lines.append(f'    mif.moreh.io/parallelism: "{parallelism_label}"')
     lines.append("spec:")
     if parallelism_spec:
         lines.append("  parallelism:")
@@ -440,7 +441,9 @@ def main() -> None:
 
         entries.append((parsed, model_info, parallelism_spec, gpu_count))
 
-    os.makedirs(args.output_dir, exist_ok=True)
+    if os.path.exists(args.output_dir):
+        shutil.rmtree(args.output_dir)
+    os.makedirs(args.output_dir)
 
     for parsed, model_info, parallelism_spec, gpu_count in entries:
         stem, content = _generate_content(

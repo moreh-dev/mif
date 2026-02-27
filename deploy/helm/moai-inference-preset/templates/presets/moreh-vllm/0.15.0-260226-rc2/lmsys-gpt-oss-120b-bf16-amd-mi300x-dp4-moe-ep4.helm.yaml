@@ -10,7 +10,7 @@ metadata:
     mif.moreh.io/role: e2e
     mif.moreh.io/accelerator.vendor: amd
     mif.moreh.io/accelerator.model: mi300x
-    mif.moreh.io/parallelism: dp4-moe-ep4
+    mif.moreh.io/parallelism: "dp4-moe-ep4"
 spec:
   parallelism:
     data: 4

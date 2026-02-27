@@ -10,7 +10,7 @@ metadata:
     mif.moreh.io/role: prefill
     mif.moreh.io/accelerator.vendor: amd
     mif.moreh.io/accelerator.model: mi308x
-    mif.moreh.io/parallelism: dp8-moe-ep8
+    mif.moreh.io/parallelism: "dp8-moe-ep8"
 spec:
   parallelism:
     data: 8

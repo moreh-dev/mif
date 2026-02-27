@@ -10,7 +10,7 @@ metadata:
     mif.moreh.io/role: prefill
     mif.moreh.io/accelerator.vendor: amd
     mif.moreh.io/accelerator.model: mi300x
-    mif.moreh.io/parallelism: tp2
+    mif.moreh.io/parallelism: "tp2"
 spec:
   parallelism:
     tensor: 2

@@ -10,7 +10,7 @@ metadata:
     mif.moreh.io/role: prefill
     mif.moreh.io/accelerator.vendor: amd
     mif.moreh.io/accelerator.model: mi300x
-    mif.moreh.io/parallelism: 1
+    mif.moreh.io/parallelism: "1"
 spec:
   template:
     spec:
