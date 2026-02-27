@@ -36,8 +36,8 @@ spec:
                 eval "$ISVC_PRE_PROCESS_SCRIPT"
               fi
 
-              _dp_size={{ "{{" }} or .Spec.Parallelism.Data 1 {{ "}}" }}
-              _dp_local_size={{ "{{" }} or .Spec.Parallelism.DataLocal 1 {{ "}}" }}
+              _dp_size={{ "{{" }} deref .Spec "Parallelism" "Data" | default 1 {{ "}}" }}
+              _dp_local_size={{ "{{" }} deref .Spec "Parallelism" "DataLocal" | default (deref .Spec "Parallelism" "Data" | default 1) {{ "}}" }}
               _start_rank=$(( ${LWS_WORKER_INDEX:-0} * _dp_local_size ))
 
               for ((_index=0; _index<_dp_local_size; _index++)); do
