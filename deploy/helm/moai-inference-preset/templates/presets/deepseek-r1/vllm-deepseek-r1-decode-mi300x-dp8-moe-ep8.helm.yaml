@@ -1,16 +1,16 @@
 apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceServiceTemplate
 metadata:
-  name: vllm-deepseek-r1-prefill-mi300x-dp8ep
+  name: vllm-deepseek-r1-decode-mi300x-dp8-moe-ep8
   namespace: {{ include "common.names.namespace" . }}
   labels:
     {{- include "mif.preset.labels" . | nindent 4 }}
     mif.moreh.io/model.org: deepseek-ai
     mif.moreh.io/model.name: deepseek-r1
-    mif.moreh.io/role: prefill
+    mif.moreh.io/role: decode
     mif.moreh.io/accelerator.vendor: amd
     mif.moreh.io/accelerator.model: mi300x
-    mif.moreh.io/parallelism: dp8ep8
+    mif.moreh.io/parallelism: dp8-moe-ep8
 spec:
   parallelism:
     data: 8
@@ -22,15 +22,13 @@ spec:
           image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/quickstart/moreh-vllm:vllm_0.11.0rc1_251230
           env:
             - name: VLLM_MOE_DP_CHUNK_SIZE
-              value: "4096"
+              value: "512"
             - name: VLLM_V1_OUTPUT_PROC_CHUNK_SIZE
-              value: "128"
+              value: "512"
             - name: VLLM_MORI_COMBINE_WARP_PER_BLK
-              value: "4"
+              value: "8"
             - name: VLLM_IS_DECODE_WORKER
-              value: "prefill"
-            - name: ISVC_MODEL_NAME
-              value: "deepseek-ai/DeepSeek-R1"
+              value: "decode"
             - name: UCX_IB_PCI_RELAXED_ORDERING
               value: "on"
             - name: NCCL_IB_PCI_RELAXED_ORDERING
@@ -57,6 +55,8 @@ spec:
               value: "1"
             - name: VLLM_SERVERSIDE_LOG_INTERVAL
               value: "10"
+            - name: ISVC_MODEL_NAME
+              value: "deepseek-ai/DeepSeek-R1"
             - name: ISVC_EXTRA_ARGS
               value: >-
                 --trust-remote-code

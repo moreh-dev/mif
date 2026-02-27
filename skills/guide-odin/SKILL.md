@@ -20,6 +20,7 @@ Odin is the Kubernetes operator at the core of the MoAI Inference Framework (MIF
 Odin introduces a **template composition system** (`InferenceServiceTemplate`) that allows reusable configurations — runtime-bases and model-specific presets — to be layered and merged using Kubernetes strategic merge patch semantics. This enables a separation of concerns: platform teams maintain runtime-bases, model teams maintain presets, and end users compose them with minimal configuration.
 
 **This skill covers:**
+
 - InferenceService and InferenceServiceTemplate CRDs
 - Template composition (templateRefs, merging, variable substitution)
 - Parallelism configuration (tensor, pipeline, data, expert)
@@ -33,6 +34,7 @@ Odin introduces a **template composition system** (`InferenceServiceTemplate`) t
 **Out of scope:** Heimdall plugin configuration (see `guide-heimdall`), vLLM engine internals, Gateway controller setup, cluster-level infrastructure.
 
 **Key codebase paths:**
+
 - `website/docs/reference/odin/api-reference.mdx` — API field reference
 - `website/docs/features/preset.mdx` — template composition guide
 - `website/docs/getting-started/quickstart.mdx` — end-to-end deployment
@@ -44,13 +46,13 @@ Odin introduces a **template composition system** (`InferenceServiceTemplate`) t
 
 When you need field-level details beyond this guide (e.g., exact CRD validation rules, all supported env variables, template variable list), consult the reference docs below. Prefer the local file path when filesystem access is available (faster, complete). Use the URL as a fallback when filesystem access is unavailable.
 
-| Topic | Local path | URL (fallback) |
-| --- | --- | --- |
-| API field reference (CRD spec) | `website/docs/reference/odin/api-reference.mdx` | https://test-docs.moreh.io/dev/reference/odin/api-reference/ |
-| Template composition & presets | `website/docs/features/preset.mdx` | https://test-docs.moreh.io/dev/features/preset/ |
-| End-to-end quickstart | `website/docs/getting-started/quickstart.mdx` | https://test-docs.moreh.io/dev/getting-started/quickstart/ |
-| PV-based model management | `website/docs/operations/hf-model-management-with-pv.mdx` | https://test-docs.moreh.io/dev/operations/hf-model-management-with-pv/ |
-| Monitoring & metrics | `website/docs/operations/monitoring/metrics/index.mdx` | https://test-docs.moreh.io/dev/operations/monitoring/metrics/ |
+| Topic                          | Local path                                                | URL (fallback)                                                         |
+| ------------------------------ | --------------------------------------------------------- | ---------------------------------------------------------------------- |
+| API field reference (CRD spec) | `website/docs/reference/odin/api-reference.mdx`           | https://test-docs.moreh.io/dev/reference/odin/api-reference/           |
+| Template composition & presets | `website/docs/features/preset.mdx`                        | https://test-docs.moreh.io/dev/features/preset/                        |
+| End-to-end quickstart          | `website/docs/getting-started/quickstart.mdx`             | https://test-docs.moreh.io/dev/getting-started/quickstart/             |
+| PV-based model management      | `website/docs/operations/hf-model-management-with-pv.mdx` | https://test-docs.moreh.io/dev/operations/hf-model-management-with-pv/ |
+| Monitoring & metrics           | `website/docs/operations/monitoring/metrics/index.mdx`    | https://test-docs.moreh.io/dev/operations/monitoring/metrics/          |
 
 ---
 
@@ -73,10 +75,10 @@ flowchart TD
 
 ### CRDs
 
-| CRD | API Group | Short Names | Purpose |
-| --- | --- | --- | --- |
-| `InferenceService` | `odin.moreh.io/v1alpha1` | `is`, `isvc` | User-facing resource for deploying inference workloads |
-| `InferenceServiceTemplate` | `odin.moreh.io/v1alpha1` | `ist`, `isvctmpl` | Reusable template for composable configurations |
+| CRD                        | API Group                | Short Names       | Purpose                                                |
+| -------------------------- | ------------------------ | ----------------- | ------------------------------------------------------ |
+| `InferenceService`         | `odin.moreh.io/v1alpha1` | `is`, `isvc`      | User-facing resource for deploying inference workloads |
+| `InferenceServiceTemplate` | `odin.moreh.io/v1alpha1` | `ist`, `isvctmpl` | Reusable template for composable configurations        |
 
 ---
 
@@ -88,26 +90,26 @@ kind: InferenceService
 metadata:
   name: <name>
 spec:
-  replicas: <int>                    # default: 1
-  inferencePoolRefs:                 # max 1 entry
+  replicas: <int> # default: 1
+  inferencePoolRefs: # max 1 entry
     - name: <poolName>
-  templateRefs:                      # merged in order, later overrides earlier
+  templateRefs: # merged in order, later overrides earlier
     - name: <templateName>
-  rolloutStrategy:                   # optional
+  rolloutStrategy: # optional
     type: <RollingUpdate|Recreate>
     rollingUpdate:
       maxUnavailable: <intOrString>
       maxSurge: <intOrString>
-      partition: <int>               # LeaderWorkerSet only
-  parallelism:                       # optional
-    tensor: <int>                    # min: 1
-    pipeline: <int>                  # min: 1; mutually exclusive with data
-    data: <int>                      # min: 1; mutually exclusive with pipeline
-    dataLocal: <int>                 # min: 1; must be set with data
-    dataRPCPort: <int>               # 1-65535
-    expert: <bool>                   # enable expert parallelism (MoE models)
-  template: <PodTemplateSpec>        # for Deployment or LWS leader
-  workerTemplate: <PodTemplateSpec>  # for LWS workers; triggers LWS mode
+      partition: <int> # LeaderWorkerSet only
+  parallelism: # optional
+    tensor: <int> # min: 1
+    pipeline: <int> # min: 1; mutually exclusive with data
+    data: <int> # min: 1; mutually exclusive with pipeline
+    dataLocal: <int> # min: 1; must be set with data
+    dataRPCPort: <int> # 1-65535
+    expert: <bool> # enable expert parallelism (MoE models)
+  template: <PodTemplateSpec> # for Deployment or LWS leader
+  workerTemplate: <PodTemplateSpec> # for LWS workers; triggers LWS mode
 ```
 
 ### Key validation rules (enforced by webhook)
@@ -129,14 +131,15 @@ spec:
 kubectl get inferenceservice -n <namespace>
 ```
 
-| Column | Source | Description |
-| --- | --- | --- |
-| READY | `.status.conditions[?(@.type=='Ready')].status` | `True`, `False`, or `Unknown` |
-| DESIRED | `.spec.replicas` | Desired replica count |
-| UP-TO-DATE | `.status.updatedReplicas` | Replicas with current spec |
-| AGE | `.metadata.creationTimestamp` | Time since creation |
+| Column     | Source                                          | Description                   |
+| ---------- | ----------------------------------------------- | ----------------------------- |
+| READY      | `.status.conditions[?(@.type=='Ready')].status` | `True`, `False`, or `Unknown` |
+| DESIRED    | `.spec.replicas`                                | Desired replica count         |
+| UP-TO-DATE | `.status.updatedReplicas`                       | Replicas with current spec    |
+| AGE        | `.metadata.creationTimestamp`                   | Time since creation           |
 
 Wait for readiness:
+
 ```shell
 kubectl wait inferenceservice -n <namespace> <name> --for=condition=Ready --timeout=15m
 ```
@@ -153,9 +156,9 @@ kind: InferenceServiceTemplate
 metadata:
   name: <name>
 spec:
-  parallelism: <ParallelismSpec>       # optional
-  template: <PodTemplateSpec>          # optional
-  workerTemplate: <PodTemplateSpec>    # optional
+  parallelism: <ParallelismSpec> # optional
+  template: <PodTemplateSpec> # optional
+  workerTemplate: <PodTemplateSpec> # optional
 ```
 
 ### Merging rules
@@ -171,35 +174,56 @@ flowchart LR
 ```
 
 **Merge behavior:**
+
 - Lists with strategic merge keys (e.g., containers by `name`, env vars by `name`) merge by key, not replace
 - Scalar fields in later templates override earlier ones
 - Unset fields in overlays do not erase base values
 
 ### Variable substitution
 
-Templates support Go template syntax with [Sprig functions](http://masterminds.github.io/sprig/). Variables are resolved at reconciliation time.
+Templates support Go template syntax with [Sprig functions](http://masterminds.github.io/sprig/) and Odin-provided functions. Variables are resolved at reconciliation time.
 
 Available variables:
 
-| Variable | Type | Description |
-| --- | --- | --- |
-| `.Name` | string | InferenceService name |
-| `.Namespace` | string | InferenceService namespace |
-| `.Labels` | map | InferenceService labels |
-| `.Spec.Parallelism.Tensor` | int | Tensor parallelism value |
-| `.Spec.Parallelism.Pipeline` | int | Pipeline parallelism value |
-| `.Spec.Parallelism.Data` | int | Data parallelism value |
-| `.Spec.Parallelism.DataLocal` | int | Data local parallelism value |
-| `.Spec.Parallelism.DataRPCPort` | int | Data RPC port value |
-| `.Spec.Parallelism.Expert` | bool | Expert parallelism flag |
+| Variable                        | Type   | Description                  |
+| ------------------------------- | ------ | ---------------------------- |
+| `.Name`                         | string | InferenceService name        |
+| `.Namespace`                    | string | InferenceService namespace   |
+| `.Labels`                       | map    | InferenceService labels      |
+| `.Spec.Parallelism.Tensor`      | int    | Tensor parallelism value     |
+| `.Spec.Parallelism.Pipeline`    | int    | Pipeline parallelism value   |
+| `.Spec.Parallelism.Data`        | int    | Data parallelism value       |
+| `.Spec.Parallelism.DataLocal`   | int    | Data local parallelism value |
+| `.Spec.Parallelism.DataRPCPort` | int    | Data RPC port value          |
+| `.Spec.Parallelism.Expert`      | bool   | Expert parallelism flag      |
 
-**Example:** A runtime-base uses `{{ .Spec.Parallelism.Tensor }}` in container args:
+#### Nil-safe field access with `deref`
+
+`.Spec.Parallelism` is a pointer and may be nil. Accessing `.Spec.Parallelism.Tensor` directly panics when Parallelism is nil because Go templates evaluate the full field chain before passing the result to functions like `or`.
+
+Use the `deref` function for nil-safe traversal:
+
+```
+{{ deref .Spec "Parallelism" "Tensor" | default 1 }}
+```
+
+`deref` takes a root object followed by field names as strings. It walks the struct chain and returns nil if any intermediate pointer is nil, allowing `default` to provide the fallback value.
+
+**Example:** A runtime-base uses `deref` with `default` in container args:
+
 ```yaml
 args:
   - --tensor-parallel-size
-  - "{{ .Spec.Parallelism.Tensor }}"
+  - "{{ deref .Spec "Parallelism" "Tensor" | default 1 }}"
 ```
-When the InferenceService sets `parallelism.tensor: 4`, this renders as `--tensor-parallel-size 4`.
+
+When the InferenceService sets `parallelism.tensor: 4`, this renders as `--tensor-parallel-size 4`. When `parallelism` is not set, it defaults to `1`.
+
+For boolean flags, use `deref` directly in conditionals:
+
+```yaml
+{{ if deref .Spec "Parallelism" "Expert" }}--enable-expert-parallel{{ end }}
+```
 
 ### Template lookup order
 
@@ -220,11 +244,11 @@ The presence and configuration of parallelism determines the workload type and p
 
 ### Decision matrix
 
-| `workerTemplate` | Parallelism | Workload type | Pod topology |
-| --- | --- | --- | --- |
-| Not set | None or tensor only | **Deployment** | `replicas` independent pods |
-| Set | `data` | **LeaderWorkerSet** | `replicas` groups, each with `data/dataLocal` workers |
-| Set | `pipeline` | **LeaderWorkerSet** | `replicas` groups, each with `pipeline` workers |
+| `workerTemplate` | Parallelism         | Workload type       | Pod topology                                          |
+| ---------------- | ------------------- | ------------------- | ----------------------------------------------------- |
+| Not set          | None or tensor only | **Deployment**      | `replicas` independent pods                           |
+| Set              | `data`              | **LeaderWorkerSet** | `replicas` groups, each with `data/dataLocal` workers |
+| Set              | `pipeline`          | **LeaderWorkerSet** | `replicas` groups, each with `pipeline` workers       |
 
 ### Tensor parallelism
 
@@ -232,7 +256,7 @@ Tensor parallelism shards the model across GPUs **within a single pod**. It does
 
 ```yaml
 parallelism:
-  tensor: 4    # Each pod uses 4 GPUs
+  tensor: 4 # Each pod uses 4 GPUs
 ```
 
 Tensor parallelism is configured in the runtime-base via the `--tensor-parallel-size` vLLM argument (using template variable substitution).
@@ -240,6 +264,7 @@ Tensor parallelism is configured in the runtime-base via the `--tensor-parallel-
 ### Data parallelism (LeaderWorkerSet)
 
 Data parallelism distributes batches across multiple pods (workers). Odin creates a **LeaderWorkerSet** where:
+
 - **Size** = `data / dataLocal` (number of worker pods per group)
 - **Leader** uses `template` pod spec
 - **Workers** use `workerTemplate` pod spec
@@ -247,19 +272,21 @@ Data parallelism distributes batches across multiple pods (workers). Odin create
 
 ```yaml
 parallelism:
-  data: 8          # Total data parallel size
-  dataLocal: 4     # Local parallelism per worker
-                   # → 8/4 = 2 workers per group
+  data: 8 # Total data parallel size
+  dataLocal:
+    4 # Local parallelism per worker
+    # → 8/4 = 2 workers per group
 ```
 
 ### Pipeline parallelism (LeaderWorkerSet)
 
 Pipeline parallelism splits the model across pipeline stages, each on a separate pod.
+
 - **Size** = `pipeline` (number of worker pods per group)
 
 ```yaml
 parallelism:
-  pipeline: 4    # 4 pipeline stages = 4 workers per group
+  pipeline: 4 # 4 pipeline stages = 4 workers per group
 ```
 
 ### Expert parallelism
@@ -276,6 +303,7 @@ parallelism:
 ### Mutual exclusivity
 
 **Pipeline and data parallelism cannot be used simultaneously.** This is enforced by the validating webhook:
+
 - Set `pipeline` for pipeline-parallel deployments
 - Set `data` (+ `dataLocal`) for data-parallel deployments
 - Never set both
@@ -288,25 +316,25 @@ parallelism:
 
 Runtime-bases define the container startup logic, parallelism wiring, and pod structure. They are installed in the `mif` namespace by the `moai-inference-preset` Helm chart.
 
-| Runtime-base | Workload type | `template` / `workerTemplate` | Use case |
-| --- | --- | --- | --- |
-| `vllm` | Deployment | `template` | Simple aggregate (no PD disaggregation) |
-| `vllm-dp` | LeaderWorkerSet | `workerTemplate` | Data-parallel aggregate |
-| `vllm-pp` | LeaderWorkerSet | `workerTemplate` | Pipeline-parallel aggregate |
-| `vllm-decode` | Deployment | `template` | Decode-only (PD disaggregation) |
-| `vllm-decode-dp` | LeaderWorkerSet | `workerTemplate` | Decode-only with data parallelism |
-| `vllm-decode-pp` | LeaderWorkerSet | `workerTemplate` | Decode-only with pipeline parallelism |
-| `vllm-prefill` | Deployment | `template` | Prefill-only (PD disaggregation) |
-| `vllm-prefill-dp` | LeaderWorkerSet | `workerTemplate` | Prefill-only with data parallelism |
-| `vllm-prefill-pp` | LeaderWorkerSet | `workerTemplate` | Prefill-only with pipeline parallelism |
+| Runtime-base      | Workload type   | `template` / `workerTemplate` | Use case                                |
+| ----------------- | --------------- | ----------------------------- | --------------------------------------- |
+| `vllm`            | Deployment      | `template`                    | Simple aggregate (no PD disaggregation) |
+| `vllm-dp`         | LeaderWorkerSet | `workerTemplate`              | Data-parallel aggregate                 |
+| `vllm-pp`         | LeaderWorkerSet | `workerTemplate`              | Pipeline-parallel aggregate             |
+| `vllm-decode`     | Deployment      | `template`                    | Decode-only (PD disaggregation)         |
+| `vllm-decode-dp`  | LeaderWorkerSet | `workerTemplate`              | Decode-only with data parallelism       |
+| `vllm-decode-pp`  | LeaderWorkerSet | `workerTemplate`              | Decode-only with pipeline parallelism   |
+| `vllm-prefill`    | Deployment      | `template`                    | Prefill-only (PD disaggregation)        |
+| `vllm-prefill-dp` | LeaderWorkerSet | `workerTemplate`              | Prefill-only with data parallelism      |
+| `vllm-prefill-pp` | LeaderWorkerSet | `workerTemplate`              | Prefill-only with pipeline parallelism  |
 
 ### Choosing `template` vs. `workerTemplate`
 
 This is the most common source of misconfiguration. The rule is simple: **override the same field the runtime-base uses**. If the runtime-base puts its pod spec in `workerTemplate`, your overrides (env vars, resources, volumes) must also go in `spec.workerTemplate`. Putting them in `spec.template` instead creates a separate, unused field — the merge has no effect and overrides are silently ignored.
 
-| Runtime-base suffix | Override in | Workload type |
-| --- | --- | --- |
-| (none): `vllm`, `vllm-decode`, `vllm-prefill` | `spec.template` | Deployment |
+| Runtime-base suffix                                   | Override in           | Workload type   |
+| ----------------------------------------------------- | --------------------- | --------------- |
+| (none): `vllm`, `vllm-decode`, `vllm-prefill`         | `spec.template`       | Deployment      |
 | `-dp`: `vllm-dp`, `vllm-decode-dp`, `vllm-prefill-dp` | `spec.workerTemplate` | LeaderWorkerSet |
 | `-pp`: `vllm-pp`, `vllm-decode-pp`, `vllm-prefill-pp` | `spec.workerTemplate` | LeaderWorkerSet |
 
@@ -324,17 +352,17 @@ kubectl get inferenceservicetemplate -n mif -l mif.moreh.io/template.type=preset
 
 ### Commonly overridden environment variables
 
-| Variable | Purpose | Default |
-| --- | --- | --- |
-| `ISVC_MODEL_NAME` | HuggingFace model ID or name | (set by preset) |
-| `ISVC_MODEL_PATH` | Local model path or HF ID | defaults to `$ISVC_MODEL_NAME` |
-| `ISVC_EXTRA_ARGS` | Additional vLLM engine arguments | (set by preset) |
-| `ISVC_PRE_PROCESS_SCRIPT` | Script to run before engine starts | (none) |
-| `ISVC_USE_KV_EVENTS` | Publish KV cache events to Heimdall via ZMQ (for `precise-prefix-cache-scorer`) | `false` |
-| `ISVC_PRESET_PATH` | Path to preset configuration file sourced at startup | (empty) |
-| `HF_TOKEN` | HuggingFace API token | (user must provide) |
-| `HF_HOME` | HuggingFace cache directory | `/mnt/models` (for PV usage) |
-| `HF_HUB_OFFLINE` | Disable HF Hub network access | `1` (for PV usage) |
+| Variable                  | Purpose                                                                         | Default                        |
+| ------------------------- | ------------------------------------------------------------------------------- | ------------------------------ |
+| `ISVC_MODEL_NAME`         | HuggingFace model ID or name                                                    | (set by preset)                |
+| `ISVC_MODEL_PATH`         | Local model path or HF ID                                                       | defaults to `$ISVC_MODEL_NAME` |
+| `ISVC_EXTRA_ARGS`         | Additional vLLM engine arguments                                                | (set by preset)                |
+| `ISVC_PRE_PROCESS_SCRIPT` | Script to run before engine starts                                              | (none)                         |
+| `ISVC_USE_KV_EVENTS`      | Publish KV cache events to Heimdall via ZMQ (for `precise-prefix-cache-scorer`) | `false`                        |
+| `ISVC_PRESET_PATH`        | Path to preset configuration file sourced at startup                            | (empty)                        |
+| `HF_TOKEN`                | HuggingFace API token                                                           | (user must provide)            |
+| `HF_HOME`                 | HuggingFace cache directory                                                     | `/mnt/models` (for PV usage)   |
+| `HF_HUB_OFFLINE`          | Disable HF Hub network access                                                   | `1` (for PV usage)             |
 
 ---
 
@@ -389,7 +417,7 @@ spec:
   parallelism:
     data: 2
     tensor: 1
-  workerTemplate:    # workerTemplate for *-dp runtime-base
+  workerTemplate: # workerTemplate for *-dp runtime-base
     spec:
       containers:
         - name: main
@@ -440,7 +468,7 @@ The Odin operator is deployed as part of MIF via the `moai-inference-framework` 
 # In moai-inference-framework values.yaml
 odin:
   lws:
-    enabled: false    # Set true if LWS not already installed
+    enabled: false # Set true if LWS not already installed
   replicas: 1
   extraArgs:
     - --zap-encoder=json
@@ -496,12 +524,12 @@ For data-parallel decode (`vllm-decode-dp`), the proxy receives `--data-parallel
 
 ### Port mapping summary
 
-| Runtime-base | User-facing port | Backend port | Proxy |
-| --- | --- | --- | --- |
-| `vllm-decode`, `vllm-decode-pp` | 8000 (proxy) | 8200 (vLLM) | Yes |
-| `vllm-decode-dp` | 8000-8007 (proxy) | 8200-8207 (vLLM) | Yes |
-| `vllm-prefill`, `vllm-prefill-pp` | 8000 (vLLM direct) | — | No |
-| `vllm-prefill-dp` | 8000-8007 (vLLM direct) | — | No |
+| Runtime-base                      | User-facing port        | Backend port     | Proxy |
+| --------------------------------- | ----------------------- | ---------------- | ----- |
+| `vllm-decode`, `vllm-decode-pp`   | 8000 (proxy)            | 8200 (vLLM)      | Yes   |
+| `vllm-decode-dp`                  | 8000-8007 (proxy)       | 8200-8207 (vLLM) | Yes   |
+| `vllm-prefill`, `vllm-prefill-pp` | 8000 (vLLM direct)      | —                | No    |
+| `vllm-prefill-dp`                 | 8000-8007 (vLLM direct) | —                | No    |
 
 ### KV cache events
 
@@ -519,9 +547,9 @@ When enabled, each pod publishes KV cache events via ZMQ to `tcp://<inferencePoo
 
 Runtime-bases inject role labels used by Heimdall's `prefill-filter` and `decode-filter`:
 
-| Label | Set by | Values |
-| --- | --- | --- |
-| `mif.moreh.io/role` | Runtime-base | `prefill`, `decode` |
+| Label                    | Set by                    | Values              |
+| ------------------------ | ------------------------- | ------------------- |
+| `mif.moreh.io/role`      | Runtime-base              | `prefill`, `decode` |
 | `heimdall.moreh.io/role` | Runtime-base (deprecated) | `prefill`, `decode` |
 
 The `mif.moreh.io/role` label is the current standard. `heimdall.moreh.io/role` is retained for backward compatibility with older Heimdall versions.

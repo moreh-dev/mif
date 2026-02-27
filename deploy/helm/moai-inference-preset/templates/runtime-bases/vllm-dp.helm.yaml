@@ -50,8 +50,8 @@ spec:
                 eval "$ISVC_PRE_PROCESS_SCRIPT"
               fi
 
-              _dp_size={{ "{{" }} or .Spec.Parallelism.Data 1 {{ "}}" }}
-              _dp_local_size={{ "{{" }} or .Spec.Parallelism.DataLocal 1 {{ "}}" }}
+              _dp_size={{ "{{" }} deref .Spec "Parallelism" "Data" | default 1 {{ "}}" }}
+              _dp_local_size={{ "{{" }} deref .Spec "Parallelism" "DataLocal" | default (deref .Spec "Parallelism" "Data" | default 1) {{ "}}" }}
               _start_rank=$(( ${LWS_WORKER_INDEX:-0} * _dp_local_size ))
 
               for ((_index=0; _index<_dp_local_size; _index++)); do
@@ -82,12 +82,12 @@ spec:
                   "${ISVC_MODEL_PATH}" \
                   --served-model-name "${ISVC_MODEL_NAME}" \
                   --port ${_dp_rank_port} \
-                  --tensor-parallel-size {{ "{{" }} or .Spec.Parallelism.Tensor 1 {{ "}}" }} \
+                  --tensor-parallel-size {{ "{{" }} deref .Spec "Parallelism" "Tensor" | default 1 {{ "}}" }} \
                   --data-parallel-size ${_dp_size} \
                   --data-parallel-rank $((_start_rank + _index)) \
                   --data-parallel-address $(LWS_LEADER_ADDRESS) \
-                  --data-parallel-rpc-port {{ "{{" }} or .Spec.Parallelism.DataRPCPort 13345 {{ "}}" }} \
-                  {{ "{{" }} if .Spec.Parallelism.Expert {{ "}}" }}--enable-expert-parallel{{ "{{" }} end {{ "}}" }} \
+                  --data-parallel-rpc-port {{ "{{" }} deref .Spec "Parallelism" "DataRPCPort" | default 13345 {{ "}}" }} \
+                  {{ "{{" }} if deref .Spec "Parallelism" "Expert" {{ "}}" }}--enable-expert-parallel{{ "{{" }} end {{ "}}" }} \
                   ${_config_arg} \
                   "${_kv_events_args[@]}" \
                   $(ISVC_EXTRA_ARGS) \

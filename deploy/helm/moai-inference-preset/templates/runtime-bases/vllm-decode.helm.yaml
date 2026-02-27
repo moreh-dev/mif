@@ -110,8 +110,8 @@ spec:
                 "${ISVC_MODEL_PATH}" \
                 --served-model-name "${ISVC_MODEL_NAME}" \
                 --port 8200 \
-                --tensor-parallel-size {{ "{{" }} or .Spec.Parallelism.Tensor 1 {{ "}}" }} \
-                {{ "{{" }} if .Spec.Parallelism.Expert {{ "}}" }}--enable-expert-parallel{{ "{{" }} end {{ "}}" }} \
+                --tensor-parallel-size {{ "{{" }} deref .Spec "Parallelism" "Tensor" | default 1 {{ "}}" }} \
+                {{ "{{" }} if deref .Spec "Parallelism" "Expert" {{ "}}" }}--enable-expert-parallel{{ "{{" }} end {{ "}}" }} \
                 ${_config_arg} \
                 "${_kv_events_args[@]}" \
                 $(ISVC_EXTRA_ARGS)

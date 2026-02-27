@@ -118,6 +118,62 @@ Rules specific to the `deploy/helm/` directory. General contribution guidelines 
 
 - **Do not use YAML anchors at the root level of `values.yaml`** (e.g., `_defaults: &defaults`). Helm treats unknown root-level keys as invalid and may emit warnings or errors. Instead, duplicate shared configuration explicitly for each component.
 
+## Odin Presets (`moai-inference-preset`)
+
+An Odin preset is a pair of Odin `InferenceServiceTemplate` resources — a **base template** (runtime base) and a **preset-specific template** — that together define how to deploy a Moreh vLLM pod. The base template defines how vLLM servers are launched and is shared across presets. The preset-specific template adds model-specific arguments, environment variables, resource requests, and disaggregation settings.
+
+### Preset naming convention
+
+Preset names follow the pattern:
+`{image_tag}-{org_name}-{model_name}[-mtp][-prefill][-decode]-{accelerator_vendor}-{accelerator_model}-{parallelism}[-moe-{moe_parallelism}]`
+
+- `{org_name}` and `{model_name}` follow Hugging Face Hub names in kebab-case (e.g., `meta-llama/Llama-3.3-70B-Instruct` → `meta-llama-llama-3.3-70b-instruct`).
+- `-mtp` is appended after `{model_name}` if multi-token prediction is used.
+- `-prefill` or `-decode` is appended for disaggregation modes, placed after `{model_name}` (or `-mtp`) and before `{accelerator_vendor}`.
+- `{parallelism}` examples: `1`, `tp4`, `tp8`, `dp8`. Canonical order for combined strategies: `dp` → `pp` → `tp` → `cp`.
+- For MoE models, `-moe-{moe_parallelism}` is appended (e.g., `-moe-ep8`, `-moe-tp8`).
+
+### Reserved labels
+
+Odin presets use `mif.moreh.io/*` labels:
+
+| Label key                         | Description                  | Example values                          |
+| :-------------------------------- | :--------------------------- | :-------------------------------------- |
+| `mif.moreh.io/template.type`      | Template type                | `runtime-base`, `preset`                |
+| `mif.moreh.io/model.org`          | HF org name (kebab-case)     | `meta-llama`, `deepseek-ai`             |
+| `mif.moreh.io/model.name`         | HF model name (kebab-case)   | `llama-3.3-70b-instruct`, `deepseek-r1` |
+| `mif.moreh.io/model.mtp`          | Multi-token prediction       | `"true"` or unset                       |
+| `mif.moreh.io/role`               | Disaggregation mode          | `e2e`, `prefill`, `decode`              |
+| `mif.moreh.io/accelerator.vendor` | GPU vendor                   | `amd`                                   |
+| `mif.moreh.io/accelerator.model`  | GPU model                    | `mi250`, `mi300x`, `mi308x`             |
+| `mif.moreh.io/parallelism`        | Parallelism mode             | `tp4`, `dp8-moe-ep8`                    |
+
+### Responsibility boundaries
+
+**Presets define** (model/GPU-specific, not user-configurable):
+- vLLM arguments for parallelism within a single rank (`--tensor-parallel-size`, `--enable-expert-parallel`, etc.)
+- Model-specific vLLM arguments (`--trust-remote-code`, `--max-model-len`, `--max-num-seqs`, `--kv-cache-type`, `--quantization`, `--gpu-memory-utilization`, etc.)
+- Model-specific environment variables (`VLLM_ROCM_USE_AITER`, `VLLM_MOE_DP_CHUNK_SIZE`, `UCX_*`, `NCCL_*`, etc.)
+- Resources (GPU count, RDMA NICs), tolerations, and nodeSelector
+
+**Runtime bases define** (shared across presets):
+- Execution command(s) and launch logic (for-loop for DP, cleanup traps)
+- Cross-rank parallelism arguments (`--data-parallel-rank`, `--data-parallel-address`, `--data-parallel-rpc-port`)
+- Disaggregation-specific environment variables (`VLLM_NIXL_SIDE_CHANNEL_HOST`, `VLLM_IS_DECODE_WORKER`)
+- Shared memory settings, readiness probes
+- Proxy sidecar configuration (for PD disaggregation)
+
+**Users configure** (not defined by presets or runtime bases):
+- Image repository and tag (with default provided)
+- Volume mounts and model loading method (HF download vs. PV)
+- Hugging Face token
+- Number of replicas
+- Logging arguments (`--no-enable-log-requests`, `--disable-uvicorn-access-log`, etc.)
+- `--no-enable-prefix-caching`
+
+**Product team templates configure** (must NOT be set in presets):
+- `PYTHONHASHSEED`, `--prefix-caching-hash-algo`, `--kv-events-config`, `--block-size`
+
 ### MIF Pod Label Keys
 
 When filtering or labeling logs, metrics, or other signals by MIF-specific pod attributes, use these label keys:
