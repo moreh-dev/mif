@@ -27,12 +27,25 @@ spec:
             - |
               set -ex
 
-              exec /app/proxy \
-                --port 8000 \
-                --decoder-ip $(POD_IP) \
-                --decoder-port 8200 \
-                --data-parallel-size {{ "{{" }} or .Spec.Parallelism.DataLocal 1 {{ "}}" }} \
-                $(ISVC_EXTRA_ARGS)
+              cleanup() {
+                echo "Received SIGTERM, killing child processes..."
+                pkill -P $$
+                wait
+              }
+              trap cleanup SIGTERM SIGINT
+
+              _dp_local_size={{ "{{" }} or .Spec.Parallelism.DataLocal 1 {{ "}}" }}
+
+              for ((_index=0; _index<_dp_local_size; _index++)); do
+                /app/proxy \
+                  --port $((8000 + _index)) \
+                  --decoder-ip $(POD_IP) \
+                  --decoder-port $((8200 + _index)) \
+                  $(ISVC_EXTRA_ARGS) \
+                  &
+              done
+
+              wait
           env:
             - name: ISVC_EXTRA_ARGS
               value: >-
