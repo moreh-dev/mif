@@ -15,6 +15,7 @@ Usage:
 import argparse
 import os
 import re
+import shutil
 import sys
 from typing import Optional
 
@@ -47,9 +48,11 @@ MODEL_REGISTRY: dict[str, dict] = {
         "org_label": "lmsys",
         "name_label": "gpt-oss-120b-bf16",
         "hf_path": "lmsys/gpt-oss-120b-bf16",
-        # dp8ep8 uses 1 GPU per worker (expert parallelism across data-parallel
-        # replicas) rather than the default ep-count GPUs per worker.
-        "gpu_overrides": {"dp8ep8": 1},
+    },
+    "openai-gpt-oss-20b": {
+        "org_label": "openai",
+        "name_label": "gpt-oss-20b",
+        "hf_path": "openai/gpt-oss-20b",
     },
     "openai-gpt-oss-120b": {
         "org_label": "openai",
@@ -95,27 +98,21 @@ MODEL_REGISTRY: dict[str, dict] = {
         "org_label": "qwen",
         "name_label": "qwen3-235b-a22b-2507-fp8",
         "hf_path": "Qwen/Qwen3-235B-A22B-2507-FP8",
-        # dp8ep8 uses TP=1 per worker (expert parallelism across data-parallel
-        # replicas), so GPU per worker is 1, not the ep-count default.
-        "gpu_overrides": {"dp8ep8": 1},
     },
     "qwen-qwen3-30b-a3b-2507-fp8": {
         "org_label": "qwen",
         "name_label": "qwen3-30b-a3b-2507-fp8",
         "hf_path": "Qwen/Qwen3-30B-A3B-2507-FP8",
-        "gpu_overrides": {"dp8ep8": 1},
     },
-    # Alias entries — symlinks in the moreh-vllm image pointing to the same
-    # preset files as their canonical counterparts above.
     "deepseek-ai-deepseek-v3.2-exp": {
         "org_label": "deepseek-ai",
         "name_label": "deepseek-v3.2-exp",
-        "hf_path": "deepseek-ai/DeepSeek-V3.2",
+        "hf_path": "deepseek-ai/DeepSeek-V3.2-Exp",
     },
     "deepseek-ai-deepseek-v3.2-speciale": {
         "org_label": "deepseek-ai",
         "name_label": "deepseek-v3.2-speciale",
-        "hf_path": "deepseek-ai/DeepSeek-V3.2",
+        "hf_path": "deepseek-ai/DeepSeek-V3.2-Speciale",
     },
     "meta-llama-llama-3.2-1b-instruct": {
         "org_label": "meta-llama",
@@ -131,25 +128,21 @@ MODEL_REGISTRY: dict[str, dict] = {
         "org_label": "qwen",
         "name_label": "qwen3-235b-a22b-instruct-2507-fp8",
         "hf_path": "Qwen/Qwen3-235B-A22B-Instruct-2507-FP8",
-        "gpu_overrides": {"dp8ep8": 1},
     },
     "qwen-qwen3-235b-a22b-thinking-2507-fp8": {
         "org_label": "qwen",
         "name_label": "qwen3-235b-a22b-thinking-2507-fp8",
         "hf_path": "Qwen/Qwen3-235B-A22B-Thinking-2507-FP8",
-        "gpu_overrides": {"dp8ep8": 1},
     },
     "qwen-qwen3-30b-a3b-instruct-2507-fp8": {
         "org_label": "qwen",
         "name_label": "qwen3-30b-a3b-instruct-2507-fp8",
         "hf_path": "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8",
-        "gpu_overrides": {"dp8ep8": 1},
     },
     "qwen-qwen3-30b-a3b-thinking-2507-fp8": {
         "org_label": "qwen",
         "name_label": "qwen3-30b-a3b-thinking-2507-fp8",
         "hf_path": "Qwen/Qwen3-30B-A3B-Thinking-2507-FP8",
-        "gpu_overrides": {"dp8ep8": 1},
     },
 }
 
@@ -159,32 +152,62 @@ def parse_parallelism_suffix(
 ) -> tuple[Optional[dict], int]:
     """Parse the parallelism suffix into (spec_dict, gpu_count_per_worker).
 
-    Default gpu_count derivation rules:
-      {N}      – single device; no spec.parallelism, N GPUs
-      tpN      – N-way tensor parallel; N GPUs per worker
-      dpNepM   – N data-parallel + M-way expert parallel;
-                 M GPUs per worker (override via MODEL_REGISTRY if needed)
-      dpNtpM   – N data-parallel + M-way tensor parallel;
-                 gpus_per_node GPUs per worker, dataLocal = gpus_per_node // M
-    """
-    if re.fullmatch(r"\d+", suffix):
-        return None, int(suffix)
+    Naming format (moreh-vllm specification §3.2):
+      {parallelism}[-moe-{moe_parallelism}]
 
-    m = re.fullmatch(r"tp(\d+)", suffix)
+    {parallelism} examples: 1, tp4, dp8, dp4tp4, dp2pp2tp4
+    {moe_parallelism}: tpN or epN (for MoE models only)
+
+    Default gpu_count derivation rules:
+      1                  – single device; no spec.parallelism, 1 GPU
+      tpN                – N-way tensor parallel; N GPUs per worker
+      dpN(-moe-...)      – N-way data parallel; moe_count GPUs per worker
+      dpNtpM[-moe-...]   – N data-parallel + M-way tensor parallel;
+                           gpus_per_node GPUs per worker, dataLocal = gpus_per_node // M
+
+    When -moe-epN is present, expert parallelism is enabled (spec.expert = true).
+    """
+    # Split off MoE parallelism suffix.
+    moe_strategy = None  # "ep" or "tp"
+    moe_count = None
+    if "-moe-" in suffix:
+        base_part, moe_part = suffix.split("-moe-", 1)
+        m = re.fullmatch(r"(ep|tp)(\d+)", moe_part)
+        if not m:
+            raise ValueError(f"Unrecognized MoE parallelism: {moe_part!r}")
+        moe_strategy = m.group(1)
+        moe_count = int(m.group(2))
+    else:
+        base_part = suffix
+
+    if base_part == "1":
+        return None, 1
+
+    m = re.fullmatch(r"tp(\d+)", base_part)
     if m:
         n = int(m.group(1))
-        return {"tensor": n}, n
+        spec: dict = {"tensor": n}
+        if moe_strategy == "ep":
+            spec["expert"] = True
+        return spec, n
 
-    m = re.fullmatch(r"dp(\d+)ep(\d+)", suffix)
+    m = re.fullmatch(r"dp(\d+)", base_part)
     if m:
-        dp, ep = int(m.group(1)), int(m.group(2))
-        return {"data": dp, "expert": True}, ep
+        dp = int(m.group(1))
+        spec = {"data": dp}
+        if moe_strategy == "ep":
+            spec["expert"] = True
+        gpu_count = moe_count if moe_count else dp
+        return spec, gpu_count
 
-    m = re.fullmatch(r"dp(\d+)tp(\d+)", suffix)
+    m = re.fullmatch(r"dp(\d+)tp(\d+)", base_part)
     if m:
         dp, tp = int(m.group(1)), int(m.group(2))
         data_local = gpus_per_node // tp
-        return {"tensor": tp, "data": dp, "dataLocal": data_local}, gpus_per_node
+        spec = {"tensor": tp, "data": dp, "dataLocal": data_local}
+        if moe_strategy == "ep":
+            spec["expert"] = True
+        return spec, gpus_per_node
 
     raise ValueError(f"Unrecognized parallelism suffix: {suffix!r}")
 
@@ -193,7 +216,7 @@ def parse_preset_stem(stem: str) -> dict:
     """Parse a preset filename stem into its structural components.
 
     Naming convention (Moreh vLLM specification §3.2):
-      {org}-{model}[-mtp][-prefill|-decode]-{accel_vendor}-{accel_model}-{parallelism}
+      {org}-{model}[-mtp][-prefill|-decode]-{accel_vendor}-{accel_model}-{parallelism}[-moe-{moe_parallelism}]
     """
     parts = stem.split("-")
 
@@ -270,7 +293,7 @@ def _generate_content(
     role = parsed["role"]
     mtp = parsed["mtp"]
     suffix = parsed["parallelism_suffix"]
-    parallelism_label = None if suffix.isdigit() else suffix
+    parallelism_label = suffix
 
     lines = []
     lines.append("apiVersion: odin.moreh.io/v1alpha1")
@@ -287,8 +310,7 @@ def _generate_content(
     lines.append(f"    mif.moreh.io/role: {role}")
     lines.append(f"    mif.moreh.io/accelerator.vendor: {accel_vendor}")
     lines.append(f"    mif.moreh.io/accelerator.model: {accel_model}")
-    if parallelism_label:
-        lines.append(f"    mif.moreh.io/parallelism: {parallelism_label}")
+    lines.append(f'    mif.moreh.io/parallelism: "{parallelism_label}"')
     lines.append("spec:")
     if parallelism_spec:
         lines.append("  parallelism:")
@@ -297,7 +319,10 @@ def _generate_content(
                 lines.append(f"    {key}: {'true' if val else 'false'}")
             else:
                 lines.append(f"    {key}: {val}")
-    lines.append("  workerTemplate:")
+    # dpN uses workerTemplate (LeaderWorkerSet); tpN and single-device use template.
+    use_worker = parallelism_spec is not None and "data" in parallelism_spec
+    template_key = "workerTemplate" if use_worker else "template"
+    lines.append(f"  {template_key}:")
     lines.append("    spec:")
     lines.append("      containers:")
     lines.append("        - name: main")
@@ -416,7 +441,9 @@ def main() -> None:
 
         entries.append((parsed, model_info, parallelism_spec, gpu_count))
 
-    os.makedirs(args.output_dir, exist_ok=True)
+    if os.path.exists(args.output_dir):
+        shutil.rmtree(args.output_dir)
+    os.makedirs(args.output_dir)
 
     for parsed, model_info, parallelism_spec, gpu_count in entries:
         stem, content = _generate_content(
