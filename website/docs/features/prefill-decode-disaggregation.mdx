@@ -30,7 +30,7 @@ To enable PD disaggregation, you must configure both **Heimdall** (to route requ
 
 ### Heimdall configuration
 
-In the Heimdall configuration, you need to enable the [`pd-profile-handler`](../reference/heimdall/plugins.mdx#pd-profile-handler) plugin. This plugin sets up the routing logic to distinguish between prefill and decode stages based on the `mif.moreh.io/role` label of the endpoints. The configuration is part of the [`EndpointPickerConfig`](../reference/heimdall/api-reference.mdx#endpointpickerconfig).
+In the Heimdall configuration, you need to enable the [`pd-profile-handler`](../reference/heimdall/plugins.mdx#pd-profile-handler) plugin. This plugin selects the appropriate prefill or decode pod using the `prefill` and `decode` scheduling profiles. The [`prefill-filter`](../reference/heimdall/plugins.mdx#prefill-filter) and [`decode-filter`](../reference/heimdall/plugins.mdx#decode-filter) plugins filter pods by the `mif.moreh.io/role` label within their respective profiles. The configuration is part of the [`EndpointPickerConfig`](../reference/heimdall/api-reference.mdx#endpointpickerconfig).
 
 Consider the following `heimdall-values.yaml` example:
 
