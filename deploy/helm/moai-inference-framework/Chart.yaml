@@ -17,15 +17,15 @@ dependencies:
     repository: https://prometheus-community.github.io/helm-charts
     condition: prometheus-stack.enabled
   - name: lws
-    version: 0.7.0
+    version: 0.8.0
     repository: oci://registry.k8s.io/lws/charts
     condition: lws.enabled
   - name: odin
-    version: v0.6.0
+    version: v0.7.0-rc.3
     repository: https://moreh-dev.github.io/helm-charts
     condition: odin.enabled
   - name: odin-crd
-    version: v0.6.0
+    version: v0.7.0-rc.3
     repository: https://moreh-dev.github.io/helm-charts
     condition: odin-crd.enabled
   - name: keda
