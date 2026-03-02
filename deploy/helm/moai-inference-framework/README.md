@@ -33,6 +33,7 @@ Moreh Inference Framework
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
+| NodeFeatureRuleName | string | `"moai-accelerator"` | Name of NodeFeatureRule used in MIF |
 | commonLabels | object | `{}` | Labels applied to all resources. |
 | ecrTokenRefresher.aws.accessKeyId | string | `""` | AWS_ACCESS_KEY_ID |
 | ecrTokenRefresher.aws.region | string | `"ap-northeast-2"` | AWS Region. |
