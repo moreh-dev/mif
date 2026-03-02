@@ -1,7 +1,7 @@
 apiVersion: nfd.k8s-sigs.io/v1alpha1
 kind: NodeFeatureRule
 metadata:
-  name: moai-accelerator
+  name: {{ include "common.names.name" $ }}-accelerator
 spec:
   rules:
     # https://github.com/ROCm/gpu-operator/blob/main/helm-charts-k8s/templates/gpu-nfd-default-rule.yaml
