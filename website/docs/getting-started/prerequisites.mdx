@@ -162,12 +162,14 @@ deviceConfig:
       tolerations: *tolerations
 
 node-feature-discovery:
-  worker:
-    tolerations: *tolerations
+  enabled: false
 ```
 
 :::info
-If the AMD GPU Operator is already installed on your system, verify that the toleration key is set to `amd.com/gpu`. MoAI Inference Framework assumes this name.
+
+- The `moai-inference-framework` chart already deploys Node Feature Discovery (NFD) and the `moai-accelerator` NodeFeatureRule for heterogeneous accelerator labeling. Set `node-feature-discovery.enabled: false` in the GPU Operator values to avoid installing a duplicate NFD instance. For a full list of supported hardware, see [supported devices](../reference/supported-devices.mdx).
+- If the AMD GPU Operator is already installed on your system, verify that the toleration key is set to `amd.com/gpu`. MoAI Inference Framework assumes this name.
+
 :::
 
 You can install the AMD GPU Operator as follows.
@@ -185,9 +187,7 @@ Note that installing the operator and GPU driver may take some time. After the i
 kubectl get pods -n amd-gpu
 ```
 
-Expected output:
-
-```
+```shell title="Expected output"
 NAME                                                              READY   STATUS    RESTARTS   AGE
 default-device-plugin-fxj66                                       1/1     Running   0          108s
 default-metrics-exporter-r2l6h                                    1/1     Running   0          108s
@@ -195,9 +195,6 @@ default-node-labeller-qhqdl                                       1/1     Runnin
 gpu-operator-gpu-operator-charts-controller-manager-69856dhd67k   1/1     Running   0          4m20s
 gpu-operator-kmm-controller-7b5dd7b48b-fpcv6                      1/1     Running   0          4m20s
 gpu-operator-kmm-webhook-server-c7bfc864-tfqdb                    1/1     Running   0          4m20s
-gpu-operator-node-feature-discovery-gc-7649c47d5d-55rcn           1/1     Running   0          4m20s
-gpu-operator-node-feature-discovery-master-fc889959c-sx7wv        1/1     Running   0          4m20s
-gpu-operator-node-feature-discovery-worker-4tnns                  1/1     Running   0          4m20s
 ```
 
 :::info
@@ -218,9 +215,7 @@ You need to install the device drivers and OFED software for InfiniBand or RoCE 
 ibv_devices
 ```
 
-Expected output:
-
-```
+```shell title="Expected output"
 device           node GUID
 <device_name>    <16-hex GUID>
 <device_name>    <16-hex GUID>
@@ -344,23 +339,9 @@ You can verify that the rdma-shared-device-plugin pods are running using the fol
 kubectl get pods -n kube-system -l app.kubernetes.io/instance=rdma-shared-device-plugin
 ```
 
-Expected output:
-
-```
+```shell title="Expected output"
 NAME                              READY   STATUS    RESTARTS   AGE
 rdma-shared-device-plugin-wh9fz   1/1     Running   0          7s
-```
-
----
-
-## Node labeling for heterogeneous accelerators
-
-The `moai-accelerator` NodeFeatureRule enables the identification of heterogeneous accelerators by assigning vendor and model labels to nodes. This metadata facilitates targeted scheduling or automated selection of optimal accelerator. For a full list of supported hardware, please refer to [supported devices](../reference/supported-devices.mdx).
-
-Apply the `moai-accelerator` NodeFeatureRule using the following command.
-
-```shell
-kubectl apply -f https://raw.githubusercontent.com/moreh-dev/mif/refs/heads/main/config/nfd/moai-accelerator.yaml
 ```
 
 ---
@@ -380,9 +361,7 @@ You can verify the CRDs are installed using the following command.
 kubectl get crd | grep 'networking.k8s*.io'
 ```
 
-Expected output:
-
-```
+```shell title="Expected output"
 gatewayclasses.gateway.networking.k8s.io            2025-12-12T02:03:07Z
 gateways.gateway.networking.k8s.io                  2025-12-12T02:03:07Z
 grpcroutes.gateway.networking.k8s.io                2025-12-12T02:03:07Z
