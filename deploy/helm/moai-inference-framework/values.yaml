@@ -104,9 +104,6 @@ nfd:
         operator: "Exists"
         effect: "NoSchedule"
 
-# -- Name of NodeFeatureRule used in MIF
-NodeFeatureRuleName: "moai-accelerator"
-
 minio:
   # -- Enable minio/minio as the S3-compatible object storage backend for Loki.
   # Set to false if MinIO is already deployed; in that case, configure loki storage
