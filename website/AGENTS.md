@@ -23,6 +23,7 @@ Rules specific to the `website/` directory. General contribution guidelines are 
 - **Standard Markdown**:
   - Use `-` for lists.
   - Use Sentence case for headings.
+  - Do not use H1 (`#`) in the body. The frontmatter `title` renders as H1 automatically.
   - Add a horizontal rule (`---`) above H2 headings (except the top one).
 
 ### Tabs

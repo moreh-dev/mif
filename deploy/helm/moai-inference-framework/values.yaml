@@ -120,26 +120,8 @@ minio:
   persistence:
     enabled: false
 
-  # S3 policy granting the loki user access to the loki bucket only.
-  policies:
-    - name: loki
-      statements:
-        - resources:
-            - "arn:aws:s3:::loki"
-            - "arn:aws:s3:::loki/*"
-          effect: Allow
-          actions:
-            - "s3:*"
-
-  # Dedicated loki user with restricted S3 access (not the root user).
-  # AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in the loki-bucket Secret are
-  # set from this user's credentials.
-  users:
-    - accessKey: loki
-      # -- Password for the loki MinIO user. Override with a strong password in production.
-      secretKey: "loki123!"
-      policy: loki
-
+  # Buckets to create. The minio-init Job (templates/loki/minio-init-job.yaml)
+  # creates these as a regular resource, avoiding the post-install hook deadlock.
   buckets:
     - name: loki
 
@@ -148,15 +130,15 @@ minio:
       memory: 2Gi
 
 # Settings for Loki's object storage bucket.
-# When minio.enabled: true, these default to the internal MinIO user credentials.
+# When minio.enabled: true, these default to the MinIO root credentials.
 # When minio.enabled: false (external MinIO), set all three fields explicitly.
 lokiBucket:
   # -- MinIO service host for Loki storage. Defaults to <release>-minio.
   # Use the FQDN (e.g. minio.minio.svc.cluster.local) for cross-namespace access.
   host: ""
-  # -- MinIO access key for Loki storage. Defaults to minio.users[0].accessKey.
+  # -- MinIO access key for Loki storage. Defaults to minio.rootUser.
   accessKey: ""
-  # -- MinIO secret key for Loki storage. Defaults to minio.users[0].secretKey.
+  # -- MinIO secret key for Loki storage. Defaults to minio.rootPassword.
   secretKey: ""
 
 loki:

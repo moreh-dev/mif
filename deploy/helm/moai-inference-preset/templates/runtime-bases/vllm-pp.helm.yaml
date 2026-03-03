@@ -69,7 +69,7 @@ spec:
                 }")
               fi
 
-              _pp_size={{ "{{" }} or .Spec.Parallelism.Pipeline 1 {{ "}}" }}
+              _pp_size={{ "{{" }} deref .Spec "Parallelism" "Pipeline" | default 1 {{ "}}" }}
 
               VLLM_NIXL_SIDE_CHANNEL_PORT=30020 \
               exec vllm serve \
@@ -80,8 +80,8 @@ spec:
                 --master-addr $(LWS_LEADER_ADDRESS) \
                 --nnodes ${_pp_size} \
                 --node-rank $(LWS_WORKER_INDEX) \
-                --tensor-parallel-size {{ "{{" }} or .Spec.Parallelism.Tensor 1 {{ "}}" }} \
-                {{ "{{" }} if .Spec.Parallelism.Expert {{ "}}" }}--enable-expert-parallel{{ "{{" }} end {{ "}}" }} \
+                --tensor-parallel-size {{ "{{" }} deref .Spec "Parallelism" "Tensor" | default 1 {{ "}}" }} \
+                {{ "{{" }} if deref .Spec "Parallelism" "Expert" {{ "}}" }}--enable-expert-parallel{{ "{{" }} end {{ "}}" }} \
                 ${_config_arg} \
                 "${_kv_events_args[@]}" \
                 $(ISVC_EXTRA_ARGS)
@@ -189,7 +189,7 @@ spec:
                 }")
               fi
 
-              _pp_size={{ "{{" }} or .Spec.Parallelism.Pipeline 1 {{ "}}" }}
+              _pp_size={{ "{{" }} deref .Spec "Parallelism" "Pipeline" | default 1 {{ "}}" }}
 
               VLLM_NIXL_SIDE_CHANNEL_PORT=30020 \
               exec vllm serve \
@@ -200,8 +200,8 @@ spec:
                 --master-addr $(LWS_LEADER_ADDRESS) \
                 --nnodes ${_pp_size} \
                 --node-rank $(LWS_WORKER_INDEX) \
-                --tensor-parallel-size {{ "{{" }} or .Spec.Parallelism.Tensor 1 {{ "}}" }} \
-                {{ "{{" }} if .Spec.Parallelism.Expert {{ "}}" }}--enable-expert-parallel{{ "{{" }} end {{ "}}" }} \
+                --tensor-parallel-size {{ "{{" }} deref .Spec "Parallelism" "Tensor" | default 1 {{ "}}" }} \
+                {{ "{{" }} if deref .Spec "Parallelism" "Expert" {{ "}}" }}--enable-expert-parallel{{ "{{" }} end {{ "}}" }} \
                 ${_config_arg} \
                 "${_kv_events_args[@]}" \
                 $(ISVC_EXTRA_ARGS)

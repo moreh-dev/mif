@@ -18,7 +18,7 @@ spec:
         - name: moreh-registry
       initContainers:
         - name: proxy
-          image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/heimdall-proxy:v0.6.1
+          image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/heimdall-proxy:v0.7.0-rc.4
           restartPolicy: Always
           command:
             - /bin/bash
@@ -27,12 +27,25 @@ spec:
             - |
               set -ex
 
-              exec /app/proxy \
-                --port 8000 \
-                --decoder-ip $(POD_IP) \
-                --decoder-port 8200 \
-                --data-parallel-size {{ "{{" }} or .Spec.Parallelism.DataLocal 1 {{ "}}" }} \
-                $(ISVC_EXTRA_ARGS)
+              cleanup() {
+                echo "Received SIGTERM, killing child processes..."
+                pkill -P $$
+                wait
+              }
+              trap cleanup SIGTERM SIGINT
+
+              _dp_local_size={{ "{{" }} deref .Spec "Parallelism" "DataLocal" | default (deref .Spec "Parallelism" "Data" | default 1) {{ "}}" }}
+
+              for ((_index=0; _index<_dp_local_size; _index++)); do
+                /app/proxy \
+                  --port $((8000 + _index)) \
+                  --decoder-ip $(POD_IP) \
+                  --decoder-port $((8200 + _index)) \
+                  $(ISVC_EXTRA_ARGS) \
+                  &
+              done
+
+              wait
           env:
             - name: ISVC_EXTRA_ARGS
               value: >-
@@ -88,8 +101,8 @@ spec:
                 eval "$ISVC_PRE_PROCESS_SCRIPT"
               fi
 
-              _dp_size={{ "{{" }} or .Spec.Parallelism.Data 1 {{ "}}" }}
-              _dp_local_size={{ "{{" }} or .Spec.Parallelism.DataLocal 1 {{ "}}" }}
+              _dp_size={{ "{{" }} deref .Spec "Parallelism" "Data" | default 1 {{ "}}" }}
+              _dp_local_size={{ "{{" }} deref .Spec "Parallelism" "DataLocal" | default (deref .Spec "Parallelism" "Data" | default 1) {{ "}}" }}
               _start_rank=$(( ${LWS_WORKER_INDEX:-0} * _dp_local_size ))
 
               for ((_index=0; _index<_dp_local_size; _index++)); do
@@ -121,12 +134,12 @@ spec:
                   "${ISVC_MODEL_PATH}" \
                   --served-model-name "${ISVC_MODEL_NAME}" \
                   --port ${_dp_rank_port} \
-                  --tensor-parallel-size {{ "{{" }} or .Spec.Parallelism.Tensor 1 {{ "}}" }} \
+                  --tensor-parallel-size {{ "{{" }} deref .Spec "Parallelism" "Tensor" | default 1 {{ "}}" }} \
                   --data-parallel-size ${_dp_size} \
                   --data-parallel-rank $((_start_rank + _index)) \
                   --data-parallel-address $(LWS_LEADER_ADDRESS) \
-                  --data-parallel-rpc-port {{ "{{" }} or .Spec.Parallelism.DataRPCPort 13345 {{ "}}" }} \
-                  {{ "{{" }} if .Spec.Parallelism.Expert {{ "}}" }}--enable-expert-parallel{{ "{{" }} end {{ "}}" }} \
+                  --data-parallel-rpc-port {{ "{{" }} deref .Spec "Parallelism" "DataRPCPort" | default 13345 {{ "}}" }} \
+                  {{ "{{" }} if deref .Spec "Parallelism" "Expert" {{ "}}" }}--enable-expert-parallel{{ "{{" }} end {{ "}}" }} \
                   ${_config_arg} \
                   "${_kv_events_args[@]}" \
                   $(ISVC_EXTRA_ARGS) \

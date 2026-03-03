@@ -4,8 +4,8 @@ sidebar_label: Quickstart
 sidebar_position: 2
 ---
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
 
 This quickstart launches two vLLM instances (pods) of the Llama 3.2 1B Instruct model and serves them through a single endpoint as an example. Please make sure to install all [prerequisites](./prerequisites.mdx), including the following versions of the components, before starting this quickstart guide.
 
@@ -167,7 +167,7 @@ spec:
   gatewayClassName: istio
   infrastructure:
     parametersRef:
-      group: ''
+      group: ""
       kind: ConfigMap
       name: mif-gateway-infrastructure
   listeners:
@@ -304,10 +304,10 @@ replicaset.apps/heimdall-7d54fcbfff   1         1         1       70s
 
 ### Odin
 
-This quickstart launches two vLLM instances using the `vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2` preset, which includes the model name and model-specific arguments. Each pod utilizes two GPU devices to run the Llama 3.2 1B Instruct model with Tensor Parallelism (TP) set to 2.
+This quickstart launches two vLLM instances using the `quickstart-vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2` preset, which includes the model name and model-specific arguments. Each pod utilizes two GPU devices to run the Llama 3.2 1B Instruct model with Tensor Parallelism (TP) set to 2.
 
 :::info
-For more information on presets, please refer to the [Odin Preset](/features/preset)
+For more information on presets, please refer to the [Odin Preset](../features/preset.mdx)
 :::
 
 To enable the vLLM pods to download model parameters from Hugging Face, you must generate a Hugging Face token at [Hugging Face / Access Tokens](https://huggingface.co/settings/tokens). In addition, you need to accept the model license at [meta-llama/Llama-3.2-1B-Instruct](https://huggingface.co/meta-llama/Llama-3.2-1B-Instruct).
@@ -320,7 +320,7 @@ In production environments, it is common to download the model parameters to a s
 
 Create a `vllm-llama3-1b-instruct-tp2.yaml` file with the following contents. **Please replace `<huggingFaceToken>` with your Hugging Face token that has accepted the model license**.
 
-```yaml title="vllm-llama3-1b-instruct-tp2.yaml" {20}
+```yaml title="vllm-llama3-1b-instruct-tp2.yaml" {18}
 apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceService
 metadata:
@@ -331,9 +331,7 @@ spec:
     - name: heimdall
   templateRefs:
     - name: vllm
-    - name: vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2
-  parallelism:
-    tensor: 2
+    - name: quickstart-vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2
   template:
     spec:
       containers:
@@ -345,7 +343,7 @@ spec:
 
 - The `replicas` field specifies the number of vLLM pods.
 - The `inferencePoolRefs` field specifies the Heimdall's InferencePool where this vLLM pod will register to.
-- The `templateRefs` field specifies the Odin Template resources; `vllm` is a runtime base, and `vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2` is a model-specific template.
+- The `templateRefs` field specifies the Odin Template resources; `vllm` is a runtime base, and `quickstart-vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2` is a model-specific template.
 
 After that, you can deploy the Odin InferenceService by running the following command:
 

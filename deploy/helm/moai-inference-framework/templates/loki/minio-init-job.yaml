@@ -1,0 +1,77 @@
+{{- if and .Values.loki.enabled .Values.minio.enabled }}
+# Regular Job (not a Helm hook) that creates the Loki bucket in MinIO.
+#
+# The MinIO subchart ships its own post-install hook for bucket/user creation,
+# but that hook only runs after the entire Helm release is ready.  When Loki
+# depends on the bucket existing at startup, this creates a circular
+# dependency: Loki waits for the bucket, Helm waits for Loki, and the hook
+# never fires.  This Job runs as a normal resource so it is scheduled as soon
+# as MinIO becomes reachable, breaking the deadlock.
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}-minio-init
+  namespace: {{ include "common.names.namespace" . }}
+  labels:
+    {{- include "mif.labels" . | nindent 4 }}
+spec:
+  backoffLimit: 10
+  ttlSecondsAfterFinished: 300
+  activeDeadlineSeconds: 300
+  template:
+    metadata:
+      labels:
+        {{- include "mif.labels" . | nindent 8 }}
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: minio-init
+          image: "quay.io/minio/mc:RELEASE.2024-11-21T17-21-54Z"
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              MC="/usr/bin/mc --insecure"
+
+              ACCESS=$(cat /config/rootUser)
+              SECRET=$(cat /config/rootPassword)
+              ENDPOINT="http://{{ .Release.Name }}-minio:9000"
+
+              # Wait for MinIO to become reachable.
+              ATTEMPTS=0
+              until $MC alias set myminio "$ENDPOINT" "$ACCESS" "$SECRET" >/dev/null 2>&1; do
+                ATTEMPTS=$((ATTEMPTS + 1))
+                if [ $ATTEMPTS -gt 60 ]; then
+                  echo "ERROR: MinIO not reachable after 60 attempts"
+                  exit 1
+                fi
+                echo "Waiting for MinIO... (attempt $ATTEMPTS)"
+                sleep 2
+              done
+
+              {{- range .Values.minio.buckets }}
+              # Create bucket {{ .name }} if it does not exist.
+              if ! $MC stat "myminio/{{ .name }}" >/dev/null 2>&1; then
+                echo "Creating bucket '{{ .name }}'"
+                $MC mb "myminio/{{ .name }}"
+              else
+                echo "Bucket '{{ .name }}' already exists"
+              fi
+              {{- end }}
+
+              echo "MinIO initialization complete"
+          volumeMounts:
+            - name: minio-configuration
+              mountPath: /config
+      volumes:
+        - name: minio-configuration
+          projected:
+            sources:
+              - configMap:
+                  name: {{ .Release.Name }}-minio
+              - secret:
+                  name: {{ .Release.Name }}-minio
+{{- end }}

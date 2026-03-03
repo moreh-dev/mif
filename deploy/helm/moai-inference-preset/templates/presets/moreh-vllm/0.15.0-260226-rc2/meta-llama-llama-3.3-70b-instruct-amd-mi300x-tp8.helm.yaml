@@ -1,0 +1,38 @@
+apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceServiceTemplate
+metadata:
+  name: moreh-vllm-0.15.0-260226-rc2-meta-llama-llama-3.3-70b-instruct-amd-mi300x-tp8
+  namespace: {{ include "common.names.namespace" . }}
+  labels:
+    {{- include "mif.preset.labels" . | nindent 4 }}
+    mif.moreh.io/model.org: meta-llama
+    mif.moreh.io/model.name: llama-3.3-70b-instruct
+    mif.moreh.io/role: e2e
+    mif.moreh.io/accelerator.vendor: amd
+    mif.moreh.io/accelerator.model: mi300x
+    mif.moreh.io/parallelism: "tp8"
+spec:
+  parallelism:
+    tensor: 8
+  template:
+    spec:
+      containers:
+        - name: main
+          image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/moreh-vllm:0.15.0-260226-rc2
+          env:
+            - name: ISVC_MODEL_NAME
+              value: meta-llama/Llama-3.3-70B-Instruct
+            - name: ISVC_PRESET_PATH
+              value: /app/moreh-vllm/presets/meta-llama-llama-3.3-70b-instruct-amd-mi300x-tp8.yaml
+          resources:
+            requests:
+              amd.com/gpu: "8"
+            limits:
+              amd.com/gpu: "8"
+      nodeSelector:
+        moai.moreh.io/accelerator.vendor: amd
+        moai.moreh.io/accelerator.model: mi300x
+      tolerations:
+        - key: amd.com/gpu
+          operator: Exists
+          effect: NoSchedule
