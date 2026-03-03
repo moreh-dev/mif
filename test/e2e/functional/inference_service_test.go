@@ -38,6 +38,10 @@ config:
 gateway:
   name: mif
   gatewayClassName: {{ .GatewayClassName }}
+  {{- if .IstioRev }}
+  labels:
+    istio.io/rev: {{ .IstioRev }}
+  {{- end }}
 
 inferencePool:
   targetPorts:
@@ -102,13 +106,15 @@ var _ = Describe("InferenceService Lifecycle", Label("functional"), Ordered, fun
 		Expect(utils.CreateWorkloadNamespace(envs.WorkloadNamespace, envs.MIFNamespace)).To(Succeed())
 
 		By("creating Gateway resources")
-		Expect(utils.CreateGatewayResource(envs.WorkloadNamespace, envs.GatewayClassName, "")).To(Succeed())
+		Expect(utils.CreateGatewayResource(envs.WorkloadNamespace, envs.GatewayClassName, envs.IstioRev)).To(Succeed())
 
 		By("installing Heimdall")
 		data := struct {
 			GatewayClassName string
+			IstioRev         string
 		}{
 			GatewayClassName: envs.GatewayClassName,
+			IstioRev:         envs.IstioRev,
 		}
 
 		values, err := utils.RenderTemplate(heimdallValuesYAML, data)
