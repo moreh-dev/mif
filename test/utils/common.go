@@ -68,14 +68,24 @@ func DeleteNamespace(namespace string) {
 	}
 }
 
-// RenderTemplate renders a template file with the given data.
-func RenderTemplate(filename string, data any) (string, error) {
-	templateText, err := loadTemplateFile(filename)
+// RenderTemplate renders a Go template string with the given data.
+func RenderTemplate(templateText string, data any) (string, error) {
+	return renderTextTemplate(templateText, data)
+}
+
+// renderTemplateFile reads a template file relative to the project root and renders it with the given data.
+func renderTemplateFile(filename string, data any) (string, error) {
+	projectDir, err := GetProjectDir()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get project directory: %w", err)
 	}
 
-	return renderTextTemplate(templateText, data)
+	content, err := os.ReadFile(filepath.Join(projectDir, filename))
+	if err != nil {
+		return "", fmt.Errorf("failed to read template file %s: %w", filename, err)
+	}
+
+	return renderTextTemplate(string(content), data)
 }
 
 // GetProjectDir returns the directory where the project is.
@@ -119,21 +129,6 @@ func renderTextTemplate(templateText string, data any) (string, error) {
 		return "", err
 	}
 	return buf.String(), nil
-}
-
-func loadTemplateFile(filename string) (string, error) {
-	projectDir, err := GetProjectDir()
-	if err != nil {
-		return "", fmt.Errorf("failed to get project directory: %w", err)
-	}
-
-	templatePath := filepath.Join(projectDir, filename)
-	content, err := os.ReadFile(templatePath)
-	if err != nil {
-		return "", fmt.Errorf("failed to read template file %s: %w", templatePath, err)
-	}
-
-	return string(content), nil
 }
 
 func hasAllCRDs(output string, required []string) bool {

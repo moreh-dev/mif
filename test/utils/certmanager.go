@@ -14,7 +14,7 @@ import (
 func InstallCertManager() error {
 	helmArgs := []string{
 		"upgrade", "--install", "cert-manager",
-		settings.CertManagerHelmRepoURL,
+		"oci://quay.io/jetstack/charts/cert-manager",
 		"--version", settings.CertManagerVersion,
 		"--namespace", settings.CertManagerNamespace,
 		"--create-namespace",
@@ -52,10 +52,9 @@ func UninstallCertManager() {
 	}
 }
 
-// IsCertManagerCRDsInstalled checks if any Cert Manager CRDs are installed
-// by verifying the existence of key CRDs related to Cert Manager.
-func IsCertManagerCRDsInstalled() bool {
-	// List of common Cert Manager CRDs
+// IsCertManagerInstalled checks if cert-manager is fully operational
+// by verifying both CRDs and that the controller deployment is available.
+func IsCertManagerInstalled() bool {
 	certManagerCRDs := []string{
 		"certificates.cert-manager.io",
 		"issuers.cert-manager.io",
@@ -65,12 +64,21 @@ func IsCertManagerCRDsInstalled() bool {
 		"challenges.acme.cert-manager.io",
 	}
 
-	// Execute the kubectl command to get all CRDs
 	cmd := exec.Command("kubectl", "get", "crds")
 	output, err := Run(cmd)
 	if err != nil {
 		return false
 	}
+	if !hasAllCRDs(output, certManagerCRDs) {
+		return false
+	}
 
-	return hasAllCRDs(output, certManagerCRDs)
+	cmd = exec.Command("kubectl", "get", "deployment", "cert-manager",
+		"-n", settings.CertManagerNamespace, "-o", "jsonpath={.status.availableReplicas}")
+	output, err = Run(cmd)
+	if err != nil {
+		return false
+	}
+
+	return output != "" && output != "0"
 }

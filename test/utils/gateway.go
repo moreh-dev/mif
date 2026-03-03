@@ -75,7 +75,7 @@ func IsGatewayAPICRDsInstalled() bool {
 func InstallGatewayController(gatewayClass string) error {
 	switch gatewayClass {
 	case "istio":
-		cmd := exec.Command("helm", "repo", "add", "istio", settings.IstioHelmRepoURL)
+		cmd := exec.Command("helm", "repo", "add", "istio", "https://istio-release.storage.googleapis.com/charts")
 		if _, err := Run(cmd); err != nil && !strings.Contains(err.Error(), "already exists") {
 			return fmt.Errorf("failed to add istio helm repo: %w", err)
 		}
@@ -109,7 +109,7 @@ func InstallGatewayController(gatewayClass string) error {
 
 	case "kgateway":
 		cmd := exec.Command("helm", "upgrade", "-i", "kgateway-crds",
-			settings.KgatewayCrdsHelmRepoURL,
+			"oci://cr.kgateway.dev/kgateway-dev/charts/kgateway-crds",
 			"--version", settings.KgatewayCrdsVersion,
 			"-n", settings.KgatewayNamespace,
 			"--create-namespace",
@@ -121,7 +121,7 @@ func InstallGatewayController(gatewayClass string) error {
 		}
 
 		cmd = exec.Command("helm", "upgrade", "-i", "kgateway",
-			settings.KgatewayHelmRepoURL,
+			"oci://cr.kgateway.dev/kgateway-dev/charts/kgateway",
 			"--version", settings.KgatewayVersion,
 			"-n", settings.KgatewayNamespace,
 			"-f", settings.KgatewayValuesFile,
@@ -180,13 +180,11 @@ func CreateGatewayResource(namespace string, gatewayClass string, istioRev strin
 	}
 
 	data := struct {
-		GatewayName string
-		IstioRev    string
+		IstioRev string
 	}{
-		GatewayName: settings.GatewayName,
-		IstioRev:    istioRev,
+		IstioRev: istioRev,
 	}
-	rendered, err := RenderTemplate(templatePath, data)
+	rendered, err := renderTemplateFile(templatePath, data)
 	if err != nil {
 		return fmt.Errorf("failed to render gateway template: %w", err)
 	}
@@ -197,7 +195,7 @@ func CreateGatewayResource(namespace string, gatewayClass string, istioRev strin
 		return fmt.Errorf("failed to apply Gateway resources: %w", err)
 	}
 
-	cmd = exec.Command("kubectl", "wait", "gateway", settings.GatewayName,
+	cmd = exec.Command("kubectl", "wait", "gateway", "mif",
 		"--for=condition=Programmed",
 		"-n", namespace,
 		fmt.Sprintf("--timeout=%v", settings.TimeoutLong))
@@ -207,9 +205,23 @@ func CreateGatewayResource(namespace string, gatewayClass string, istioRev strin
 	return nil
 }
 
+// GetGatewayServiceName gets the name of the Gateway service in the workload namespace.
+func GetGatewayServiceName(namespace string) (string, error) {
+	cmd := exec.Command("kubectl", "get", "service",
+		"-n", namespace,
+		"-l", "gateway.networking.k8s.io/gateway-name=mif",
+		"-o", "jsonpath={.items[0].metadata.name}")
+
+	output, err := Run(cmd)
+	if err != nil {
+		return "", fmt.Errorf("gateway service not found: %w", err)
+	}
+	return strings.TrimSpace(output), nil
+}
+
 // DeleteGatewayResource deletes Gateway resources from the given namespace.
 func DeleteGatewayResource(namespace, gatewayClass string) {
-	cmd := exec.Command("kubectl", "delete", "gateway", settings.GatewayName,
+	cmd := exec.Command("kubectl", "delete", "gateway", "mif",
 		"-n", namespace, "--ignore-not-found=true")
 	if _, err := Run(cmd); err != nil {
 		warnError(fmt.Errorf("failed to delete Gateway: %w", err))

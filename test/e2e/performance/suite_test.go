@@ -25,21 +25,13 @@ func TestPerformance(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
-	if !envs.SkipKind {
-		By("creating kind cluster")
-		Expect(utils.CreateKindCluster()).To(Succeed())
-	} else {
-		_, _ = fmt.Fprintf(GinkgoWriter, "Using existing cluster (kubeconfig).\n")
-	}
-
-	By("installing prerequisites")
 	if envs.SkipPrerequisite {
 		By("skipping prerequisite installation")
 		return
 	}
 
 	By("checking if cert manager is installed already")
-	isCertManagerAlreadyInstalled = utils.IsCertManagerCRDsInstalled()
+	isCertManagerAlreadyInstalled = utils.IsCertManagerInstalled()
 	if !isCertManagerAlreadyInstalled {
 		By("installing CertManager")
 		if err := utils.InstallCertManager(); err != nil {
@@ -87,12 +79,6 @@ var _ = AfterSuite(func() {
 
 	if envs.SkipPrerequisite {
 		By("skipping prerequisite uninstallation")
-
-		if !envs.SkipKind {
-			By("deleting kind cluster")
-			utils.DeleteKindCluster()
-		}
-
 		return
 	}
 
@@ -117,12 +103,4 @@ var _ = AfterSuite(func() {
 		By("uninstalling CertManager")
 		utils.UninstallCertManager()
 	}
-
-	if envs.SkipKind {
-		By("skipping kind cluster deletion")
-		return
-	}
-
-	By("deleting kind cluster")
-	utils.DeleteKindCluster()
 })

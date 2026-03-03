@@ -10,18 +10,12 @@ import (
 )
 
 type InferenceServiceData struct {
-	Name         string
-	Namespace    string
-	Replicas     int
-	TemplateRefs []string
-	HFToken      string
-	HFEndpoint   string
-	IsKind       bool
+	Namespace string
 }
 
 // CreateInferenceService creates an InferenceService CR in the given namespace.
 func CreateInferenceService(namespace string, manifestPath string, data InferenceServiceData) (string, error) {
-	rendered, err := RenderTemplate(manifestPath, data)
+	rendered, err := renderTemplateFile(manifestPath, data)
 	if err != nil {
 		return "", fmt.Errorf("failed to render InferenceService manifest: %w", err)
 	}
@@ -42,20 +36,6 @@ func DeleteInferenceService(namespace string, name string) {
 	if _, err := Run(cmd); err != nil {
 		warnError(err)
 	}
-}
-
-// GetGatewayServiceName gets the name of the Gateway service in the workload namespace.
-func GetGatewayServiceName(namespace string) (string, error) {
-	cmd := exec.Command("kubectl", "get", "service",
-		"-n", namespace,
-		"-l", "gateway.networking.k8s.io/gateway-name=mif",
-		"-o", "jsonpath={.items[0].metadata.name}")
-
-	output, err := Run(cmd)
-	if err != nil {
-		return "", fmt.Errorf("gateway service not found: %w", err)
-	}
-	return strings.TrimSpace(output), nil
 }
 
 // GetInferenceServiceContainerImage returns the main container image of the given InferenceService.

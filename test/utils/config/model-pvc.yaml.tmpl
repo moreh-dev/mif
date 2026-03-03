@@ -2,10 +2,10 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: models
-  namespace: {{.Namespace}}
+  namespace: {{ .Namespace }}
 spec:
   storageClassName: ceph-filesystem
-  volumeName: models-{{.Namespace}}
+  volumeName: models-{{ .Namespace }}
   accessModes:
     - ReadOnlyMany
   resources:

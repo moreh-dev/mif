@@ -10,14 +10,8 @@ import (
 
 const (
 	// Skip
-	envSkipKind         = "SKIP_KIND"
 	envSkipPrerequisite = "SKIP_PREREQUISITE"
 	envSkipCleanup      = "SKIP_CLEANUP"
-
-	// Test
-	envTestModel           = "TEST_MODEL"
-	envTestTemplatePrefill = "TEST_TEMPLATE_PREFILL"
-	envTestTemplateDecode  = "TEST_TEMPLATE_DECODE"
 
 	// AWS Credentials
 	envAWSAccessKeyID     = "AWS_ACCESS_KEY_ID"
@@ -26,26 +20,14 @@ const (
 	// S3 Credentials for performance results
 	envS3AccessKeyID     = "S3_ACCESS_KEY_ID"
 	envS3SecretAccessKey = "S3_SECRET_ACCESS_KEY"
-	envS3Region          = "S3_REGION"
-	envS3Bucket          = "S3_BUCKET"
-
-	// HuggingFace
-	envHFToken    = "HF_TOKEN"
-	envHFEndpoint = "HF_ENDPOINT"
-
-	// Benchmark
-	envQualityBenchmarks     = "QUALITY_BENCHMARKS"
-	envQualityBenchmarkLimit = "QUALITY_BENCHMARK_LIMIT"
 
 	// Namespace
 	envMIFNamespace      = "MIF_NAMESPACE"
 	envWorkloadNamespace = "WORKLOAD_NAMESPACE"
 
-	// Gateway Class
+	// Gateway
 	envGatewayClassName = "GATEWAY_CLASS_NAME"
-
-	// Istio
-	envIstioRev = "ISTIO_REV"
+	envIstioRev         = "ISTIO_REV"
 )
 
 type envVarInfo struct {
@@ -58,55 +40,31 @@ type envVarInfo struct {
 
 var envVars = []envVarInfo{
 	// Skip
-	{envSkipKind, boolDefaultString(false), "Skip kind cluster creation and deletion", "Skip", "bool"},
-	{envSkipPrerequisite, boolDefaultString(false), "Skip prerequisite installation (cert-manager, Gateway API, Gateway controller, Gateway Inference Extension) and MIF/Preset setup. When enabled, setupPrerequisites() returns early without installing or validating any components", "Skip", "bool"},
-	{envSkipCleanup, boolDefaultString(false), "Skip cleanup after tests", "Skip", "bool"},
-
-	// Test
-	{envTestModel, "meta-llama/Llama-3.2-1B-Instruct", "Test model name", "Configuration", "string"},
-	{envTestTemplatePrefill, "quickstart-vllm-meta-llama-llama-3.2-1b-instruct-prefill-amd-mi250-tp2", "Test template name for prefill", "Configuration", "string"},
-	{envTestTemplateDecode, "quickstart-vllm-meta-llama-llama-3.2-1b-instruct-decode-amd-mi250-tp2", "Test template name for decode", "Configuration", "string"},
+	{envSkipPrerequisite, boolDefaultString(true), "Skip prerequisite installation", "Execution", "bool"},
+	{envSkipCleanup, boolDefaultString(false), "Skip cleanup after tests", "Execution", "bool"},
 
 	// AWS Credentials
-	{envAWSAccessKeyID, "", "AWS access key ID", "AWS Credentials (for ECR)", "string"},
-	{envAWSSecretAccessKey, "", "AWS secret access key", "AWS Credentials (for ECR)", "string"},
+	{envAWSAccessKeyID, "", "AWS access key ID (for ECR)", "Credentials", "string"},
+	{envAWSSecretAccessKey, "", "AWS secret access key (for ECR)", "Credentials", "string"},
 
 	// S3 Credentials for performance results
-	{envS3AccessKeyID, "", "AWS access key ID for S3 results upload", "AWS Credentials (for S3)", "string"},
-	{envS3SecretAccessKey, "", "AWS secret access key for S3 results upload", "AWS Credentials (for S3)", "string"},
-	{envS3Region, "ap-northeast-2", "AWS region for S3 results bucket", "AWS Credentials (for S3)", "string"},
-	{envS3Bucket, "moreh-benchmark", "S3 bucket name for inference-perf results", "AWS Credentials (for S3)", "string"},
-
-	// HuggingFace
-	{envHFToken, "", "HuggingFace token", "HuggingFace", "string"},
-	{envHFEndpoint, "", "HuggingFace endpoint URL", "HuggingFace", "string"},
-
-	// Benchmark
-	{envQualityBenchmarks, "mmlu", "Name of a single quality benchmark to run (for example: sample, mmlu, gsm8k_cot, hellaswag, aime, gpqa; this list is not exhaustive)", "Benchmark", "string"},
-	{envQualityBenchmarkLimit, "", "Optional limit hint for benchmark dataset; actual usage is defined by the benchmark implementation", "Benchmark", "string"},
+	{envS3AccessKeyID, "", "AWS access key ID for S3 results upload", "Credentials", "string"},
+	{envS3SecretAccessKey, "", "AWS secret access key for S3 results upload", "Credentials", "string"},
 
 	// Namespace
-	{envMIFNamespace, "mif", "MIF namespace", "Namespace", "string"},
-	{envWorkloadNamespace, "mif-e2e-test", "Workload namespace", "Namespace", "string"},
+	{envMIFNamespace, "mif", "MIF namespace", "Environment", "string"},
+	{envWorkloadNamespace, "mif-e2e-test", "Workload namespace (override for CI isolation)", "Environment", "string"},
 
-	// Gateway Class
-	{envGatewayClassName, "istio", "Gateway class (istio or kgateway)", "Gateway Class", "string"},
-
-	// Istio
-	{envIstioRev, "", "Istio revision label value for workload namespace", "Istio", "optional"},
+	// Gateway
+	{envGatewayClassName, "istio", "Gateway class name (istio or kgateway)", "Environment", "string"},
+	{envIstioRev, "", "Istio revision label value for workload namespace", "Environment", "optional"},
 }
 var envVarDefaults = buildEnvVarDefaultMap()
 
 var (
 	// Skip
-	SkipKind         = getEnvBool(envSkipKind)
 	SkipPrerequisite = getEnvBool(envSkipPrerequisite)
 	SkipCleanup      = getEnvBool(envSkipCleanup)
-
-	// Test
-	TestModel           = getEnv(envTestModel)
-	TestTemplatePrefill = getEnv(envTestTemplatePrefill)
-	TestTemplateDecode  = getEnv(envTestTemplateDecode)
 
 	// AWS Credentials
 	AWSAccessKeyID     = getEnv(envAWSAccessKeyID)
@@ -115,26 +73,14 @@ var (
 	// S3 Credentials for performance results
 	S3AccessKeyID     = getEnv(envS3AccessKeyID)
 	S3SecretAccessKey = getEnv(envS3SecretAccessKey)
-	S3Region          = getEnv(envS3Region)
-	S3Bucket          = getEnv(envS3Bucket)
-
-	// HuggingFace
-	HFToken    = getEnv(envHFToken)
-	HFEndpoint = getEnv(envHFEndpoint)
-
-	// Benchmark
-	QualityBenchmarks     = getEnv(envQualityBenchmarks)
-	QualityBenchmarkLimit = getEnv(envQualityBenchmarkLimit)
 
 	// Namespace
 	MIFNamespace      = getEnv(envMIFNamespace)
 	WorkloadNamespace = getEnv(envWorkloadNamespace)
 
-	// Gateway Class
+	// Gateway
 	GatewayClassName = getEnv(envGatewayClassName)
-
-	// Istio
-	IstioRev = getEnv(envIstioRev)
+	IstioRev         = getEnv(envIstioRev)
 )
 
 func boolDefaultString(value bool) string {

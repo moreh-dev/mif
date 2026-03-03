@@ -12,26 +12,33 @@ Rules specific to the `test/` directory. General contribution guidelines are in 
   - Do not validate individual fields of the YAML file declaring the resource (resource spec).
   - Instead, create the resource and verify that its status reaches the expected state.
 
-- **Assume fully controlled cluster**:
-  - Do not check if components are already installed.
-  - Assume the cluster is fully controlled by the test and installed components are safe to overwrite or delete.
+- **Cluster lifecycle is outside test code**:
+  - Test code must never create or delete Kubernetes clusters.
+  - Tests assume a valid kubeconfig already exists. The Makefile handles Kind cluster lifecycle (`setup-test-e2e`, `cleanup-test-e2e`).
+  - Do not reference Kind directly in test code; use environment variables to control behavior differences between environments.
+
+- **Hardcoded configuration, not environment-variable-driven**:
+  - Fixed values (model names, template refs, S3 region/bucket, namespaces, gateway class) are hardcoded in `test/utils/settings/constants.go` or directly in each test file.
+  - Only execution settings (`SKIP_*`), credentials (`AWS_*`, `S3_*`, `HF_*`), and environment-specific values (`WORKLOAD_NAMESPACE`, `ISTIO_REV`) remain as environment variables.
+  - Each test category (functional, performance, quality) hardcodes its own template refs and GPU/PVC settings. Functional uses simulation images; performance and quality use real GPU images.
+  - Do not use infrastructure-awareness flags like `IsKind` or `SimulationMode`.
 
 - **Test suite layout**:
-  - Split tests by purpose under `test/e2e`, for example `test/e2e/performance` and `test/e2e/quality`.
+  - Split tests by purpose under `test/e2e`: `functional`, `performance`, `quality`.
   - In each directory, define shared Ginkgo configuration (labels, timeouts, common hooks) in `suite_test.go`, and keep scenarios in separate `*_test.go` files.
   - Shared configuration values must come from the `test/utils/settings` package instead of hard-coded constants in test files.
+  - Common suite setup/teardown logic (prerequisite installation) lives in `test/utils/setup/prerequisites.go`.
 
 - **Environment variable management**:
+  - Environment variables are only for: execution settings (`SKIP_PREREQUISITE`, `SKIP_CLEANUP`, `SKIP_SCORE_VALIDATION`), credentials (`AWS_*`, `S3_*`, `HF_*`), and environment-specific values (`WORKLOAD_NAMESPACE`, `ISTIO_REV`).
   - Manage all E2E environment variables centrally in `test/e2e/envs/env_vars.go`.
-  - When a new environment variable is required:
-    - Add it to the `envVars` slice with default value, description, category, and type.
-    - Expose it via public variables (for example `TestModel`, `HFToken`) and access it only through those variables.
-    - Do not call `os.Getenv` directly in test code.
-  - Keep the documentation consistent: changes must pass the `validateEnvVars()` check.
+  - Do not add new environment variables for fixed configuration values. Instead, hardcode them in `test/utils/settings/constants.go` or in the test file that uses them.
+  - Do not call `os.Getenv` directly in test code.
 
 - **Resource templates and settings**:
   - Manage Kubernetes resource specifications for Gateway, InferenceService, Jobs, and similar resources as Go templates (`.yaml.tmpl`) under `test/config/**`.
   - Tests must read template paths and default values from constants in `test/utils/settings/constants.go`.
+  - Template conditionals should be feature-driven (e.g. `{{ if .GPUResourcesEnabled }}`, `{{ if .ModelPVCName }}`, `{{ if .S3AccessKeyID }}`), not infrastructure-driven.
   - When adding a new benchmark or performance test Job:
     - Add the template file under an appropriate `test/config/<domain>` subdirectory.
     - Define the corresponding path and default parameters in the `settings` package.
@@ -44,5 +51,6 @@ Rules specific to the `test/` directory. General contribution guidelines are in 
     - `It(...)`: render the Job template → create the Job with `kubectl create -f -` → wait for completion with `kubectl wait` → collect logs and perform domain-specific assertions.
 
 - **Makefile and workflow integration**:
-  - Provide separate Make targets per test purpose (for example `e2e-performance`, `e2e-quality`) so that CI can run them independently.
+  - Provide separate Make targets per test purpose (`test-e2e-functional`, `test-e2e-performance`, `test-e2e-quality`) so that CI can run them independently.
+  - `test-e2e-kind` creates a Kind cluster, runs functional tests (simulation images, no GPU), and cleans up.
   - GitHub Actions and other workflows should invoke these targets directly, and new test categories should follow the same pattern when adding additional targets and workflows.

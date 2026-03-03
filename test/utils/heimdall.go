@@ -12,8 +12,8 @@ import (
 )
 
 // InstallHeimdall installs Heimdall in the given namespace.
-func InstallHeimdall(namespace string, values string) error {
-	cmd := exec.Command("helm", "repo", "add", "moreh", settings.MorehHelmRepoURL)
+func InstallHeimdall(namespace string, version string, values string) error {
+	cmd := exec.Command("helm", "repo", "add", "moreh", "https://moreh-dev.github.io/helm-charts")
 	if _, err := Run(cmd); err != nil && !strings.Contains(err.Error(), "already exists") {
 		return fmt.Errorf("failed to add moreh helm repo: %w", err)
 	}
@@ -26,7 +26,7 @@ func InstallHeimdall(namespace string, values string) error {
 	helmArgs := []string{
 		"upgrade", "--install", "heimdall",
 		"moreh/heimdall",
-		"--version", settings.HeimdallVersion,
+		"--version", version,
 		"--namespace", namespace,
 		"--create-namespace",
 		"--wait",
