@@ -108,25 +108,17 @@ Moreh Inference Framework
 | loki.write.nodeSelector."node-role.kubernetes.io/control-plane" | string | `""` |  |
 | loki.write.persistence.volumeClaimsEnabled | bool | `false` |  |
 | loki.write.replicas | int | `1` |  |
-| lokiBucket.accessKey | string | `""` | MinIO access key for Loki storage. Defaults to minio.users[0].accessKey. |
+| lokiBucket.accessKey | string | `""` | MinIO access key for Loki storage. Defaults to minio.rootUser. |
 | lokiBucket.host | string | `""` | MinIO service host for Loki storage. Defaults to <release>-minio. Use the FQDN (e.g. minio.minio.svc.cluster.local) for cross-namespace access. |
-| lokiBucket.secretKey | string | `""` | MinIO secret key for Loki storage. Defaults to minio.users[0].secretKey. |
+| lokiBucket.secretKey | string | `""` | MinIO secret key for Loki storage. Defaults to minio.rootPassword. |
 | lws.enabled | bool | `true` | Enable kubernetes-sigs/lws. Set to false if already deployed. |
 | minio.buckets[0].name | string | `"loki"` |  |
 | minio.enabled | bool | `true` | Enable minio/minio as the S3-compatible object storage backend for Loki. Set to false if MinIO is already deployed; in that case, configure loki storage to point to the existing MinIO service. |
 | minio.mode | string | `"standalone"` |  |
 | minio.persistence.enabled | bool | `false` |  |
-| minio.policies[0].name | string | `"loki"` |  |
-| minio.policies[0].statements[0].actions[0] | string | `"s3:*"` |  |
-| minio.policies[0].statements[0].effect | string | `"Allow"` |  |
-| minio.policies[0].statements[0].resources[0] | string | `"arn:aws:s3:::loki"` |  |
-| minio.policies[0].statements[0].resources[1] | string | `"arn:aws:s3:::loki/*"` |  |
 | minio.resources.requests.memory | string | `"2Gi"` |  |
 | minio.rootPassword | string | `"minio123!"` | MinIO root password. Override with a strong password in production. |
 | minio.rootUser | string | `"minio"` | MinIO root user. |
-| minio.users[0].accessKey | string | `"loki"` |  |
-| minio.users[0].policy | string | `"loki"` |  |
-| minio.users[0].secretKey | string | `"loki123!"` | Password for the loki MinIO user. Override with a strong password in production. |
 | nameOverride | string | `""` | Chart name override. |
 | namespaceOverride | string | `""` | Namespace override. |
 | nfd.enabled | bool | `true` | Enable kubernetes-sigs/node-feature-discovery. Set to false if already deployed. |
