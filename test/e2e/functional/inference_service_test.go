@@ -6,6 +6,7 @@ package functional
 import (
 	"fmt"
 	"os/exec"
+	"strings"
 
 	envs "github.com/moreh-dev/mif/test/e2e/envs"
 	"github.com/moreh-dev/mif/test/utils"
@@ -37,10 +38,6 @@ config:
 gateway:
   name: mif
   gatewayClassName: {{ .GatewayClassName }}
-  {{- if .IstioRev }}
-  labels:
-    istio.io/rev: {{ .IstioRev }}
-  {{- end }}
 
 inferencePool:
   targetPorts:
@@ -61,6 +58,37 @@ spec:
     - name: sim
 `
 
+const curlJobYAML = `
+apiVersion: batch/v1
+kind: Job
+metadata:
+  generateName: functional-curl-
+  namespace: {{ .Namespace }}
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        sidecar.istio.io/inject: "false"
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: curl
+        image: curlimages/curl:8.12.1
+        command:
+        - curl
+        - -sf
+        - --max-time
+        - "30"
+        - -X
+        - POST
+        - {{ .BaseURL }}
+        - -H
+        - "Content-Type: application/json"
+        - -d
+        - '{"model":"meta-llama/Llama-3.2-1B-Instruct","messages":[{"role":"user","content":"Hello"}]}'
+`
+
 var (
 	serviceName string
 )
@@ -74,15 +102,13 @@ var _ = Describe("InferenceService Lifecycle", Label("functional"), Ordered, fun
 		Expect(utils.CreateWorkloadNamespace(envs.WorkloadNamespace, envs.MIFNamespace)).To(Succeed())
 
 		By("creating Gateway resources")
-		Expect(utils.CreateGatewayResource(envs.WorkloadNamespace, envs.GatewayClassName, envs.IstioRev)).To(Succeed())
+		Expect(utils.CreateGatewayResource(envs.WorkloadNamespace, envs.GatewayClassName, "")).To(Succeed())
 
 		By("installing Heimdall")
 		data := struct {
 			GatewayClassName string
-			IstioRev         string
 		}{
 			GatewayClassName: envs.GatewayClassName,
-			IstioRev:         envs.IstioRev,
 		}
 
 		values, err := utils.RenderTemplate(heimdallValuesYAML, data)
@@ -97,13 +123,7 @@ var _ = Describe("InferenceService Lifecycle", Label("functional"), Ordered, fun
 		Expect(err).NotTo(HaveOccurred(), "failed to create InferenceService")
 
 		By("waiting for InferenceService to be ready")
-		cmd := exec.Command("kubectl", "wait", "inferenceService", serviceName,
-			"--for=condition=Ready",
-			"-n", envs.WorkloadNamespace,
-			fmt.Sprintf("--timeout=%v", settings.TimeoutVeryLong))
-		output, err := utils.Run(cmd)
-		Expect(err).NotTo(HaveOccurred(), "failed to wait for InferenceService to be ready")
-		Expect(output).To(Equal("True"), "InferenceService should be in Ready state")
+		Expect(waitForInferenceService(envs.WorkloadNamespace, serviceName)).To(Succeed())
 	})
 
 	AfterAll(func() {
@@ -139,16 +159,65 @@ var _ = Describe("InferenceService Lifecycle", Label("functional"), Ordered, fun
 		gwServiceName, err := utils.GetGatewayServiceName(envs.WorkloadNamespace)
 		Expect(err).NotTo(HaveOccurred(), "failed to get Gateway service name")
 
-		By("sending inference request via curl")
-		cmd := exec.Command("kubectl", "exec", "-n", envs.WorkloadNamespace,
-			"deploy/heimdall", "--",
-			"curl", "-sf", "--max-time", "30",
-			"-X", "POST",
-			fmt.Sprintf("http://%s/v1/completions", gwServiceName),
-			"-H", "Content-Type: application/json",
-			"-d", fmt.Sprintf(`{"model":"%s","prompt":"Hello","max_tokens":1}`, "meta-llama/Llama-3.2-1B-Instruct"))
-		output, err := utils.Run(cmd)
-		Expect(err).NotTo(HaveOccurred(), "inference request failed")
-		Expect(output).NotTo(BeEmpty(), "inference response should not be empty")
+		By("creating curl job")
+		jobName, err := createCurlJob(envs.WorkloadNamespace, fmt.Sprintf("http://%s/v1/chat/completions", gwServiceName))
+		Expect(err).NotTo(HaveOccurred(), "failed to create curl job")
+		defer deleteCurlJob(envs.WorkloadNamespace, jobName)
+
+		By("waiting for curl job to complete")
+		Expect(waitForCurlJob(envs.WorkloadNamespace, jobName)).To(Succeed())
 	})
 })
+
+func waitForInferenceService(namespace string, name string) error {
+	cmd := exec.Command("kubectl", "wait", "inferenceService", name,
+		"--for=condition=Ready",
+		"-n", namespace,
+		fmt.Sprintf("--timeout=%v", settings.TimeoutVeryLong))
+	_, err := utils.Run(cmd)
+	return err
+}
+
+func createCurlJob(namespace string, baseURL string) (string, error) {
+	type jobTemplateData struct {
+		Namespace string
+		BaseURL   string
+	}
+
+	data := jobTemplateData{
+		Namespace: namespace,
+		BaseURL:   baseURL,
+	}
+
+	jobYAML, err := utils.RenderTemplate(curlJobYAML, data)
+	if err != nil {
+		return "", fmt.Errorf("failed to render job template: %w", err)
+	}
+
+	cmd := exec.Command("kubectl", "create", "-f", "-", "-n", namespace, "-o", "name")
+	cmd.Stdin = strings.NewReader(jobYAML)
+	output, err := utils.Run(cmd)
+	if err != nil {
+		return "", fmt.Errorf("failed to create job: %w", err)
+	}
+	return utils.ParseResourceName(output), nil
+}
+
+func deleteCurlJob(namespace string, jobName string) {
+	cmd := exec.Command("kubectl", "delete", "job", jobName,
+		"-n", namespace, "--ignore-not-found=true")
+	_, _ = utils.Run(cmd)
+}
+
+func waitForCurlJob(namespace string, jobName string) error {
+	cmd := exec.Command("kubectl", "wait", "job", jobName,
+		"--for=condition=complete",
+		"-n", namespace,
+		fmt.Sprintf("--timeout=%v", settings.TimeoutVeryLong))
+	_, err := utils.Run(cmd)
+	if err != nil {
+		return fmt.Errorf("curl job did not complete within timeout: %w", err)
+	}
+
+	return nil
+}

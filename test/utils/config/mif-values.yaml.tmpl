@@ -2,3 +2,9 @@ ecrTokenRefresher:
   aws:
     accessKeyId: {{ .AWSAccessKeyID }}
     secretAccessKey: {{ .AWSSecretAccessKey }}
+
+loki:
+  chunksCache:
+    allocatedMemory: 2048
+  resultsCache:
+    allocatedMemory: 512

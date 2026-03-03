@@ -14,8 +14,8 @@ type InferenceServiceData struct {
 }
 
 // CreateInferenceService creates an InferenceService CR in the given namespace.
-func CreateInferenceService(namespace string, manifestPath string, data InferenceServiceData) (string, error) {
-	rendered, err := renderTemplateFile(manifestPath, data)
+func CreateInferenceService(namespace string, manifestYAML string, data InferenceServiceData) (string, error) {
+	rendered, err := RenderTemplate(manifestYAML, data)
 	if err != nil {
 		return "", fmt.Errorf("failed to render InferenceService manifest: %w", err)
 	}
