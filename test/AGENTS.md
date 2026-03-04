@@ -20,11 +20,11 @@ Rules specific to the `test/` directory. General contribution guidelines are in 
 - **Hardcoded configuration, not environment-variable-driven**:
   - Fixed values (model names, template refs, S3 region/bucket, namespaces, gateway class) are hardcoded in `test/utils/settings/constants.go` or directly in each test file.
   - Only execution settings (`SKIP_*`), credentials (`AWS_*`, `S3_*`, `HF_*`), and environment-specific values (`WORKLOAD_NAMESPACE`, `ISTIO_REV`) remain as environment variables.
-  - Each test category (functional, performance, quality) hardcodes its own template refs and GPU/PVC settings. Functional uses simulation images; performance and quality use real GPU images.
+  - Each test category (smoke, performance, quality) hardcodes its own template refs and GPU/PVC settings. Smoke uses simulation images; performance and quality use real GPU images.
   - Do not use infrastructure-awareness flags like `IsKind` or `SimulationMode`.
 
 - **Test suite layout**:
-  - Split tests by purpose under `test/e2e`: `functional`, `performance`, `quality`.
+  - Split tests by purpose under `test/e2e`: `smoke`, `performance`, `quality`.
   - In each directory, define shared Ginkgo configuration (labels, timeouts, common hooks) in `suite_test.go`, and keep scenarios in separate `*_test.go` files.
   - Shared configuration values must come from the `test/utils/settings` package instead of hard-coded constants in test files.
   - Common suite setup/teardown logic (prerequisite installation) lives in `test/utils/setup/prerequisites.go`.
@@ -51,6 +51,6 @@ Rules specific to the `test/` directory. General contribution guidelines are in 
     - `It(...)`: render the Job template → create the Job with `kubectl create -f -` → wait for completion with `kubectl wait` → collect logs and perform domain-specific assertions.
 
 - **Makefile and workflow integration**:
-  - Provide separate Make targets per test purpose (`test-e2e-functional`, `test-e2e-performance`, `test-e2e-quality`) so that CI can run them independently.
-  - `test-e2e-kind` creates a Kind cluster, runs functional tests (simulation images, no GPU), and cleans up.
+  - Provide separate Make targets per test purpose (`test-e2e-smoke`, `test-e2e-performance`, `test-e2e-quality`) so that CI can run them independently.
+  - `test-e2e-kind` creates a Kind cluster, runs smoke tests (simulation images, no GPU), and cleans up.
   - GitHub Actions and other workflows should invoke these targets directly, and new test categories should follow the same pattern when adding additional targets and workflows.

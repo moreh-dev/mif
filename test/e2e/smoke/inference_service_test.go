@@ -1,7 +1,7 @@
 //go:build e2e && !printenv
 // +build e2e,!printenv
 
-package functional
+package smoke
 
 import (
 	"fmt"
@@ -52,7 +52,7 @@ const inferenceServiceYAML = `
 apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceService
 metadata:
-  name: functional-test
+  name: smoke-test
   namespace: {{ .Namespace }}
 spec:
   replicas: 1
@@ -66,7 +66,7 @@ const curlJobYAML = `
 apiVersion: batch/v1
 kind: Job
 metadata:
-  generateName: functional-curl-
+  generateName: smoke-curl-
   namespace: {{ .Namespace }}
 spec:
   backoffLimit: 0
@@ -97,7 +97,7 @@ var (
 	serviceName string
 )
 
-var _ = Describe("InferenceService Lifecycle", Label("functional"), Ordered, func() {
+var _ = Describe("InferenceService Smoke", Label("smoke"), Ordered, func() {
 	SetDefaultEventuallyTimeout(settings.TimeoutShort)
 	SetDefaultEventuallyPollingInterval(settings.IntervalShort)
 

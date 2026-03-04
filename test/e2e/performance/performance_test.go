@@ -5,8 +5,10 @@ package performance
 
 import (
 	"fmt"
+	"math/rand"
 	"os/exec"
 	"strings"
+	"time"
 
 	envs "github.com/moreh-dev/mif/test/e2e/envs"
 	"github.com/moreh-dev/mif/test/utils"
@@ -77,8 +79,8 @@ spec:
     - name: heimdall
   templateRefs:
     - name: vllm-prefill
-	 	- name: quickstart-vllm-meta-llama-llama-3.2-1b-instruct-prefill-amd-mi250-tp2
-	 	- name: vllm-hf-hub-offline
+    - name: quickstart-vllm-meta-llama-llama-3.2-1b-instruct-prefill-amd-mi250-tp2
+    - name: vllm-hf-hub-offline
   template:
     spec:
       containers:
@@ -102,8 +104,8 @@ spec:
     - name: heimdall
   templateRefs:
     - name: vllm-decode
-	 	- name: quickstart-vllm-meta-llama-llama-3.2-1b-instruct-decode-amd-mi250-tp2
-	 	- name: vllm-hf-hub-offline
+    - name: quickstart-vllm-meta-llama-llama-3.2-1b-instruct-decode-amd-mi250-tp2
+    - name: vllm-hf-hub-offline
   template:
     spec:
       containers:
@@ -139,17 +141,6 @@ spec:
         - -c
         args:
         - |
-          {{- if and .S3AccessKeyID .S3SecretAccessKey }}
-					BASE="vllm"
-          TAG="{{.VLLMTag}}"
-          PRESET="vllm-pd"
-          EXP_TYPE="performance"
-          EXP_NAME="synthetic_random_i1024_o1024_c64"
-					TIMESTAMP="$(date +'%y%m%d%H%M%S')$(awk 'BEGIN {srand(); printf "%04d", int(rand()*10000)}')"
-
-          S3_PREFIX="${BASE}/${TAG}/${PRESET}/${EXP_TYPE}/${EXP_NAME}/${TIMESTAMP}"
-          {{- end }}
-
           cat <<EOF > /tmp/config.yaml
               api:
                 type: completion
@@ -178,7 +169,7 @@ spec:
               server:
                 type: vllm
                 model_name: meta-llama/Llama-3.2-1B-Instruct
-                base_url: {{.BaseURL}}
+                base_url: {{ .BaseURL }}
 
               report:
                 request_lifecycle:
@@ -192,7 +183,7 @@ spec:
                 {{- if and .S3AccessKeyID .S3SecretAccessKey }}
                 simple_storage_service:
                   bucket_name: "moreh-benchmark"
-                  path: "${S3_PREFIX}"
+                  path: {{ .S3_PREFIX }}
                   report_file_prefix: null
                 {{- end }}
           EOF
@@ -211,15 +202,15 @@ spec:
           - name: AWS_DEFAULT_REGION
             value: "ap-northeast-2"
           {{- end }}
-					- name: HF_HOME
-						value: /mnt/models
-					- name: HF_HUB_OFFLINE
-						value: "1"
-				volumeMounts:
-					- name: model
-						mountPath: /mnt/models
+          - name: HF_HOME
+            value: /mnt/models
+          - name: HF_HUB_OFFLINE
+            value: "1"
+        volumeMounts:
+          - name: models
+            mountPath: /mnt/models
       volumes:
-        - name: model
+        - name: models
           persistentVolumeClaim:
             claimName: models
 `
@@ -320,12 +311,18 @@ var _ = Describe("Inference Performance", Label("performance"), Ordered, func() 
 		Expect(err).NotTo(HaveOccurred(), "failed to get InferenceService container image")
 
 		By("creating inference-perf job")
-		jobName, err := createInferencePerfJob(envs.WorkloadNamespace, fmt.Sprintf("http://%s", serviceName), image)
+		jobName, s3Prefix, err := createInferencePerfJob(envs.WorkloadNamespace, fmt.Sprintf("http://%s", serviceName), image)
 		Expect(err).NotTo(HaveOccurred(), "failed to create inference-perf job")
 		defer deleteInferencePerfJob(envs.WorkloadNamespace, jobName)
 
 		By("waiting for inference-perf job to complete")
 		Expect(waitForInferencePerfJob(envs.WorkloadNamespace, jobName)).To(Succeed())
+
+		if envs.S3AccessKeyID != "" && envs.S3SecretAccessKey != "" {
+			AddReportEntry(fmt.Sprintf("inference-perf results uploaded to s3 path: %s", s3Prefix))
+		} else {
+			AddReportEntry("inference-perf results are not uploaded to s3 because S3 credentials are not set")
+		}
 	})
 })
 
@@ -338,16 +335,23 @@ func waitForInferenceService(namespace string, name string) error {
 	return err
 }
 
-func createInferencePerfJob(namespace string, baseURL string, image string) (string, error) {
+func createInferencePerfJob(namespace string, baseURL string, image string) (string, string, error) {
 	_, imageTag, err := utils.ParseImage(image)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse image: %w", err)
+		return "", "", fmt.Errorf("failed to parse image: %w", err)
 	}
+
+	base := "vllm"
+	preset := "vllm-pd"
+	expType := "performance"
+	expName := "synthetic_random_i1024_o1024_c64"
+	timestamp := time.Now().Format("20060102150405") + fmt.Sprintf("%04d", rand.Intn(10000))
+	s3Prefix := fmt.Sprintf("%s/%s/%s/%s/%s/%s", base, imageTag, preset, expType, expName, timestamp)
 
 	type jobTemplateData struct {
 		Namespace         string
 		BaseURL           string
-		VLLMTag           string
+		S3Prefix          string
 		S3AccessKeyID     string
 		S3SecretAccessKey string
 	}
@@ -355,23 +359,23 @@ func createInferencePerfJob(namespace string, baseURL string, image string) (str
 	data := jobTemplateData{
 		Namespace:         namespace,
 		BaseURL:           baseURL,
-		VLLMTag:           imageTag,
+		S3Prefix:          s3Prefix,
 		S3AccessKeyID:     envs.S3AccessKeyID,
 		S3SecretAccessKey: envs.S3SecretAccessKey,
 	}
 
 	jobYAML, err := utils.RenderTemplate(inferencePerfJobYAML, data)
 	if err != nil {
-		return "", fmt.Errorf("failed to render job template: %w", err)
+		return "", "", fmt.Errorf("failed to render job template: %w", err)
 	}
 
 	cmd := exec.Command("kubectl", "create", "-f", "-", "-n", namespace, "-o", "name")
 	cmd.Stdin = strings.NewReader(jobYAML)
 	output, err := utils.Run(cmd)
 	if err != nil {
-		return "", fmt.Errorf("failed to create job: %w", err)
+		return "", "", fmt.Errorf("failed to create job: %w", err)
 	}
-	return utils.ParseResourceName(output), nil
+	return utils.ParseResourceName(output), s3Prefix, nil
 }
 
 func deleteInferencePerfJob(namespace string, jobName string) {

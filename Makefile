@@ -43,19 +43,19 @@ helm-dependency: ## Update Helm chart dependencies.
 KIND_CLUSTER ?= mif-e2e
 
 .PHONY: test-e2e
-test-e2e: ## Run all E2E tests (functional + performance + quality).
-	@$(MAKE) test-e2e-functional
+test-e2e: ## Run all E2E tests (smoke + performance + quality).
+	@$(MAKE) test-e2e-smoke
 	@$(MAKE) test-e2e-performance
 	@$(MAKE) test-e2e-quality
 
-.PHONY: test-e2e-functional
-test-e2e-functional: ## Run functional E2E tests.
+.PHONY: test-e2e-smoke
+test-e2e-smoke: ## Run smoke E2E tests.
 	@mkdir -p test-reports
-	@go test -tags=e2e -v ./test/e2e/functional/... -timeout 15m \
+	@go test -tags=e2e -v ./test/e2e/smoke/... -timeout 30m \
 		-ginkgo.v \
-		-ginkgo.label-filter=functional \
-		-ginkgo.junit-report="$(CURDIR)/test-reports/junit-functional.xml" \
-		-ginkgo.json-report="$(CURDIR)/test-reports/report-functional.json"
+		-ginkgo.label-filter=smoke \
+		-ginkgo.junit-report="$(CURDIR)/test-reports/junit-smoke.xml" \
+		-ginkgo.json-report="$(CURDIR)/test-reports/report-smoke.json"
 
 .PHONY: test-e2e-performance
 test-e2e-performance: ## Run inference-perf performance tests.
@@ -88,8 +88,8 @@ cleanup-test-e2e: ## Delete Kind cluster used for e2e tests.
 	@kind delete cluster --name $(KIND_CLUSTER) 2>/dev/null || true
 
 .PHONY: test-e2e-kind
-test-e2e-kind: setup-test-e2e ## Run functional e2e tests on a local Kind cluster.
-	@$(MAKE) test-e2e-functional
+test-e2e-kind: setup-test-e2e ## Run smoke e2e tests on a local Kind cluster.
+	@$(MAKE) test-e2e-smoke
 	@$(MAKE) cleanup-test-e2e
 
 .PHONY: test-e2e-env

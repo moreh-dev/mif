@@ -1,4 +1,4 @@
-name: e2e-functional-p-cluster
+name: e2e-smoke-p-cluster
 
 # Required GitHub Secrets for Product Cluster Testing:
 # - KUBECONFIG_BASE64: Base64-encoded kubeconfig file for the Product cluster
@@ -25,11 +25,11 @@ permissions:
   checks: write
 
 jobs:
-  functional:
-    name: Functional E2E Test
+  smoke:
+    name: Smoke E2E Test
     runs-on: [self-hosted, github-runner]
     concurrency:
-      group: functional
+      group: smoke
       cancel-in-progress: false
 
     container:
@@ -63,7 +63,7 @@ jobs:
       - name: Set workload namespace
         run: |
           COMMIT_HASH_SHORT=$(echo "${{ github.sha }}" | cut -c1-7)
-          echo "WORKLOAD_NAMESPACE=mif-func-${COMMIT_HASH_SHORT}" >> "$GITHUB_ENV"
+          echo "WORKLOAD_NAMESPACE=mif-smoke-${COMMIT_HASH_SHORT}" >> "$GITHUB_ENV"
 
       - name: Set up kubeconfig
         run: |
@@ -85,10 +85,10 @@ jobs:
       - name: Download dependencies
         run: go mod download
 
-      - name: Run functional E2E test
+      - name: Run smoke E2E test
         id: validate
         run: |
-          if make test-e2e-functional; then
+          if make test-e2e-smoke; then
             echo "test_passed=true" >> "$GITHUB_OUTPUT"
           else
             echo "test_passed=false" >> "$GITHUB_OUTPUT"
@@ -110,7 +110,7 @@ jobs:
         with:
           files: |
             test-reports/*.xml
-          check_name: Functional E2E Test Results
+          check_name: Smoke E2E Test Results
           comment_mode: off
           report_individual_runs: false
           check_run_annotations: all tests, skipped tests
@@ -121,25 +121,25 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: functional-e2e-test-reports-${{ github.run_id }}
+          name: smoke-e2e-test-reports-${{ github.run_id }}
           path: test-reports
           retention-days: 7
           if-no-files-found: warn
 
   test-summary:
-    name: Functional E2E Test Summary
+    name: Smoke E2E Test Summary
     runs-on: ubuntu-latest
-    needs: [functional]
+    needs: [smoke]
     if: always()
 
     steps:
       - name: Check test result
         run: |
-          if [ "${{ needs.functional.outputs.test_passed }}" == "true" ]; then
-            echo "✅ Functional E2E tests passed."
-            echo "::notice::Functional E2E tests passed."
+          if [ "${{ needs.smoke.outputs.test_passed }}" == "true" ]; then
+            echo "Smoke E2E tests passed."
+            echo "::notice::Smoke E2E tests passed."
           else
-            echo "❌ Functional E2E tests failed. Please check the logs and fix issues."
-            echo "::error::Functional E2E tests failed."
+            echo "Smoke E2E tests failed. Please check the logs and fix issues."
+            echo "::error::Smoke E2E tests failed."
             exit 1
           fi
