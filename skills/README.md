@@ -102,20 +102,6 @@ claude plugin marketplace update mif       # Update marketplace to pick up new s
 claude --plugin-dir ./skills
 ```
 
-#### How the plugin works
-
-The plugin is defined by two files:
-
-| File | Purpose |
-| ---- | ------- |
-| `.claude-plugin/marketplace.json` (repo root) | Registers the MIF repository as a Claude Code marketplace |
-| `skills/.claude-plugin/plugin.json` | Plugin manifest that exposes the skills directory |
-
-The `plugin.json` uses `"skills": "./"` to tell Claude Code that skill directories (`guide-heimdall/`, `guide-odin/`) are located in the plugin root itself, rather than in a nested `skills/` subdirectory.
-
-### Cursor
-
-Skills are automatically discoverable via the `CLAUDE.md` symlink, which references the skills directory. No additional installation is needed.
 
 ## Creating a New Skill
 
