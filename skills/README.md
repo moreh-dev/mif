@@ -117,40 +117,6 @@ The `plugin.json` uses `"skills": "./"` to tell Claude Code that skill directori
 
 Skills are automatically discoverable via the `CLAUDE.md` symlink, which references the skills directory. No additional installation is needed.
 
-## Skill Format
-
-Each skill follows the [Agent Skills specification](https://agentskills.io/specification):
-
-```
-guide-<component>/
-├── SKILL.md                # Required: YAML frontmatter + markdown instructions
-└── references/             # Optional: supplementary material
-    └── config-recipes.md   # Ready-to-use configuration examples
-```
-
-### Required YAML frontmatter
-
-```yaml
----
-name: guide-<component> # Must match the directory name
-description: >- # Describes what the skill does and when to use it
-  Expert guide for ...
----
-```
-
-### Optional frontmatter fields
-
-| Field | Description |
-| ----- | ----------- |
-| `license` | License name or reference to bundled file |
-| `compatibility` | Environment requirements (e.g., `Requires kubectl and Helm`) |
-| `metadata` | Arbitrary key-value map (e.g., `author`, `version`) |
-
 ## Creating a New Skill
 
-1. Create a directory under `skills/` matching the skill name (e.g., `skills/guide-<component>/`).
-2. Add a `SKILL.md` with YAML frontmatter (`name`, `description`) and markdown instructions.
-3. Optionally add `references/`, `scripts/`, or `assets/` subdirectories for supplementary material.
-4. Update the **Available Skills** table above.
-5. Add a reference in the root `AGENTS.md` under the **Agent Skills** section.
-6. Commit with scope `skills`: `feat(skills): add guide-<name> skill`.
+Use the `skill-creator` Claude Code plugin to create new skills. It handles the skill format, frontmatter, and directory structure automatically.
