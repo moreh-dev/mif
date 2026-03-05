@@ -151,15 +151,17 @@ After completing the version bump:
 Follow the project's [Git Commit Guidelines](../../CLAUDE.md):
 
 ```
-<issue-id>: chore(deploy): bump <component> version(s)
+chore(deploy): bump <component> version(s)
 
 - <component1>: <old-version> -> <new-version>
 - <component2>: <old-version> -> <new-version>
 ```
 
+The `<issue-id>:` prefix (e.g., `MAF-19235:` or `NO-ISSUE:`) is automatically added by the pre-commit hook based on the branch name. Do not include it manually.
+
 If website documentation is also updated in the same commit, use a broader scope or split into separate commits:
 
 ```
-<issue-id>: chore(deploy): bump odin to v0.8.0
-<issue-id>: docs(website): update docs for odin v0.8.0 spec changes
+chore(deploy): bump odin to v0.8.0
+docs(website): update docs for odin v0.8.0 spec changes
 ```
