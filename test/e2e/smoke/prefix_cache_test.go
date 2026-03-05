@@ -15,6 +15,8 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+const pcHeimdallVersion = "v0.7.1"
+
 const pcHeimdallValuesYAML = `
 global:
   imagePullSecrets:
@@ -24,24 +26,24 @@ config:
   apiVersion: inference.networking.x-k8s.io/v1alpha1
   kind: EndpointPickerConfig
   plugins:
+    - type: single-profile-handler
     - type: precise-prefix-cache-scorer
       parameters:
-        kvEventsConfig:
-          zmqEndpoint: tcp://0.0.0.0:5557
-          discoverPods: false
-        tokenProcessorConfig:
-          blockSize: 16
-          hashSeed: "42"
         indexerConfig:
           prefixStoreConfig:
             blockSize: 16
-          tokenizersPoolConfig:
-            modelName: openai-community/gpt2
-            hf:
-              tokenizersCacheDir: "/cache/tokenizers"
+          tokenProcessorConfig:
+            blockSize: 16
+            hashSeed: "42"
           kvBlockIndexConfig:
             enableMetrics: true
-    - type: single-profile-handler
+          tokenizersPoolConfig:
+            modelName: meta-llama/Llama-3.2-1B-Instruct
+            hf:
+              tokenizersCacheDir: "/mnt/models"
+        kvEventsConfig:
+          zmqEndpoint: "tcp://*:5557"
+          topicFilter: "kv@"
     - type: max-score-picker
   schedulingProfiles:
     - name: default
@@ -65,14 +67,19 @@ inferencePool:
 extraEnvVars:
   - name: PYTHONHASHSEED
     value: "42"
+  - name: HF_HOME
+    value: /mnt/models
+  - name: HF_HUB_OFFLINE
+    value: "1"
 
 extraVolumes:
-  - name: tokenizer-cache
-    emptyDir: {}
+  - name: models
+    persistentVolumeClaim:
+      claimName: models
 
 extraVolumeMounts:
-  - name: tokenizer-cache
-    mountPath: /cache/tokenizers
+  - name: models
+    mountPath: /mnt/models
 `
 
 const pcInferenceServiceYAML = `
@@ -86,43 +93,27 @@ spec:
   inferencePoolRefs:
     - name: heimdall
   templateRefs:
-    - name: sim
+    - name: vllm
+    - name: quickstart-vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2
+    - name: vllm-hf-hub-offline
   template:
     spec:
       containers:
         - name: main
           env:
-            - name: ISVC_MODEL_NAME
-              value: "openai-community/gpt2"
             - name: ISVC_USE_KV_EVENTS
               value: "true"
             - name: ISVC_EXTRA_ARGS
               value: >-
-                --max-model-len 8192
-                --max-num-seqs 128
-                --time-to-first-token 500ms
-                --time-to-first-token-std-dev 50ms
-                --inter-token-latency 50ms
-                --inter-token-latency-std-dev 5ms
-                --enable-kvcache=true
-                --kv-cache-size 1024
                 --block-size 16
-                --zmq-endpoint tcp://heimdall.{{ .Namespace }}.svc.cluster.local:5557
-                --event-batch-size 1
-                --tokenizers-cache-dir /cache/tokenizers
-                --zmq-max-connect-attempts 10
-            - name: POD_IP
-              valueFrom:
-                fieldRef:
-                  fieldPath: status.podIP
+                --max-num-seqs 128
             - name: PYTHONHASHSEED
               value: "42"
-          volumeMounts:
-            - name: tokenizer-cache
-              mountPath: /cache/tokenizers
-      volumes:
-        - name: tokenizer-cache
-          emptyDir: {}
+          resources:
+            requests:
+              mellanox/hca: "1"
+            limits:
+              mellanox/hca: "1"
 `
 
 const pcCurlJobYAML = `
@@ -147,7 +138,7 @@ spec:
         - -c
         args:
         - |
-          BODY='{"model":"openai-community/gpt2","prompt":"You are an expert assistant specializing in computer science, artificial intelligence, and machine learning. Provide detailed, well-structured, and technically accurate responses to all questions. Always include relevant historical context, key milestones, and recent developments in your explanations. Explain the evolution of transformer architectures from the original Attention Is All You Need paper to modern large language models, covering key innovations such as BERT, GPT series, T5, and their impact on natural language processing benchmarks and real-world applications.","max_tokens":32}'
+          BODY='{"model":"meta-llama/Llama-3.2-1B-Instruct","prompt":"You are an expert assistant specializing in computer science and artificial intelligence. Provide detailed and technically accurate responses to all questions. Explain the evolution of transformer architectures from the original Attention Is All You Need paper to modern large language models.","max_tokens":32}'
           METRICS_URL="{{ .MetricsURL }}"
 
           # First request to populate KV cache on one of the pods
@@ -205,7 +196,12 @@ spec:
           fi
 `
 
-var pcServiceName string
+var (
+	pcServiceName string
+
+	pvName  string
+	pvcName string
+)
 
 var _ = Describe("Prefix Cache Smoke", Label("smoke"), Ordered, func() {
 	SetDefaultEventuallyTimeout(settings.TimeoutShort)
@@ -218,6 +214,15 @@ var _ = Describe("Prefix Cache Smoke", Label("smoke"), Ordered, func() {
 		By("creating Gateway resources")
 		Expect(utils.CreateGatewayResource(envs.WorkloadNamespace, envs.GatewayClassName, envs.IstioRev)).To(Succeed())
 
+		var err error
+		By("creating model PV")
+		pvName, err = utils.CreateModelPV(envs.WorkloadNamespace)
+		Expect(err).NotTo(HaveOccurred(), "failed to create model PV")
+
+		By("creating model PVC")
+		pvcName, err = utils.CreateModelPVC(envs.WorkloadNamespace)
+		Expect(err).NotTo(HaveOccurred(), "failed to create model PVC")
+
 		By("installing Heimdall with precise-prefix-cache configuration")
 		data := struct {
 			GatewayClassName string
@@ -229,7 +234,7 @@ var _ = Describe("Prefix Cache Smoke", Label("smoke"), Ordered, func() {
 
 		values, err := utils.RenderTemplate(pcHeimdallValuesYAML, data)
 		Expect(err).NotTo(HaveOccurred(), "failed to render Heimdall values template")
-		Expect(utils.InstallHeimdall(envs.WorkloadNamespace, heimdallVersion, values)).To(Succeed())
+		Expect(utils.InstallHeimdall(envs.WorkloadNamespace, pcHeimdallVersion, values)).To(Succeed())
 
 		By("creating InferenceService with KV cache enabled")
 		svcData := utils.InferenceServiceData{
@@ -265,8 +270,6 @@ var _ = Describe("Prefix Cache Smoke", Label("smoke"), Ordered, func() {
 		gwServiceName, err := utils.GetGatewayServiceName(envs.WorkloadNamespace)
 		Expect(err).NotTo(HaveOccurred(), "failed to get Gateway service name")
 
-		// The sim only generates KV cache events for /v1/completions (text completion).
-		// /v1/chat/completions skips KV cache processing entirely.
 		By("creating curl job to verify prefix cache lookup hits")
 		metricsURL := fmt.Sprintf("http://heimdall.%s.svc.cluster.local:9090/metrics", envs.WorkloadNamespace)
 		jobName, err := createPCCurlJob(envs.WorkloadNamespace, fmt.Sprintf("http://%s/v1/completions", gwServiceName), metricsURL)
@@ -274,10 +277,7 @@ var _ = Describe("Prefix Cache Smoke", Label("smoke"), Ordered, func() {
 		defer deletePCCurlJob(envs.WorkloadNamespace, jobName)
 
 		By("waiting for curl job to complete")
-		if err := waitForPCCurlJob(envs.WorkloadNamespace, jobName); err != nil {
-			dumpPCDebugLogs(envs.WorkloadNamespace, jobName)
-			Fail(err.Error())
-		}
+		Expect(waitForPCCurlJob(envs.WorkloadNamespace, jobName)).To(Succeed())
 	})
 })
 
@@ -306,39 +306,6 @@ func createPCCurlJob(namespace string, baseURL string, metricsURL string) (strin
 		return "", fmt.Errorf("failed to create job: %w", err)
 	}
 	return utils.ParseResourceName(output), nil
-}
-
-func dumpPCDebugLogs(namespace string, jobName string) {
-	GinkgoWriter.Println("=== Curl job pod logs ===")
-	cmd := exec.Command("kubectl", "logs",
-		"-n", namespace, "-l", "job-name="+jobName,
-		"--tail=200", "--all-containers=true")
-	if output, err := utils.Run(cmd); err == nil {
-		GinkgoWriter.Println(output)
-	}
-
-	GinkgoWriter.Println("=== Sim pod logs (last 200 lines) ===")
-	cmd = exec.Command("kubectl", "logs",
-		"-n", namespace, "-l", "app.kubernetes.io/name=prefix-cache-test",
-		"--tail=200", "--all-containers=true")
-	if output, err := utils.Run(cmd); err == nil {
-		GinkgoWriter.Println(output)
-	}
-
-	GinkgoWriter.Println("=== Heimdall pod logs (last 200 lines) ===")
-	cmd = exec.Command("kubectl", "logs",
-		"-n", namespace, "-l", "app.kubernetes.io/name=heimdall",
-		"--tail=200", "--all-containers=true")
-	if output, err := utils.Run(cmd); err == nil {
-		GinkgoWriter.Println(output)
-	}
-
-	GinkgoWriter.Println("=== Heimdall ConfigMap ===")
-	cmd = exec.Command("kubectl", "get", "configmap", "heimdall",
-		"-n", namespace, "-o", "yaml")
-	if output, err := utils.Run(cmd); err == nil {
-		GinkgoWriter.Println(output)
-	}
 }
 
 func deletePCCurlJob(namespace string, jobName string) {

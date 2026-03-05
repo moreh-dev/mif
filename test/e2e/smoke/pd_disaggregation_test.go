@@ -15,6 +15,8 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+const pdHeimdallVersion = "v0.7.1"
+
 const pdHeimdallValuesYAML = `
 global:
   imagePullSecrets:
@@ -168,7 +170,7 @@ var _ = Describe("PD Disaggregation Smoke", Label("smoke"), Ordered, func() {
 
 		values, err := utils.RenderTemplate(pdHeimdallValuesYAML, data)
 		Expect(err).NotTo(HaveOccurred(), "failed to render Heimdall values template")
-		Expect(utils.InstallHeimdall(envs.WorkloadNamespace, heimdallVersion, values)).To(Succeed())
+		Expect(utils.InstallHeimdall(envs.WorkloadNamespace, pdHeimdallVersion, values)).To(Succeed())
 
 		By("creating prefill InferenceService")
 		svcData := utils.InferenceServiceData{Namespace: envs.WorkloadNamespace}
