@@ -10,10 +10,10 @@ dependencies:
   version: 0.8.0
 - name: odin
   repository: https://moreh-dev.github.io/helm-charts
-  version: v0.7.0-rc.3
+  version: v0.8.0-rc.1
 - name: odin-crd
   repository: https://moreh-dev.github.io/helm-charts
-  version: v0.7.0-rc.3
+  version: v0.8.0-rc.1
 - name: keda
   repository: https://kedacore.github.io/charts
   version: 2.18.0
@@ -32,5 +32,5 @@ dependencies:
 - name: vector
   repository: https://helm.vector.dev
   version: 0.39.0
-digest: sha256:43747e6f3e9b2c4ed24201bfe9a715a5fec3a5afc6f8323427a7aa9a46cd180c
-generated: "2026-03-02T02:13:00.478351845+09:00"
+digest: sha256:217da21f68f564644b79c31b84a31e93129b4c47cafb2b32266067f8a7610e50
+generated: "2026-03-05T21:41:06.838346076+09:00"
