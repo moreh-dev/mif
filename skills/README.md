@@ -36,7 +36,7 @@ gemini skills list
 
 **Compatibility notes:**
 
-- Both skills use the required `name` and `description` YAML frontmatter fields.
+- All skills use the required `name` and `description` YAML frontmatter fields.
 - Directory names match the `name` field in each `SKILL.md` (e.g., `guide-heimdall/SKILL.md` has `name: guide-heimdall`).
 - The `references/` subdirectory in each skill contains supplementary material (config recipes). Gemini CLI loads all resources at skill activation time rather than on-demand.
 

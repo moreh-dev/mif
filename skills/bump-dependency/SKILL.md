@@ -15,7 +15,7 @@ MIF depends on several components whose versions are tracked across Helm charts,
 | :----------------------- | :---------------- | :--------------------------------------------------------------------------------------------------------------------------------------- |
 | Odin + Odin-CRD          | Helm sub-chart    | `deploy/helm/moai-inference-framework/Chart.yaml`                                                                                        |
 | LWS                      | Helm sub-chart    | `deploy/helm/moai-inference-framework/Chart.yaml`                                                                                        |
-| Heimdall                 | External Helm chart | `website/docs/getting-started/quickstart.mdx`, `website/docs/reference/heimdall/`                                                        |
+| Heimdall                 | External Helm chart | `website/docs/getting-started/quickstart.mdx`                                                                                            |
 | heimdall-proxy           | Container image   | `deploy/helm/moai-inference-preset/templates/runtime-bases/*.helm.yaml`, `deploy/helm/moai-inference-preset/templates/utils/*.helm.yaml` |
 | moreh-vLLM preset        | Preset directory  | `deploy/helm/moai-inference-preset/templates/presets/moreh-vllm/`                                                                        |
 | moai-inference-framework | MIF chart release | `website/docs/getting-started/prerequisites.mdx`, `website/docs/getting-started/quickstart.mdx`                                          |
@@ -126,7 +126,7 @@ When a dependency introduces API, CRD, or configuration changes (not just a vers
    ```
 3. Update affected documentation: YAML examples, API reference pages, feature descriptions.
 4. Common search targets by component:
-   - **Odin CRD**: `InferenceService`, `InferenceServiceTemplate`, `InferencePool`, `templateRefs`
+   - **Odin CRD**: `InferenceService`, `InferenceServiceTemplate`, `templateRefs`, `inferencePoolRefs`
    - **Heimdall**: `InferencePool`, `EndpointPickerConfig`, plugin names/parameters, scheduling profiles, routing, load balancing
    - **LWS**: `LeaderWorkerSet`, worker configuration
    - **Presets**: model deployment guides, preset feature docs, `mif.moreh.io/*` labels
