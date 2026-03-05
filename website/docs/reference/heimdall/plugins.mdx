@@ -63,6 +63,17 @@ Filters for pods designated with the `decode` role. It retains pods that satisfy
 
 No parameters.
 
+### `context-length-aware`
+
+Filters pods based on context length ranges defined by a pod label. Pods whose label-defined range does not cover the estimated token count of the request are removed.
+
+This plugin also functions as a [scorer](#context-length-aware-1) — it can be registered once and used in both filter and scorer slots.
+
+| Parameter         | Type     | Default                              | Description                                                                                                |
+| :---------------- | :------- | :----------------------------------- | :--------------------------------------------------------------------------------------------------------- |
+| `label`           | `string` | `"mif.moreh.io/context-length-range"` | Pod label whose value specifies context length ranges (format: `"min-max"`, comma-separated for multiple). |
+| `enableFiltering` | `bool`   | `false`                              | Whether to filter out pods that do not match the request's context length.                                 |
+
 ---
 
 ## Scorers
@@ -238,6 +249,12 @@ No parameters.
 Scores pods based on their number of running requests.
 
 No parameters.
+
+### `context-length-aware` {#context-length-aware-1}
+
+Scores pods based on how well their context length range matches the estimated token count of the request. Pods with a matching range receive higher scores.
+
+This plugin also functions as a [filter](#context-length-aware) — see the filter section for parameters.
 
 ### `prefix-cache-scorer`
 
