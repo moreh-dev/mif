@@ -72,7 +72,7 @@ jobs:
       - name: Set workload namespace
         run: |
           COMMIT_HASH_SHORT=$(echo "${{ github.sha }}" | cut -c1-7)
-          echo "WORKLOAD_NAMESPACE=mif-e2e-${COMMIT_HASH_SHORT}" >> "$GITHUB_ENV"
+          echo "WORKLOAD_NAMESPACE=mif-perf-${COMMIT_HASH_SHORT}" >> "$GITHUB_ENV"
 
       - name: Set up kubeconfig
         run: |
