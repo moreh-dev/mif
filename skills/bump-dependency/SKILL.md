@@ -15,7 +15,7 @@ MIF depends on several components whose versions are tracked across Helm charts,
 | :----------------------- | :---------------- | :--------------------------------------------------------------------------------------------------------------------------------------- |
 | Odin + Odin-CRD          | Helm sub-chart    | `deploy/helm/moai-inference-framework/Chart.yaml`                                                                                        |
 | LWS                      | Helm sub-chart    | `deploy/helm/moai-inference-framework/Chart.yaml`                                                                                        |
-| Heimdall                 | Helm sub-chart    | `deploy/helm/moai-inference-framework/Chart.yaml` (ask user for chart repo if not present)                                               |
+| Heimdall                 | External Helm chart | Not a moai-inference-framework sub-chart by default. Ask user for chart repo and deployment details.                                    |
 | heimdall-proxy           | Container image   | `deploy/helm/moai-inference-preset/templates/runtime-bases/*.helm.yaml`, `deploy/helm/moai-inference-preset/templates/utils/*.helm.yaml` |
 | moreh-vLLM preset        | Preset directory  | `deploy/helm/moai-inference-preset/templates/presets/moreh-vllm/`                                                                        |
 | moai-inference-framework | MIF chart release | `website/docs/getting-started/prerequisites.mdx`, `website/docs/getting-started/quickstart.mdx`                                          |
@@ -23,9 +23,9 @@ MIF depends on several components whose versions are tracked across Helm charts,
 
 ## Procedures
 
-### 1. Helm Sub-chart Bump (Odin, Odin-CRD, LWS, Heimdall)
+### 1. Helm Sub-chart Bump (Odin, Odin-CRD, LWS)
 
-**Required information:** target version. For Heimdall, also ask the user for the chart repository URL if it is not already listed in `Chart.yaml`.
+**Required information:** target version.
 
 **Steps:**
 
@@ -36,11 +36,11 @@ MIF depends on several components whose versions are tracked across Helm charts,
 2. Run `make helm-dependency` to regenerate `Chart.lock` and download updated `.tgz` archives.
 3. Run `make helm-docs` to regenerate chart README documentation.
 4. Run `make helm-lint` to verify the chart is valid.
-5. Search `website/docs/` for references to the updated component and update if needed (see [Website Updates for Spec Changes](#5-website-updates-for-spec-changes)).
+5. Search `website/docs/` for references to the updated component and update if needed (see [Website Updates for Spec Changes](#6-website-updates-for-spec-changes)).
 
 **Adding a new sub-chart dependency:**
 
-If the component is not yet listed in `Chart.yaml`, add a new entry following the existing pattern:
+If a component is not yet listed in `Chart.yaml`, add a new entry following the existing pattern:
 
 ```yaml
 - name: <component>
@@ -56,7 +56,20 @@ Then add the corresponding enablement default in `values.yaml`:
   enabled: true
 ```
 
-### 2. heimdall-proxy Image Bump
+### 2. Heimdall Chart Bump
+
+Heimdall is deployed as a separate Helm chart, not as a sub-chart of moai-inference-framework.
+
+**Required information:** target version and chart repository URL (ask the user — the repo is private).
+
+**Steps:**
+
+1. Ask the user for the Heimdall chart repository URL and target version.
+2. Identify where Heimdall version references exist (ask user if unsure — may include website docs or deployment scripts).
+3. Update all identified references.
+4. Search `website/docs/` for Heimdall-related documentation and update if needed (see [Website Updates for Spec Changes](#6-website-updates-for-spec-changes)).
+
+### 3. heimdall-proxy Image Bump
 
 **Required information:** target image tag (e.g., `v0.7.0-rc.5`).
 
@@ -71,7 +84,7 @@ Then add the corresponding enablement default in `values.yaml`:
    - `deploy/helm/moai-inference-preset/templates/utils/*.helm.yaml`
 3. Verify no stale references remain by grepping for the old tag.
 
-### 3. moreh-vLLM Preset Update
+### 4. moreh-vLLM Preset Update
 
 **Required information:** new version string, which models/configs are affected, any changes to vLLM arguments or resource requirements.
 
@@ -85,7 +98,7 @@ Then add the corresponding enablement default in `values.yaml`:
 3. Follow the [preset naming convention](../../deploy/helm/AGENTS.md) defined in `deploy/helm/AGENTS.md`.
 4. Update runtime-base templates if the new version changes launch logic, proxy configuration, or disaggregation behavior.
 
-### 4. MIF Chart Release Update (moai-inference-framework, moai-inference-preset)
+### 5. MIF Chart Release Update (moai-inference-framework, moai-inference-preset)
 
 **Required information:** new chart release version (e.g., `v0.4.0`).
 
@@ -99,7 +112,7 @@ Then add the corresponding enablement default in `values.yaml`:
 4. Do **NOT** modify `website/versioned_docs/` — these are frozen snapshots of past versions.
 5. Do **NOT** modify `Chart.yaml` `version` or `appVersion` fields — these are set by CI/CD during release.
 
-### 5. Website Updates for Spec Changes
+### 6. Website Updates for Spec Changes
 
 When a dependency introduces API, CRD, or configuration changes (not just a version number bump):
 
