@@ -8,6 +8,7 @@ Skills follow the [Agent Skills open standard](https://agentskills.io/specificat
 
 | Skill | Description |
 | ----- | ----------- |
+| [bump-dependency](./bump-dependency/) | Dependency version update procedures for Helm charts, images, presets, and docs |
 | [guide-heimdall](./guide-heimdall/) | Heimdall scheduler configuration, plugin selection, and deployment |
 | [guide-odin](./guide-odin/) | Odin inference operator, InferenceService, templates, and parallelism |
 
