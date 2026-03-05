@@ -18,16 +18,122 @@ import (
 )
 
 const (
-	HeimdallValues       = "test/e2e/quality/config/heimdall-values.yaml.tmpl"
-	InferenceServicePath = "test/e2e/quality/config/inference-service.yaml.tmpl"
-	QualityBenchmarkJob  = "test/e2e/quality/config/quality-benchmark-job.yaml.tmpl"
-
-	QualityBenchmarkImage = "255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/moreh-llm-eval:v0.0.1"
-	MinMMLUScore          = 0.37
+	heimdallVersion    = "v0.7.1"
+	MMLUScoreThreshold = 0.37
 )
 
+const heimdallValuesYAML = `
+global:
+  imagePullSecrets:
+    - name: moreh-registry
+
+config:
+  apiVersion: inference.networking.x-k8s.io/v1alpha1
+  kind: EndpointPickerConfig
+  plugins:
+    - type: single-profile-handler
+    - type: queue-scorer
+    - type: max-score-picker
+  schedulingProfiles:
+    - name: default
+      plugins:
+        - pluginRef: queue-scorer
+        - pluginRef: max-score-picker
+
+gateway:
+  name: mif
+  gatewayClassName: {{ .GatewayClassName }}
+  {{- if .IstioRev }}
+  labels:
+    istio.io/rev: {{ .IstioRev }}
+  {{- end }}
+
+inferencePool:
+  targetPorts:
+    - number: 8000
+`
+
+const inferenceServiceYAML = `
+apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceService
+metadata:
+  name: vllm
+  namespace: {{ .Namespace }}
+spec:
+  replicas: 2
+  inferencePoolRefs:
+    - name: heimdall
+  templateRefs:
+    - name: vllm
+    - name: quickstart-vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2
+    - name: vllm-hf-hub-offline
+  template:
+    spec:
+      containers:
+        - name: main
+          resources:
+            requests:
+              mellanox/hca: "1"
+            limits:
+              mellanox/hca: "1"
+`
+
+const qualityBenchmarkJobYAML = `
+apiVersion: batch/v1
+kind: Job
+metadata:
+  generateName: quality-benchmark-
+  labels:
+    app: quality-benchmark
+  namespace: {{ .Namespace }}
+spec:
+  template:
+    metadata:
+      labels:
+        app: quality-benchmark
+        sidecar.istio.io/inject: "false"
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+        - name: moreh-registry
+      containers:
+      - name: quality-benchmark
+        image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/moreh-llm-eval:v0.0.1
+        command: ["/bin/bash", "-c"]
+        args:
+          - |
+            set -e
+            echo "Setting up writable cache layer..."
+            mkdir -p /tmp/hf_cache
+            cp -as /mnt/models/. /tmp/hf_cache/
+            
+            exec /usr/local/bin/run \
+              --eval "mmlu" \
+              --model "meta-llama/Llama-3.2-1B-Instruct" \
+              --host "{{.GatewayHost}}" \
+              --port "80" \
+        volumeMounts:
+          - name: model
+            mountPath: /mnt/models
+          - name: writable-cache
+            mountPath: /tmp/hf_cache
+        env:
+          - name: HF_HUB_OFFLINE
+            value: "1"
+          - name: HF_DATASETS_OFFLINE
+            value: "1"
+          - name: HF_HOME
+            value: /tmp/hf_cache
+      volumes:
+        - name: model
+          persistentVolumeClaim:
+            claimName: models
+        - name: writable-cache
+          emptyDir: {}
+`
+
 var (
-	vllmServiceName string
+	serviceName string
 
 	pvName  string
 	pvcName string
@@ -38,8 +144,6 @@ var _ = Describe("Quality Benchmark", Label("quality"), Ordered, func() {
 	SetDefaultEventuallyPollingInterval(settings.IntervalShort)
 
 	BeforeAll(func() {
-		isKind := !envs.SkipKind
-
 		By("creating workload namespace")
 		Expect(utils.CreateWorkloadNamespace(envs.WorkloadNamespace, envs.MIFNamespace)).To(Succeed())
 
@@ -48,60 +152,34 @@ var _ = Describe("Quality Benchmark", Label("quality"), Ordered, func() {
 
 		By("installing Heimdall")
 		data := struct {
-			MorehRegistrySecretName string
-			GatewayName             string
-			GatewayClass            string
-			IstioRev                string
+			GatewayClassName string
+			IstioRev         string
 		}{
-			MorehRegistrySecretName: settings.MorehRegistrySecretName,
-			GatewayName:             settings.GatewayName,
-			GatewayClass:            envs.GatewayClassName,
-			IstioRev:                envs.IstioRev,
+			GatewayClassName: envs.GatewayClassName,
+			IstioRev:         envs.IstioRev,
 		}
 
-		values, err := utils.RenderTemplate(HeimdallValues, data)
+		values, err := utils.RenderTemplate(heimdallValuesYAML, data)
 		Expect(err).NotTo(HaveOccurred(), "failed to render Heimdall values template")
-		Expect(utils.InstallHeimdall(envs.WorkloadNamespace, values)).To(Succeed())
+		Expect(utils.InstallHeimdall(envs.WorkloadNamespace, heimdallVersion, values)).To(Succeed())
 
-		if envs.SkipKind {
-			By("creating model PV")
-			pvName, err = utils.CreateModelPV(envs.WorkloadNamespace)
-			Expect(err).NotTo(HaveOccurred(), "failed to create model PV")
+		By("creating model PV")
+		pvName, err = utils.CreateModelPV(envs.WorkloadNamespace)
+		Expect(err).NotTo(HaveOccurred(), "failed to create model PV")
 
-			By("creating model PVC")
-			pvcName, err = utils.CreateModelPVC(envs.WorkloadNamespace)
-			Expect(err).NotTo(HaveOccurred(), "failed to create model PVC")
-		}
+		By("creating model PVC")
+		pvcName, err = utils.CreateModelPVC(envs.WorkloadNamespace)
+		Expect(err).NotTo(HaveOccurred(), "failed to create model PVC")
 
 		By("creating InferenceServices")
-		// PD disaggregation environment cannot run tests normally, so we test in aggregate environment
-		var vllmData utils.InferenceServiceData
-		if isKind {
-			vllmData = utils.InferenceServiceData{
-				Name:         "vllm",
-				Namespace:    envs.WorkloadNamespace,
-				Replicas:     2,
-				TemplateRefs: []string{"sim"},
-				HFToken:      envs.HFToken,
-				HFEndpoint:   envs.HFEndpoint,
-				IsKind:       isKind,
-			}
-		} else {
-			vllmData = utils.InferenceServiceData{
-				Name:         "vllm",
-				Namespace:    envs.WorkloadNamespace,
-				Replicas:     2,
-				TemplateRefs: []string{"vllm", envs.TestTemplateDecode, "vllm-hf-hub-offline"},
-				HFToken:      envs.HFToken,
-				HFEndpoint:   envs.HFEndpoint,
-				IsKind:       isKind,
-			}
+		vllmData := utils.InferenceServiceData{
+			Namespace: envs.WorkloadNamespace,
 		}
-		vllmServiceName, err = utils.CreateInferenceService(envs.WorkloadNamespace, InferenceServicePath, vllmData)
+		serviceName, err = utils.CreateInferenceService(envs.WorkloadNamespace, inferenceServiceYAML, vllmData)
 		Expect(err).NotTo(HaveOccurred(), "failed to create vllm InferenceService")
 
 		By("waiting for vllm InferenceService to be ready")
-		Expect(waitForInferenceService(envs.WorkloadNamespace, vllmServiceName)).To(Succeed())
+		Expect(waitForInferenceService(envs.WorkloadNamespace, serviceName)).To(Succeed())
 	})
 
 	AfterAll(func() {
@@ -110,15 +188,13 @@ var _ = Describe("Quality Benchmark", Label("quality"), Ordered, func() {
 		}
 
 		By("deleting InferenceServices")
-		utils.DeleteInferenceService(envs.WorkloadNamespace, vllmServiceName)
+		utils.DeleteInferenceService(envs.WorkloadNamespace, serviceName)
 
-		if envs.SkipKind {
-			By("deleting model PVC")
-			utils.DeleteModelPVC(envs.WorkloadNamespace, pvcName)
+		By("deleting model PVC")
+		utils.DeleteModelPVC(envs.WorkloadNamespace, pvcName)
 
-			By("deleting model PV")
-			utils.DeleteModelPV(pvName)
-		}
+		By("deleting model PV")
+		utils.DeleteModelPV(pvName)
 
 		By("deleting Heimdall")
 		utils.UninstallHeimdall(envs.WorkloadNamespace)
@@ -130,13 +206,13 @@ var _ = Describe("Quality Benchmark", Label("quality"), Ordered, func() {
 		utils.DeleteNamespace(envs.WorkloadNamespace)
 	})
 
-	It("should run quality benchmarks", func() {
+	It("should run quality benchmarks (mmlu)", func() {
 		By("getting Gateway service name")
 		serviceName, err := utils.GetGatewayServiceName(envs.WorkloadNamespace)
 		Expect(err).NotTo(HaveOccurred(), "failed to get Gateway service name")
 
 		By("creating quality benchmark job")
-		jobName, err := createQualityBenchmarkJob(envs.WorkloadNamespace, serviceName, pvcName)
+		jobName, err := createQualityBenchmarkJob(envs.WorkloadNamespace, serviceName)
 		Expect(err).NotTo(HaveOccurred(), "failed to create quality benchmark job")
 		defer deleteQualityBenchmarkJob(envs.WorkloadNamespace, jobName)
 
@@ -151,17 +227,11 @@ var _ = Describe("Quality Benchmark", Label("quality"), Ordered, func() {
 			if err != nil {
 				return false
 			}
-			return checkQualityBenchmarkJobLogs(envs.QualityBenchmarks, logs) == nil
+			return checkQualityBenchmarkJobLogs("mmlu", logs) == nil
 		}, settings.TimeoutShort, settings.IntervalShort).Should(BeTrue(), "failed to find job logs")
 
-		isKind := !envs.SkipKind
-		if isKind {
-			By("skipping quality benchmark results validation (kind cluster)")
-			return
-		}
-
 		By("validating quality benchmark results")
-		Expect(validateQualityBenchmarkResults(envs.QualityBenchmarks, logs)).To(Succeed())
+		Expect(validateQualityBenchmarkResults("mmlu", logs)).To(Succeed())
 	})
 })
 
@@ -174,39 +244,18 @@ func waitForInferenceService(namespace string, name string) error {
 	return err
 }
 
-func createQualityBenchmarkJob(namespace string, serviceName string, pvcName string) (string, error) {
+func createQualityBenchmarkJob(namespace string, serviceName string) (string, error) {
 	type jobTemplateData struct {
-		Namespace             string
-		ModelName             string
-		GatewayHost           string
-		GatewayPort           string
-		HFToken               string
-		HFEndpoint            string
-		Benchmarks            string
-		Limit                 string
-		ImagePullSecret       string
-		IsKind                bool
-		QualityBenchmarkImage string
-		PVCName               string
+		Namespace   string
+		GatewayHost string
 	}
 
-	isKind := !envs.SkipKind
 	data := jobTemplateData{
-		Namespace:             namespace,
-		ModelName:             envs.TestModel,
-		GatewayHost:           serviceName,
-		GatewayPort:           "80",
-		HFToken:               envs.HFToken,
-		HFEndpoint:            envs.HFEndpoint,
-		Benchmarks:            envs.QualityBenchmarks,
-		Limit:                 envs.QualityBenchmarkLimit,
-		ImagePullSecret:       settings.MorehRegistrySecretName,
-		IsKind:                isKind,
-		QualityBenchmarkImage: QualityBenchmarkImage,
-		PVCName:               pvcName,
+		Namespace:   namespace,
+		GatewayHost: serviceName,
 	}
 
-	jobYAML, err := utils.RenderTemplate(QualityBenchmarkJob, data)
+	jobYAML, err := utils.RenderTemplate(qualityBenchmarkJobYAML, data)
 	if err != nil {
 		return "", fmt.Errorf("failed to render job template: %w", err)
 	}
@@ -270,7 +319,7 @@ func checkMMLULogs(logs string) error {
 		}
 	}
 
-	if !(strings.Contains(logs, "|") && strings.Contains(logs, "mmlu")) {
+	if !strings.Contains(logs, "|") || !strings.Contains(logs, "mmlu") {
 		return fmt.Errorf("MMLU result row not found in logs")
 	}
 
@@ -342,11 +391,11 @@ func validateMMLUResults(logs string) error {
 		return fmt.Errorf("failed to extract MMLU score: %w", err)
 	}
 
-	if score < MinMMLUScore {
-		return fmt.Errorf("MMLU score %.4f is below minimum threshold %.2f", score, MinMMLUScore)
+	if score < MMLUScoreThreshold {
+		return fmt.Errorf("MMLU score %.4f is below minimum threshold %.2f", score, MMLUScoreThreshold)
 	}
 
-	_, _ = fmt.Fprintf(GinkgoWriter, "MMLU score %.4f is above minimum threshold %.2f\n", score, MinMMLUScore)
+	_, _ = fmt.Fprintf(GinkgoWriter, "MMLU score %.4f is above minimum threshold %.2f\n", score, MMLUScoreThreshold)
 
 	return nil
 }

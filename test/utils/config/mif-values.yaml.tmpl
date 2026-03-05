@@ -3,4 +3,8 @@ ecrTokenRefresher:
     accessKeyId: {{ .AWSAccessKeyID }}
     secretAccessKey: {{ .AWSSecretAccessKey }}
 
-fullnameOverride: mif
+loki:
+  chunksCache:
+    allocatedMemory: 2048
+  resultsCache:
+    allocatedMemory: 512

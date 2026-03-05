@@ -40,10 +40,22 @@ helm-dependency: ## Update Helm chart dependencies.
 
 ##@ Testing
 
+KIND_CLUSTER ?= mif-e2e
+
 .PHONY: test-e2e
-test-e2e: ## Run all E2E tests (performance + quality).
+test-e2e: ## Run all E2E tests (smoke + performance + quality).
+	@$(MAKE) test-e2e-smoke
 	@$(MAKE) test-e2e-performance
 	@$(MAKE) test-e2e-quality
+
+.PHONY: test-e2e-smoke
+test-e2e-smoke: ## Run smoke E2E tests.
+	@mkdir -p test-reports
+	@go test -tags=e2e -v ./test/e2e/smoke/... -timeout 30m \
+		-ginkgo.v \
+		-ginkgo.label-filter=smoke \
+		-ginkgo.junit-report="$(CURDIR)/test-reports/junit-smoke.xml" \
+		-ginkgo.json-report="$(CURDIR)/test-reports/report-smoke.json"
 
 .PHONY: test-e2e-performance
 test-e2e-performance: ## Run inference-perf performance tests.
@@ -63,10 +75,22 @@ test-e2e-quality: ## Run quality benchmark tests.
 		-ginkgo.junit-report="$(CURDIR)/test-reports/junit-quality.xml" \
 		-ginkgo.json-report="$(CURDIR)/test-reports/report-quality.json"
 
-.PHONY: test-e2e-clean
-test-e2e-clean: ## Manually clean up E2E test resources.
-	@echo "Deleting kind cluster 'mif-e2e' (if it exists)..."
-	@kind get clusters | grep -q '^mif-e2e$$' && kind delete cluster --name mif-e2e || echo "kind cluster 'mif-e2e' not found, nothing to delete."
+.PHONY: setup-test-e2e
+setup-test-e2e: ## Create Kind cluster for e2e tests (idempotent).
+	@command -v kind >/dev/null 2>&1 || { echo "kind is not installed."; exit 1; }
+	@case "$$(kind get clusters)" in \
+		*"$(KIND_CLUSTER)"*) echo "Kind cluster '$(KIND_CLUSTER)' already exists." ;; \
+		*) echo "Creating Kind cluster '$(KIND_CLUSTER)'..."; kind create cluster --name $(KIND_CLUSTER) ;; \
+	esac
+
+.PHONY: cleanup-test-e2e
+cleanup-test-e2e: ## Delete Kind cluster used for e2e tests.
+	@kind delete cluster --name $(KIND_CLUSTER) 2>/dev/null || true
+
+.PHONY: test-e2e-kind
+test-e2e-kind: setup-test-e2e ## Run smoke e2e tests on a local Kind cluster.
+	@SKIP_PREREQUISITE=false $(MAKE) test-e2e-smoke
+	@$(MAKE) cleanup-test-e2e
 
 .PHONY: test-e2e-env
 test-e2e-env: ## Display E2E test environment variables (auto-generated from code).

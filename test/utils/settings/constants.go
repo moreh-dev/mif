@@ -5,16 +5,15 @@ package settings
 
 import "time"
 
-// Kind Cluster
-const (
-	KindClusterName = "mif-e2e"
-)
-
 // Cert Manager
 const (
-	CertManagerHelmRepoURL = "oci://quay.io/jetstack/charts/cert-manager"
-	CertManagerVersion     = "v1.18.4"
-	CertManagerNamespace   = "cert-manager"
+	CertManagerVersion   = "v1.18.4"
+	CertManagerNamespace = "cert-manager"
+)
+
+// MIF
+const (
+	MIFValuesTemplate = "test/utils/config/mif-values.yaml.tmpl"
 )
 
 // Gateway API
@@ -25,7 +24,6 @@ const (
 
 // Istio
 const (
-	IstioHelmRepoURL     = "https://istio-release.storage.googleapis.com/charts"
 	IstioVersion         = "1.28.1"
 	IstioNamespace       = "istio-system"
 	IstiodValuesFile     = "test/utils/config/istiod-values.yaml"
@@ -34,8 +32,6 @@ const (
 
 // Kgateway
 const (
-	KgatewayCrdsHelmRepoURL = "oci://cr.kgateway.dev/kgateway-dev/charts/kgateway-crds"
-	KgatewayHelmRepoURL     = "oci://cr.kgateway.dev/kgateway-dev/charts/kgateway"
 	KgatewayCrdsVersion     = "v2.1.1"
 	KgatewayVersion         = "v2.1.1"
 	KgatewayNamespace       = "kgateway-system"
@@ -43,27 +39,10 @@ const (
 	KgatewayGatewayTemplate = "test/utils/config/gateway-kgateway.yaml.tmpl"
 )
 
-// MIF
-const (
-	MorehHelmRepoURL  = "https://moreh-dev.github.io/helm-charts"
-	MIFValuesTemplate = "test/utils/config/mif-values.yaml.tmpl"
-)
-
-// Heimdall
-const (
-	HeimdallVersion = "v0.6.1"
-)
-
 // Models
 const (
 	ModelPV  = "test/utils/config/model-pv.yaml.tmpl"
 	ModelPVC = "test/utils/config/model-pvc.yaml.tmpl"
-)
-
-// Inference service
-const (
-	GatewayName             = "mif"
-	MorehRegistrySecretName = "moreh-registry"
 )
 
 // Timeout and interval constants for E2E tests

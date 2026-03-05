@@ -43,11 +43,14 @@ func PrintEnvVarsHelp() {
 	}
 
 	fmt.Println()
-	fmt.Println("Inference Image defaults:")
-	fmt.Println("  If not set, uses default based on cluster type:")
-	fmt.Println("  - kind: ghcr.io/llm-d/llm-d-inference-sim:v0.6.1")
-	fmt.Println("  - kubeconfig: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/quickstart/moreh-vllm:20250915.1")
+	fmt.Println("Note: Model names, template refs, S3 region/bucket, and other fixed")
+	fmt.Println("configuration values are hardcoded in test code and settings/constants.go.")
+	fmt.Println("Only execution settings (SKIP_*), credentials, and environment-specific")
+	fmt.Println("values (WORKLOAD_NAMESPACE, ISTIO_REV) are configurable via env vars.")
 	fmt.Println()
-	fmt.Println("Example:")
-	fmt.Println("  SKIP_KIND=true SKIP_PREREQUISITE=true make test-e2e")
+	fmt.Println("Example (product cluster with kubeconfig):")
+	fmt.Println("  SKIP_PREREQUISITE=true ISTIO_REV=1-28-1 make test-e2e-performance")
+	fmt.Println()
+	fmt.Println("Example (local Kind cluster with defaults):")
+	fmt.Println("  make test-e2e-kind")
 }

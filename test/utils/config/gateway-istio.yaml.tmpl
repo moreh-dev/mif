@@ -6,6 +6,10 @@ data:
   service: |
     spec:
       type: ClusterIP
+      ports:
+        - name: http
+          port: 80
+          targetPort: http
   deployment: |
     spec:
       template:
@@ -19,12 +23,15 @@ data:
             - name: istio-proxy
               resources:
                 limits: null
+              ports:
+                - name: http
+                  containerPort: 80
 
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
-  name: {{ .GatewayName }}
+  name: mif
   {{- if .IstioRev }}
   labels:
     istio.io/rev: {{ .IstioRev }}

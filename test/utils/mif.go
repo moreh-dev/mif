@@ -20,7 +20,7 @@ func renderMIFValues(awsAccessKeyID, awsSecretAccessKey string) (string, error) 
 		AWSSecretAccessKey: awsSecretAccessKey,
 	}
 
-	return RenderTemplate(settings.MIFValuesTemplate, data)
+	return renderTemplateFile(settings.MIFValuesTemplate, data)
 }
 
 // InstallMIF installs MIF infrastructure if not already installed.

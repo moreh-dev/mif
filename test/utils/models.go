@@ -19,7 +19,7 @@ func CreateModelPV(namespace string) (string, error) {
 		Namespace: namespace,
 	}
 
-	rendered, err := RenderTemplate(settings.ModelPV, data)
+	rendered, err := renderTemplateFile(settings.ModelPV, data)
 	if err != nil {
 		return "", fmt.Errorf("failed to render model PV template: %w", err)
 	}
@@ -54,7 +54,7 @@ func CreateModelPVC(namespace string) (string, error) {
 		Namespace: namespace,
 	}
 
-	rendered, err := RenderTemplate(settings.ModelPVC, data)
+	rendered, err := renderTemplateFile(settings.ModelPVC, data)
 	if err != nil {
 		return "", fmt.Errorf("failed to render model PVC template: %w", err)
 	}

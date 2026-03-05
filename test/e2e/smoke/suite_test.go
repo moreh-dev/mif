@@ -1,7 +1,7 @@
 //go:build e2e && !printenv
 // +build e2e,!printenv
 
-package quality
+package smoke
 
 import (
 	"fmt"
@@ -18,10 +18,10 @@ var (
 	isGatewayAPIAlreadyInstalled  bool
 )
 
-func TestQuality(t *testing.T) {
+func TestSmoke(t *testing.T) {
 	RegisterFailHandler(Fail)
-	_, _ = fmt.Fprintf(GinkgoWriter, "Starting MIF quality test suite\n")
-	RunSpecs(t, "MIF Quality Suite")
+	_, _ = fmt.Fprintf(GinkgoWriter, "Starting MIF smoke test suite\n")
+	RunSpecs(t, "MIF Smoke Suite")
 }
 
 var _ = BeforeSuite(func() {
