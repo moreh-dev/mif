@@ -26,11 +26,12 @@ Rules specific to the `test/` directory. General contribution guidelines are in 
 - **Test suite layout**:
   - Split tests by purpose under `test/e2e`: `smoke`, `performance`, `quality`.
   - In each directory, define shared Ginkgo configuration (labels, timeouts, common hooks) in `suite_test.go`, and keep scenarios in separate `*_test.go` files.
-  - Shared configuration values (timeouts, intervals, infrastructure versions, template paths) must come from the `test/utils/settings` package instead of hard-coded constants in test files.
-  - Suite-level setup/teardown (prerequisite installation such as CertManager, MIF, Gateway API, Gateway Controller) is defined directly in each `suite_test.go` via `BeforeSuite`/`AfterSuite`.
+  - Shared configuration values (timeouts, intervals, infrastructure component versions such as CertManager/Istio/Kgateway, template paths) must come from the `test/utils/settings` package instead of hard-coded constants in test files.
+  - Suite-level setup/teardown (prerequisite installation such as CertManager, MIF, MIF Preset, Gateway API, Gateway Controller) is defined directly in each `suite_test.go` via `BeforeSuite`/`AfterSuite`.
 
 - **Environment variable management**:
   - Environment variables are only for: execution settings (`SKIP_PREREQUISITE`, `SKIP_CLEANUP`), credentials (`AWS_*`, `S3_*`), and environment-specific values (`MIF_NAMESPACE`, `WORKLOAD_NAMESPACE`, `GATEWAY_CLASS_NAME`, `ISTIO_REV`).
+  - `SKIP_PREREQUISITE` defaults to `true` — on product clusters with pre-installed infrastructure, tests run without prerequisite setup. Set to `false` for standalone environments (e.g. Kind).
   - Manage all E2E environment variables centrally in `test/e2e/envs/env_vars.go`.
   - Do not add new environment variables for fixed configuration values. Instead, hardcode them in `test/utils/settings/constants.go` or in the test file that uses them.
   - Do not call `os.Getenv` directly in test code.
@@ -44,9 +45,12 @@ Rules specific to the `test/` directory. General contribution guidelines are in 
 - **Utility reuse**:
   - Implement all cluster manipulation logic (namespace creation, Gateway create/delete, Heimdall install/uninstall, InferenceService create/delete, Model PV/PVC create/delete, etc.) in the `test/utils` package and call only those helpers from tests.
   - Follow this pattern for scenario flow:
-    - `BeforeAll`: create namespace → create Gateway resource → install Heimdall → create InferenceServices → wait until they are Ready.
+    - `BeforeAll`: create namespace → create Gateway resource → (if needed: create Model PV/PVC) → install Heimdall → create InferenceServices → wait until they are Ready.
     - `AfterAll`: if `envs.SkipCleanup` is `false`, clean up the above resources in reverse order.
     - `It(...)`: render the Job template → create the Job with `kubectl create -f -` → wait for completion with `kubectl wait` → collect logs and perform domain-specific assertions.
+
+- **Keeping this document in sync**:
+  - When changing test structure (adding/removing environment variables, modifying `BeforeSuite`/`BeforeAll` flow, adding new test categories, or reorganizing template/config paths), update this `AGENTS.md` in the same commit.
 
 - **Makefile and workflow integration**:
   - Provide separate Make targets per test purpose (`test-e2e-smoke`, `test-e2e-performance`, `test-e2e-quality`) so that CI can run them independently.
