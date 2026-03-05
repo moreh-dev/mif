@@ -66,7 +66,8 @@ Heimdall is deployed as a separate Helm chart (`moreh/heimdall` from `https://mo
 
 1. Update the `--version` in `website/docs/getting-started/quickstart.mdx` (the `helm upgrade -i heimdall moreh/heimdall` command).
 2. Search `website/docs/` for other Heimdall version references and update them.
-3. If the new version introduces config or API changes, clone or fetch the Heimdall source repo and review what changed, then update the reference docs accordingly:
+3. Clone the Heimdall source repo with `--recurse-submodules` and review what changed between the old and new version tags. Heimdall uses Git submodules for its core components, so check both the main repo diff (`git diff <old-tag>..<new-tag>`) and the submodule commit ranges for plugin or API changes.
+4. Update the reference docs based on the changes found:
    - `website/docs/reference/heimdall/api-reference.mdx` — InferencePool and related CRD fields
    - `website/docs/reference/heimdall/plugins.mdx` — plugin parameters, new plugins, removed plugins
    - `website/docs/getting-started/quickstart.mdx` — `heimdall-values.yaml` example if config structure changed
