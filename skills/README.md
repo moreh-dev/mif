@@ -8,6 +8,7 @@ Skills follow the [Agent Skills open standard](https://agentskills.io/specificat
 
 | Skill | Description |
 | ----- | ----------- |
+| [bump-dependency](./bump-dependency/) | Dependency version update procedures for Helm charts, images, presets, and docs |
 | [guide-heimdall](./guide-heimdall/) | Heimdall scheduler configuration, plugin selection, and deployment |
 | [guide-odin](./guide-odin/) | Odin inference operator, InferenceService, templates, and parallelism |
 
@@ -35,7 +36,7 @@ gemini skills list
 
 **Compatibility notes:**
 
-- Both skills use the required `name` and `description` YAML frontmatter fields.
+- All skills use the required `name` and `description` YAML frontmatter fields.
 - Directory names match the `name` field in each `SKILL.md` (e.g., `guide-heimdall/SKILL.md` has `name: guide-heimdall`).
 - The `references/` subdirectory in each skill contains supplementary material (config recipes). Gemini CLI loads all resources at skill activation time rather than on-demand.
 
@@ -101,55 +102,7 @@ claude plugin marketplace update mif       # Update marketplace to pick up new s
 claude --plugin-dir ./skills
 ```
 
-#### How the plugin works
-
-The plugin is defined by two files:
-
-| File | Purpose |
-| ---- | ------- |
-| `.claude-plugin/marketplace.json` (repo root) | Registers the MIF repository as a Claude Code marketplace |
-| `skills/.claude-plugin/plugin.json` | Plugin manifest that exposes the skills directory |
-
-The `plugin.json` uses `"skills": "./"` to tell Claude Code that skill directories (`guide-heimdall/`, `guide-odin/`) are located in the plugin root itself, rather than in a nested `skills/` subdirectory.
-
-### Cursor
-
-Skills are automatically discoverable via the `CLAUDE.md` symlink, which references the skills directory. No additional installation is needed.
-
-## Skill Format
-
-Each skill follows the [Agent Skills specification](https://agentskills.io/specification):
-
-```
-guide-<component>/
-├── SKILL.md                # Required: YAML frontmatter + markdown instructions
-└── references/             # Optional: supplementary material
-    └── config-recipes.md   # Ready-to-use configuration examples
-```
-
-### Required YAML frontmatter
-
-```yaml
----
-name: guide-<component> # Must match the directory name
-description: >- # Describes what the skill does and when to use it
-  Expert guide for ...
----
-```
-
-### Optional frontmatter fields
-
-| Field | Description |
-| ----- | ----------- |
-| `license` | License name or reference to bundled file |
-| `compatibility` | Environment requirements (e.g., `Requires kubectl and Helm`) |
-| `metadata` | Arbitrary key-value map (e.g., `author`, `version`) |
 
 ## Creating a New Skill
 
-1. Create a directory under `skills/` matching the skill name (e.g., `skills/guide-<component>/`).
-2. Add a `SKILL.md` with YAML frontmatter (`name`, `description`) and markdown instructions.
-3. Optionally add `references/`, `scripts/`, or `assets/` subdirectories for supplementary material.
-4. Update the **Available Skills** table above.
-5. Add a reference in the root `AGENTS.md` under the **Agent Skills** section.
-6. Commit with scope `skills`: `feat(skills): add guide-<name> skill`.
+Use the `skill-creator` Claude Code plugin to create new skills. It handles the skill format, frontmatter, and directory structure automatically.

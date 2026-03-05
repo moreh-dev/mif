@@ -97,6 +97,8 @@ Rules specific to the `deploy/helm/` directory. General contribution guidelines 
     AWS_SECRET_ACCESS_KEY: {{ (index .Values.minio.users 0).secretKey | quote }}
   ```
 
+- The MinIO subchart's post-install hooks for bucket/user/policy creation cause a **deadlock** when a consumer (e.g., Loki) depends on the bucket at startup: the consumer waits for the bucket, Helm waits for the consumer, and the hook never fires. To break this, provision buckets, users, and policies via a **regular Job** (not a Helm hook) that runs as soon as MinIO becomes reachable. Define the resources in `values.yaml` under `minio.buckets`, `minio.users`, and `minio.policies` as usual, but the init Job — not the subchart hooks — is responsible for actually creating them.
+
 ### Helm `tpl` Passthrough — Vector Label Syntax
 
 - The vector chart renders `customConfig` through Helm's `tpl` function (`{{ tpl (toYaml .Values.customConfig) . | indent 4 }}`). This means any `{{ }}` expression in `customConfig` is evaluated as a Go template at render time.

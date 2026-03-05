@@ -1,14 +1,6 @@
 ---
 name: guide-odin
-description: >-
-  Expert guide for deploying and managing inference services with Odin, the
-  MoAI Inference Framework operator. Use this skill when working with
-  InferenceService, InferenceServiceTemplate, templateRefs, parallelism
-  (tensor, pipeline, data, expert), workerTemplate, runtime-bases, presets,
-  LeaderWorkerSet, rolloutStrategy, or troubleshooting Odin workloads in
-  Kubernetes clusters. Also use when questions involve deploying a model on
-  Kubernetes, serving LLMs with vLLM, GPU resource configuration for
-  inference, multi-node model deployment, or HuggingFace model serving.
+description: Expert guide for deploying and managing inference services with Odin, the MoAI Inference Framework operator. Use this skill when working with InferenceService, InferenceServiceTemplate, templateRefs, parallelism (tensor, pipeline, data, expert), workerTemplate, runtime-bases, presets, LeaderWorkerSet, rolloutStrategy, or troubleshooting Odin workloads in Kubernetes clusters. Also use when questions involve deploying a model on Kubernetes, serving LLMs with vLLM, GPU resource configuration for inference, multi-node model deployment, or HuggingFace model serving.
 ---
 
 # Odin Inference Operator — Expert Guide
