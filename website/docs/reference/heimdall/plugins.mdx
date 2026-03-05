@@ -4,6 +4,12 @@ sidebar_label: Plugins
 sidebar_position: 2
 ---
 
+All plugins are declared in the top-level [`plugins`](./api-reference.mdx#pluginspec) list of `EndpointPickerConfig`. Heimdall assigns each plugin to the appropriate extension point based on the interfaces it implements. A single plugin can implement multiple interfaces (e.g., `context-length-aware` acts as both a Filter and a Scorer).
+
+- **Profile handlers** manage the outer scheduling loop — selecting which profiles to run and aggregating results. They are **not** referenced from `schedulingProfiles`.
+- **Filter, Scorer, and Picker** run within a [`SchedulingProfile`](./api-reference.mdx#schedulingprofile). Each profile executes them in order: Filters → Scorers → Picker. These are the only plugin types that can be referenced in `schedulingProfiles[].plugins[].pluginRef`.
+- **Response plugins** hook into the response lifecycle after scheduling. They are automatically activated when declared in the top-level `plugins` list and are **not** referenced from `schedulingProfiles`.
+
 ## Profile handlers
 
 ### `single-profile-handler`
@@ -250,7 +256,7 @@ Scores pods based on how well their context length range matches the estimated t
 | Parameter         | Type     | Default                               | Description                                                                                                |
 | :---------------- | :------- | :------------------------------------ | :--------------------------------------------------------------------------------------------------------- |
 | `label`           | `string` | `"mif.moreh.io/context-length-range"` | Pod label whose value specifies context length ranges (format: `"min-max"`, comma-separated for multiple). |
-| `enableFiltering` | `bool`   | `false`                               | Whether to also filter out pods that do not match the request's context length.                             |
+| `enableFiltering` | `bool`   | `false`                               | Whether to also filter out pods that do not match the request's context length.                            |
 
 ### `prefix-cache-scorer`
 
@@ -295,9 +301,15 @@ Picks pod(s) based on weighted random sampling derived from their scores.
 
 ## Response plugins
 
+Response plugins hook into the response lifecycle. They are invoked by the request-control layer in the following order:
+
+1. **ResponseReceived** — Called when response headers arrive from the model server, indicating the beginning of response handling.
+2. **ResponseStreaming** — Called after each chunk of a streaming response is sent.
+3. **ResponseComplete** — Called when the request lifecycle terminates (response fully sent, or request failed/disconnected after a pod was scheduled). This is the final cleanup hook.
+
 ### `response-header-handler`
 
-Adds serving pod information to the response headers.
+Adds serving pod information to the response headers. Implements the ResponseReceived extension point.
 
 - `x-decoder-host-port`: Always set to the address and port of the pod that handled the decode phase (the primary target).
 - `x-prefiller-host-port`: Set to the address and port of the prefill pod, if a separate prefill pod was used (PD disaggregation).
