@@ -89,7 +89,7 @@ cleanup-test-e2e: ## Delete Kind cluster used for e2e tests.
 
 .PHONY: test-e2e-kind
 test-e2e-kind: setup-test-e2e ## Run smoke e2e tests on a local Kind cluster.
-	@$(MAKE) test-e2e-smoke
+	@SKIP_PREREQUISITE=false $(MAKE) test-e2e-smoke
 	@$(MAKE) cleanup-test-e2e
 
 .PHONY: test-e2e-env
