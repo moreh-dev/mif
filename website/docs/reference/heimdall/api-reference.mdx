@@ -105,7 +105,7 @@ A SchedulingProfile executes its plugins in order: Filters, Scorers, then Picker
 | Field       | Type      | Description                                                                                                                    |
 | :---------- | :-------- | :----------------------------------------------------------------------------------------------------------------------------- |
 | `pluginRef` | `string`  | References a plugin from the top-level `plugins` list. The plugin must implement Filter, Scorer, or Picker.                    |
-| `weight`    | `integer` | Weight to be used if this plugin is a Scorer. Scorers without a weight will fail to register. Ignored for Filters and Pickers. |
+| `weight`    | `integer` | Optional weight for Scorer plugins, controlling relative influence when aggregating scores. Defaults to `1` if omitted. Ignored for Filters and Pickers. |
 
 #### SaturationDetector
 
