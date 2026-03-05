@@ -12,6 +12,9 @@ metadata:
     mif.moreh.io/accelerator.model: mi250
     mif.moreh.io/parallelism: tp2
 spec:
+  framework: vllm
+  model:
+    name: Qwen/Qwen3-1.7B
   parallelism:
     tensor: 2
   template:
@@ -20,8 +23,6 @@ spec:
         - name: main
           image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/quickstart/moreh-vllm:20250915.1
           env:
-            - name: ISVC_MODEL_NAME
-              value: Qwen/Qwen3-1.7B
             - name: ISVC_EXTRA_ARGS
               value: >-
                 --disable-uvicorn-access-log

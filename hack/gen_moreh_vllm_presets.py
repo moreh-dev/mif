@@ -312,6 +312,9 @@ def _generate_content(
     lines.append(f"    mif.moreh.io/accelerator.model: {accel_model}")
     lines.append(f'    mif.moreh.io/parallelism: "{parallelism_label}"')
     lines.append("spec:")
+    lines.append("  framework: vllm")
+    lines.append("  model:")
+    lines.append(f"    name: {hf_path}")
     if parallelism_spec:
         lines.append("  parallelism:")
         for key, val in parallelism_spec.items():
@@ -328,8 +331,6 @@ def _generate_content(
     lines.append("        - name: main")
     lines.append(f"          image: {image}")
     lines.append("          env:")
-    lines.append("            - name: ISVC_MODEL_NAME")
-    lines.append(f"              value: {hf_path}")
     lines.append("            - name: ISVC_PRESET_PATH")
     lines.append(f"              value: {preset_path}")
     lines.append("          resources:")

@@ -8,10 +8,8 @@ metadata:
     mif.moreh.io/role: e2e
     mif.moreh.io/parallelism: dp
 spec:
+  framework: vllm
   workerTemplate:
-    metadata:
-      labels:
-        heimdall.moreh.io/dummy: dummy # DEPRECATED
     spec:
       containers:
         - name: main
@@ -42,7 +40,7 @@ spec:
               for ((_index=0; _index<_dp_local_size; _index++)); do
                 /app/llm-d-inference-sim \
                   --model "${ISVC_MODEL_PATH}" \
-                  --served-model-name "${ISVC_MODEL_NAME}" \
+                  --served-model-name "{{ "{{" }} deref .Spec "Model" "Name" {{ "}}" }}" \
                   --port $((8000 + _index)) \
                   --data-parallel-rank $((_start_rank + _index)) \
                   $(ISVC_EXTRA_ARGS) \
@@ -51,10 +49,8 @@ spec:
 
               wait
           env:
-            - name: ISVC_MODEL_NAME
-              value: "meta-llama/Llama-3.2-1B-Instruct"
             - name: ISVC_MODEL_PATH
-              value: "$(ISVC_MODEL_NAME)" # use "fake-model" to avoid the time and network overhead of tokenization
+              value: '{{ "{{" }} deref .Spec "Model" "Name" {{ "}}" }}' # use "fake-model" to avoid the time and network overhead of tokenization
             - name: ISVC_EXTRA_ARGS
               value: >-
                 --max-model-len 8192

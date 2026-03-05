@@ -13,6 +13,9 @@ metadata:
     mif.moreh.io/accelerator.model: mi308x
     mif.moreh.io/parallelism: "tp8"
 spec:
+  framework: vllm
+  model:
+    name: deepseek-ai/DeepSeek-R1
   parallelism:
     tensor: 8
   template:
@@ -21,8 +24,6 @@ spec:
         - name: main
           image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/moreh-vllm:0.15.0-260226-rc2
           env:
-            - name: ISVC_MODEL_NAME
-              value: deepseek-ai/DeepSeek-R1
             - name: ISVC_PRESET_PATH
               value: /app/moreh-vllm/presets/deepseek-ai-deepseek-r1-mtp-decode-amd-mi308x-tp8.yaml
           resources:
