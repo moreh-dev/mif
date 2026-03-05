@@ -127,7 +127,7 @@ When a dependency introduces API, CRD, or configuration changes (not just a vers
 3. Update affected documentation: YAML examples, API reference pages, feature descriptions.
 4. Common search targets by component:
    - **Odin CRD**: `InferenceService`, `InferenceServiceTemplate`, `InferencePool`, `templateRefs`
-   - **Heimdall**: scheduling, routing, load balancing, metric collection
+   - **Heimdall**: `InferencePool`, `EndpointPickerConfig`, plugin names/parameters, scheduling profiles, routing, load balancing
    - **LWS**: `LeaderWorkerSet`, worker configuration
    - **Presets**: model deployment guides, preset feature docs, `mif.moreh.io/*` labels
 
