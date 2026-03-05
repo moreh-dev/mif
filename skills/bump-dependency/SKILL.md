@@ -15,7 +15,7 @@ MIF depends on several components whose versions are tracked across Helm charts,
 | :----------------------- | :---------------- | :--------------------------------------------------------------------------------------------------------------------------------------- |
 | Odin + Odin-CRD          | Helm sub-chart    | `deploy/helm/moai-inference-framework/Chart.yaml`                                                                                        |
 | LWS                      | Helm sub-chart    | `deploy/helm/moai-inference-framework/Chart.yaml`                                                                                        |
-| Heimdall                 | External Helm chart | Not a moai-inference-framework sub-chart by default. Ask user for chart repo and deployment details.                                    |
+| Heimdall                 | External Helm chart | `website/docs/getting-started/quickstart.mdx`, `website/docs/reference/heimdall/`                                                        |
 | heimdall-proxy           | Container image   | `deploy/helm/moai-inference-preset/templates/runtime-bases/*.helm.yaml`, `deploy/helm/moai-inference-preset/templates/utils/*.helm.yaml` |
 | moreh-vLLM preset        | Preset directory  | `deploy/helm/moai-inference-preset/templates/presets/moreh-vllm/`                                                                        |
 | moai-inference-framework | MIF chart release | `website/docs/getting-started/prerequisites.mdx`, `website/docs/getting-started/quickstart.mdx`                                          |
@@ -58,16 +58,19 @@ Then add the corresponding enablement default in `values.yaml`:
 
 ### 2. Heimdall Chart Bump
 
-Heimdall is deployed as a separate Helm chart, not as a sub-chart of moai-inference-framework.
+Heimdall is deployed as a separate Helm chart (`moreh/heimdall` from `https://moreh-dev.github.io/helm-charts`), not as a sub-chart of moai-inference-framework.
 
-**Required information:** target version and chart repository URL (ask the user — the repo is private).
+**Required information:** target version. If the new version includes config or API changes, also ask for the Heimdall source repository URL to review the changes.
 
 **Steps:**
 
-1. Ask the user for the Heimdall chart repository URL and target version.
-2. Identify where Heimdall version references exist (ask user if unsure — may include website docs or deployment scripts).
-3. Update all identified references.
-4. Search `website/docs/` for Heimdall-related documentation and update if needed (see [Website Updates for Spec Changes](#6-website-updates-for-spec-changes)).
+1. Update the `--version` in `website/docs/getting-started/quickstart.mdx` (the `helm upgrade -i heimdall moreh/heimdall` command).
+2. Search `website/docs/` for other Heimdall version references and update them.
+3. If the new version introduces config or API changes, clone or fetch the Heimdall source repo and review what changed, then update the reference docs accordingly:
+   - `website/docs/reference/heimdall/api-reference.mdx` — InferencePool and related CRD fields
+   - `website/docs/reference/heimdall/plugins.mdx` — plugin parameters, new plugins, removed plugins
+   - `website/docs/getting-started/quickstart.mdx` — `heimdall-values.yaml` example if config structure changed
+   - Other docs that reference Heimdall scheduling, routing, or load balancing behavior
 
 ### 3. heimdall-proxy Image Bump
 
