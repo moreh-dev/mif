@@ -40,8 +40,8 @@ jobs:
 
     env:
       KUBECONFIG: "/tmp/kubeconfig"
-      ISTIO_REV: "1-28-1"
       SKIP_PREREQUISITE: "true"
+      ISTIO_REV: "1-28-1"
 
     steps:
       - name: Checkout
