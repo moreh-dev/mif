@@ -93,6 +93,8 @@ For more details on available plugins, see [Plugins](./plugins.mdx).
 
 #### SchedulingProfile
 
+A SchedulingProfile executes its plugins in order: Filters, Scorers, then Picker. Only plugins that implement the [Filter, Scorer, or Picker](./plugins.mdx) interface can be referenced here. [Profile handlers](./plugins.mdx#profile-handlers) operate at the top level and are not part of individual profiles.
+
 | Field     | Type                                      | Description                                                                                                                  |
 | :-------- | :---------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------- |
 | `name`    | `string`                                  | Name specifies the name of this SchedulingProfile.                                                                           |
@@ -100,10 +102,10 @@ For more details on available plugins, see [Plugins](./plugins.mdx).
 
 #### SchedulingPlugin
 
-| Field       | Type      | Description                                                                                   |
-| :---------- | :-------- | :-------------------------------------------------------------------------------------------- |
-| `pluginRef` | `string`  | PluginRef specifies a partiular Plugin instance to be associated with this SchedulingProfile. |
-| `weight`    | `integer` | Weight is the weight fo be used if this plugin is a Scorer.                                   |
+| Field       | Type      | Description                                                                                                                    |
+| :---------- | :-------- | :----------------------------------------------------------------------------------------------------------------------------- |
+| `pluginRef` | `string`  | References a plugin from the top-level `plugins` list. The plugin must implement Filter, Scorer, or Picker.                    |
+| `weight`    | `integer` | Optional weight for Scorer plugins, controlling relative influence when aggregating scores. Defaults to `1` if omitted. Ignored for Filters and Pickers. |
 
 #### SaturationDetector
 

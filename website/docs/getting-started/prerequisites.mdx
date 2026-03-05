@@ -82,7 +82,7 @@ Then, deploy the `moai-inference-framework` chart using the following command:
 
 ```shell
 helm upgrade -i mif moreh/moai-inference-framework \
-    --version v0.3.0 \
+    --version v0.4.0-rc.2 \
     -n mif \
     --create-namespace \
     -f moai-inference-framework-values.yaml
@@ -96,7 +96,7 @@ The `moai-inference-preset` Helm chart deploys the presets for the MoAI Inferenc
 
 ```shell
 helm upgrade -i moai-inference-preset moreh/moai-inference-preset \
-    --version v0.3.0 \
+    --version v0.5.0-rc.1 \
     -n mif
 ```
 
