@@ -183,7 +183,7 @@ spec:
                 {{- if and .S3AccessKeyID .S3SecretAccessKey }}
                 simple_storage_service:
                   bucket_name: "moreh-benchmark"
-                  path: {{ .S3_PREFIX }}
+                  path: {{ .S3Prefix }}
                   report_file_prefix: null
                 {{- end }}
           EOF
