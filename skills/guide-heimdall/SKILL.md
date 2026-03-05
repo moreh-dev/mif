@@ -1,14 +1,6 @@
 ---
 name: guide-heimdall
-description: >-
-  Expert guide for configuring and deploying Heimdall, the MoAI Inference
-  Framework scheduler. Use this skill when working with Heimdall scheduling
-  profiles, plugins (filters, scorers, pickers, profile handlers),
-  EndpointPickerConfig, InferencePool resources, heimdall-values.yaml files,
-  Gateway API Inference Extension integration, or troubleshooting Heimdall
-  routing behavior in Kubernetes clusters. Also use when questions involve
-  inference request routing, load balancing across inference pods, choosing
-  which pod serves a request, or scheduling latency optimization.
+description: Expert guide for configuring and deploying Heimdall, the MoAI Inference Framework scheduler. Use this skill when working with Heimdall scheduling profiles, plugins (filters, scorers, pickers, profile handlers), EndpointPickerConfig, InferencePool resources, heimdall-values.yaml files, Gateway API Inference Extension integration, or troubleshooting Heimdall routing behavior in Kubernetes clusters. Also use when questions involve inference request routing, load balancing across inference pods, choosing which pod serves a request, or scheduling latency optimization.
 ---
 
 # Heimdall Scheduler — Expert Guide
