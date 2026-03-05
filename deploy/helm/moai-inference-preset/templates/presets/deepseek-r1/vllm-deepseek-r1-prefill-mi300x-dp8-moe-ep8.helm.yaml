@@ -12,6 +12,9 @@ metadata:
     mif.moreh.io/accelerator.model: mi300x
     mif.moreh.io/parallelism: dp8-moe-ep8
 spec:
+  framework: vllm
+  model:
+    name: deepseek-ai/DeepSeek-R1
   parallelism:
     data: 8
     expert: true
@@ -29,8 +32,6 @@ spec:
               value: "4"
             - name: VLLM_IS_DECODE_WORKER
               value: "prefill"
-            - name: ISVC_MODEL_NAME
-              value: "deepseek-ai/DeepSeek-R1"
             - name: UCX_IB_PCI_RELAXED_ORDERING
               value: "on"
             - name: NCCL_IB_PCI_RELAXED_ORDERING

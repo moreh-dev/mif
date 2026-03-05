@@ -37,6 +37,7 @@ MIF depends on several components whose versions are tracked across Helm charts,
 3. Run `make helm-docs` to regenerate chart README documentation.
 4. Run `make helm-lint` to verify the chart is valid.
 5. Search `website/docs/` for references to the updated component and update if needed (see [Website Updates for Spec Changes](#6-website-updates-for-spec-changes)).
+6. **For Odin bumps**: check if the new version adds or removes fields in `InferenceServiceTemplateSpec`. If it does, update presets and runtime-bases accordingly (see [Coordinated Odin + Preset Changes](#7-coordinated-odin--preset-changes)).
 
 **Adding a new sub-chart dependency:**
 
@@ -100,7 +101,9 @@ Heimdall is deployed as a separate Helm chart (`moreh/heimdall` from `https://mo
    deploy/helm/moai-inference-preset/templates/presets/moreh-vllm/<version>/
    ```
 3. Follow the [preset naming convention](../../deploy/helm/AGENTS.md) defined in `deploy/helm/AGENTS.md`.
-4. Update runtime-base templates if the new version changes launch logic, proxy configuration, or disaggregation behavior.
+4. Update the generator script `hack/gen_moreh_vllm_presets.py` if the preset template structure changes (new spec fields, env var additions/removals, etc.).
+5. Also update non-moreh-vllm presets (`templates/presets/quickstart/`, `templates/presets/deepseek-r1/`) if the structural change applies to all presets.
+6. Update runtime-base templates (`templates/runtime-bases/*.helm.yaml`) if the new version changes launch logic, proxy configuration, or disaggregation behavior.
 
 ### 5. MIF Chart Release Update (moai-inference-framework, moai-inference-preset)
 
@@ -131,6 +134,40 @@ When a dependency introduces API, CRD, or configuration changes (not just a vers
    - **Heimdall**: `InferencePool`, `EndpointPickerConfig`, plugin names/parameters, scheduling profiles, routing, load balancing
    - **LWS**: `LeaderWorkerSet`, worker configuration
    - **Presets**: model deployment guides, preset feature docs, `mif.moreh.io/*` labels
+
+### 7. Coordinated Odin + Preset Changes
+
+When an Odin CRD bump adds new fields to `InferenceServiceTemplateSpec`, presets and runtime-bases must be updated in lockstep.
+
+**Identifying changes:** Clone or fetch the Odin source repo and diff the types between the old and new tags:
+
+```bash
+git diff <old-tag>..<new-tag> -- api/v1alpha1/inferenceservicetemplate_types.go
+```
+
+**Updating presets:** For fields that become part of the spec (e.g., `model`, `framework`):
+
+1. Add the new fields to all preset YAMLs under `spec:`. A Python script is efficient for bulk updates across 100+ files — extract the field value from existing data (labels, env vars) and insert into the spec.
+2. Update the generator script `hack/gen_moreh_vllm_presets.py` so future presets include the new fields.
+3. Update non-moreh-vllm presets (quickstart, deepseek-r1) with the same changes.
+4. If a new spec field replaces an env var (e.g., `spec.model.name` replaces `ISVC_MODEL_NAME`), remove the redundant env var from presets.
+
+**Updating runtime-bases and utils:** Runtime-bases and utils (sim templates) access spec fields via Odin template rendering:
+
+```yaml
+# Odin template syntax (double-escaped for Helm passthrough)
+value: '{{ "{{" }} deref .Spec "Model" "Name" {{ "}}" }}'
+```
+
+When removing an env var that the runtime-base or utils shell scripts reference, replace all shell `$VAR` references with inline Odin template expressions. The `deref .Spec` function navigates the rendered spec at pod creation time.
+
+Apply the same field additions (e.g., `framework`, `model`) and env var removals to both:
+- `templates/runtime-bases/*.helm.yaml`
+- `templates/utils/sim*.helm.yaml`
+
+The `hf-hub-offline` utils are overlays without model name references and typically need no changes.
+
+**Verification:** After all changes, run `make helm-lint` and grep for any stale references to removed env vars or old field patterns.
 
 ## Pre-conditions Checklist
 

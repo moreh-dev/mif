@@ -12,6 +12,9 @@ metadata:
     mif.moreh.io/accelerator.model: mi300x
     mif.moreh.io/parallelism: "tp2-moe-tp2"
 spec:
+  framework: vllm
+  model:
+    name: Qwen/Qwen3-30B-A3B-2507-FP8
   parallelism:
     tensor: 2
   template:
@@ -20,8 +23,6 @@ spec:
         - name: main
           image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/moreh-vllm:0.15.0-260226-rc2
           env:
-            - name: ISVC_MODEL_NAME
-              value: Qwen/Qwen3-30B-A3B-2507-FP8
             - name: ISVC_PRESET_PATH
               value: /app/moreh-vllm/presets/qwen-qwen3-30b-a3b-2507-fp8-decode-amd-mi300x-tp2-moe-tp2.yaml
           resources:

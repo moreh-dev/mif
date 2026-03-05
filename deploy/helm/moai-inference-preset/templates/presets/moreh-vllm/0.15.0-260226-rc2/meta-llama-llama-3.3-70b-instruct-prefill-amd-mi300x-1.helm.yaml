@@ -12,14 +12,15 @@ metadata:
     mif.moreh.io/accelerator.model: mi300x
     mif.moreh.io/parallelism: "1"
 spec:
+  framework: vllm
+  model:
+    name: meta-llama/Llama-3.3-70B-Instruct
   template:
     spec:
       containers:
         - name: main
           image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/moreh-vllm:0.15.0-260226-rc2
           env:
-            - name: ISVC_MODEL_NAME
-              value: meta-llama/Llama-3.3-70B-Instruct
             - name: ISVC_PRESET_PATH
               value: /app/moreh-vllm/presets/meta-llama-llama-3.3-70b-instruct-prefill-amd-mi300x-1.yaml
           resources:

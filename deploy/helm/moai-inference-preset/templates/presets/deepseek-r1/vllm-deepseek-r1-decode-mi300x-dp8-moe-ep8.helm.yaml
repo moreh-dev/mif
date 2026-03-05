@@ -12,6 +12,9 @@ metadata:
     mif.moreh.io/accelerator.model: mi300x
     mif.moreh.io/parallelism: dp8-moe-ep8
 spec:
+  framework: vllm
+  model:
+    name: deepseek-ai/DeepSeek-R1
   parallelism:
     data: 8
     expert: true
@@ -55,8 +58,6 @@ spec:
               value: "1"
             - name: VLLM_SERVERSIDE_LOG_INTERVAL
               value: "10"
-            - name: ISVC_MODEL_NAME
-              value: "deepseek-ai/DeepSeek-R1"
             - name: ISVC_EXTRA_ARGS
               value: >-
                 --trust-remote-code

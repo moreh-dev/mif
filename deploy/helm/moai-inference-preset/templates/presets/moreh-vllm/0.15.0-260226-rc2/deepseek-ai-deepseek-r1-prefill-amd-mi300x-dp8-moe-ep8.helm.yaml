@@ -12,6 +12,9 @@ metadata:
     mif.moreh.io/accelerator.model: mi300x
     mif.moreh.io/parallelism: "dp8-moe-ep8"
 spec:
+  framework: vllm
+  model:
+    name: deepseek-ai/DeepSeek-R1
   parallelism:
     data: 8
     expert: true
@@ -21,8 +24,6 @@ spec:
         - name: main
           image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/moreh-vllm:0.15.0-260226-rc2
           env:
-            - name: ISVC_MODEL_NAME
-              value: deepseek-ai/DeepSeek-R1
             - name: ISVC_PRESET_PATH
               value: /app/moreh-vllm/presets/deepseek-ai-deepseek-r1-prefill-amd-mi300x-dp8-moe-ep8.yaml
           resources:
