@@ -11,11 +11,11 @@ This article presents the performance evaluation method and results of **DeepSee
 
 The purpose of this benchmarking is to measure the maximum throughput (output tokens/sec) achievable when running distributed inference of the DeepSeek R1 671B model on a 5-node AMD MI300X GPU cluster. This metric directly determines the cost efficiency of inference service (tokens/$). This benchmarking demonstrates three key points:
 
-- We built a distributed inference system operating at the AMD GPU cluster level **in real deployments**, which efficiently handles high-concurrency requests via prefill-decode disaggregation and expert parallelism.
+- The benchmarking evaluates a distributed inference system operating at the AMD GPU cluster level **in real deployments**, which efficiently handles high-concurrency requests via prefill-decode disaggregation and expert parallelism.
 - MoAI Inference Framework delivers industry-leading throughput on AMD MI300X GPU clusters, which enables lower cost-per-token ($/token) configurations.
 - MoAI Inference Framework achieves throughput on AMD MI300X GPU clusters that is on par with what is attainable on NVIDIA H100 GPU clusters.
 
-The experimental methodology was largely designed by referring to the following report from the SGLang team, which measures the performance of PD disaggregation and expert parallelism on an NVIDIA H100 GPU cluster. The key difference is that, while the SGLang team measures prefill-only and decode-only performance separately, our benchmarking integrates prefill and decode instances and measures performance in an end-to-end inference environment, which more accurately reflects real-world achievable performance.
+The experimental methodology was largely designed by referring to the following report from the SGLang team, which measures the performance of PD disaggregation and expert parallelism on an NVIDIA H100 GPU cluster. The key difference is that, while the SGLang team measures prefill-only and decode-only performance separately, this benchmarking integrates prefill and decode instances and measures performance in an end-to-end inference environment, which more accurately reflects real-world achievable performance.
 
 - Reference: [Deploying DeepSeek with PD Disaggregation and Large-Scale Expert Parallelism on 96 H100 GPUs](https://lmsys.org/blog/2025-05-05-large-scale-ep/)
 
