@@ -47,7 +47,7 @@ The specifications of each GPU server are as follows:
 
 ## Deployment
 
-Please make sure to install all [prerequisites](/docs/getting-started/prerequisites) before starting this benchmarking. Also, please refer to the [quickstart](/docs/getting-started/quickstart) to understand how to run the MoAI Inference Framework.
+Please make sure to install all [prerequisites](/getting_started/prerequisites) before starting this benchmarking. Also, please refer to the [quickstart](/getting_started/quickstart) to understand how to run the MoAI Inference Framework.
 
 In this benchmarking, you need to deploy the **Istio** gateway, the **Heimdall** scheduler configured to specify the basic routing strategy for PD disaggregation, and the **Odin** inference service configured to run two prefill instances and three decode instances across five GPU servers using the `quickstart` preset for DeepSeek R1 with DP8+EP8 on AMD MI300X.
 
@@ -57,7 +57,7 @@ First, you need to have a namespace for deploying and running the components of 
 kubectl create namespace deepseek-r1-benchmark
 ```
 
-**AWS credentials must be configured in this namespace to allow the container images of the MoAI Inference Framework to be downloaded**. For details, refer to the "Amazon ECR token for Moreh's container image repository" section in the [prerequisites](/docs/getting-started/prerequisites).
+**AWS credentials must be configured in this namespace to allow the container images of the MoAI Inference Framework to be downloaded**. For details, refer to the "Amazon ECR token for Moreh's container image repository" section in the [prerequisites](/getting_started/prerequisites).
 
 Then, you can use the following configuration files for the components. Click to view their contents. **You must store the DeepSeek-R1 model checkpoint on the host of every worker node and specify its path in the `deepseek-r1-decode.yaml` and `deepseek-r1-prefill.yaml` files**. This path will be mounted to `/app/model/DeepSeek-R1` inside the pod and used to run the Moreh vLLM server.
 
