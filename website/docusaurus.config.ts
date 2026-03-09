@@ -47,7 +47,9 @@ const config: Config = {
         theme: {
           customCss: require.resolve("./css/custom.css"),
         },
-        blog: false,
+        blog: {
+          blogTitle: "Blog",
+        },
       } satisfies Preset.Options,
     ],
   ],
@@ -65,6 +67,16 @@ const config: Config = {
         srcDark: "/moreh-logo-white.svg",
       },
       items: [
+        {
+          to: "/",
+          label: "Docs",
+          position: "left",
+        },
+        {
+          to: "blog",
+          label: "Blog",
+          position: "left",
+        },
         {
           type: "docsVersionDropdown",
           position: "right",
