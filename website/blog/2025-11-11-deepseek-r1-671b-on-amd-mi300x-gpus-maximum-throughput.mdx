@@ -749,7 +749,7 @@ P90 ITL (ms):                            245.98
   </TabItem>
 </Tabs>
 
-The followings are some publicly available performance numbers for comparison.
+The following are some publicly available performance numbers for comparison.
 
 - The SGLang team reported that, on a cluster of 12x H100 nodes (96x GPUs) &mdash; with 3 nodes used for prefill and 9 nodes for decode &mdash; they achieved a throughput of **22,300 output tokens/sec** per decode node under a configuration with an input sequence length of 2,000 and an output sequence length of 100. Note that this number does not represent end-to-end performance with actual PD disaggregation applied; rather, it measures partial performance with decoding-only execution. ([Link](https://lmsys.org/blog/2025-05-05-large-scale-ep/))
 - DeepSeek reported achieving **14,800 tokens/sec** per H800 decode node by applying PD disaggregation and expert parallelism. ([Link](https://github.com/deepseek-ai/open-infra-index/blob/main/202502OpenSourceWeek/day_6_one_more_thing_deepseekV3R1_inference_system_overview.md))
