@@ -350,7 +350,7 @@ Run the following command to start the pod.
 kubectl -n deepseek-r1-benchmark apply -f benchmarking-client.yaml
 ```
 
-Inside the pod, you can run `vllm bench serve`. **You may need to modify the `--host` value depending on your Istio gateway address**. The followings are the actual commands used to run each experiment. For each experiment, the warm-up time and cool-down time were adjusted appropriately.
+Inside the pod, you can run `vllm bench serve`. **You may need to modify the `--host` value depending on your Istio gateway address**. The following are the actual commands used to run each experiment. For each experiment, the warm-up time and cool-down time were adjusted appropriately.
 
 <Tabs groupId="bench-serve">
   <TabItem value="512-512-sharegpt" label="512, 512, ShareGPT">
