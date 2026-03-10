@@ -346,7 +346,7 @@ kubectl get inferenceservicetemplate -n mif -l mif.moreh.io/template.type=preset
 
 | Variable                  | Purpose                                                                         | Default                        |
 | ------------------------- | ------------------------------------------------------------------------------- | ------------------------------ |
-| `ISVC_MODEL_PATH`         | Local model path (overrides `spec.model.name`)                                  | defaults to `spec.model.name`  |
+| `ISVC_MODEL_PATH`         | Model ID/path to load (defaults to `spec.model.name`)                           | defaults to `spec.model.name`  |
 | `ISVC_EXTRA_ARGS`         | Additional vLLM engine arguments                                                | (set by preset)                |
 | `ISVC_PRE_PROCESS_SCRIPT` | Script to run before engine starts                                              | (none)                         |
 | `ISVC_USE_KV_EVENTS`      | Publish KV cache events to Heimdall via ZMQ (for `precise-prefix-cache-scorer`) | `false`                        |
@@ -532,7 +532,7 @@ env:
     value: "true"
 ```
 
-When enabled, each pod publishes KV cache events via ZMQ to `tcp://<inferencePoolRef-name>:5557` with topic `kv@<POD_IP>:<port>@<spec.model.name>`. This requires `inferencePoolRefs` and `spec.model.name` to be set — the pod exits with an error if either is missing.
+When enabled, each pod publishes KV cache events via ZMQ to `tcp://<inferencePoolRef-name>:5557` with topic `kv@<POD_IP>:<port>@<model-name>`, where `<model-name>` is the value of `spec.model.name`. This requires `inferencePoolRefs` and `spec.model.name` to be set — the pod exits with an error if either is missing.
 
 ### Pod role labels
 
