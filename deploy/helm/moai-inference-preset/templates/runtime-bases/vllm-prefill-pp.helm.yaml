@@ -109,6 +109,8 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
+            - name: PYTHONHASHSEED
+              value: "12345"
           ports:
             - name: http
               containerPort: 8000
@@ -227,6 +229,8 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
+            - name: PYTHONHASHSEED
+              value: "12345"
           volumeMounts:
             - name: shm
               mountPath: /dev/shm
