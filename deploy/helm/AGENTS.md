@@ -159,6 +159,7 @@ Odin presets use `mif.moreh.io/*` labels:
 - Resources (GPU count, RDMA NICs), tolerations, and nodeSelector
 
 **Runtime bases define** (shared across presets):
+- `spec.framework` (e.g., `vllm`)
 - Execution command(s) and launch logic (for-loop for DP, cleanup traps)
 - Cross-rank parallelism arguments (`--data-parallel-rank`, `--data-parallel-address`, `--data-parallel-rpc-port`)
 - Disaggregation-specific environment variables (`VLLM_NIXL_SIDE_CHANNEL_HOST`, `VLLM_IS_DECODE_WORKER`)

@@ -4,7 +4,7 @@
     {
       "id": 0,
       "prompt": "I need to deploy DeepSeek-R1 (a MoE model) with data parallelism on MIF using Odin. I have AMD MI300X GPUs with 8 GPUs per node. I want data parallel size 16 with dataLocal 8, expert parallelism enabled, and tensor parallelism 8. The model should be served in prefill-only mode for a PD-disaggregated setup. Create both a custom InferenceServiceTemplate preset and the InferenceService that uses it, with Heimdall integration.",
-      "expected_output": "An InferenceServiceTemplate with parallelism (data: 16, dataLocal: 8, expert: true), workerTemplate (not template) with container name 'main', ISVC_MODEL_NAME, GPU resources, and node selectors. Plus an InferenceService using templateRefs [vllm-prefill-dp, custom-preset], parallelism.tensor: 8, workerTemplate override for HF_TOKEN, and inferencePoolRefs to heimdall.",
+      "expected_output": "An InferenceServiceTemplate with spec.model.name set, parallelism (data: 16, dataLocal: 8, expert: true), workerTemplate (not template) with container name 'main', GPU resources, and node selectors. Plus an InferenceService using templateRefs [vllm-prefill-dp, custom-preset], parallelism.tensor: 8, workerTemplate override for HF_TOKEN, and inferencePoolRefs to heimdall.",
       "files": [],
       "assertions": [
         "InferenceServiceTemplate uses apiVersion: odin.moreh.io/v1alpha1 and kind: InferenceServiceTemplate",

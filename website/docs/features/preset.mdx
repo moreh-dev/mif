@@ -84,6 +84,8 @@ metadata:
   # ... (other fields)
 spec:
   # ... (other fields)
+  model:
+    name: meta-llama/Llama-3.2-1B-Instruct
   template:
     spec:
       # ... (other fields)
@@ -93,8 +95,6 @@ spec:
           # ... (other fields)
           env:
             # ... (other fields)
-            - name: ISVC_MODEL_NAME
-              value: meta-llama/Llama-3.2-1B-Instruct
             - name: ISVC_EXTRA_ARGS
               value: --disable-uvicorn-access-log --no-enable-log-requests
                 --quantization None --max-model-len 8192 --max-num-batched-tokens 32768
@@ -153,11 +153,9 @@ kubectl get inferenceservicetemplate -n mif vllm-decode-dp -o yaml
 
 The following environment variables are frequently overridden to customize the behavior of the runtime-base.
 
-- **`ISVC_MODEL_NAME`**
-  - The name of the model to serve (e.g., `meta-llama/Llama-3.2-1B-Instruct`).
 - **`ISVC_MODEL_PATH`**
-  - The Hugging Face model ID or the local path to the model weights.
-  - Defaults to `$ISVC_MODEL_NAME` to use the Hugging Face model ID. Set this only when using a locally downloaded model.
+  - The model identifier passed to the runtime (e.g., vLLM). This can be either a Hugging Face model ID (for example, `meta-llama/Llama-3.2-1B-Instruct`) or a local filesystem path to the model weights.
+  - Defaults to `spec.model.name`. `spec.model.name` is the canonical served model name: it is passed to the runtime (for example, as `--served-model-name` for vLLM) and is also used by other consumers in the system (for example, in KV events).
 - **`ISVC_EXTRA_ARGS`**
   - Additional arguments passed to the inference engine (e.g., vLLM). Since parallelism configurations are handled by the runtime-base, use this variable to add other model-specific arguments.
 - **`ISVC_PRE_PROCESS_SCRIPT`**
@@ -176,6 +174,8 @@ spec:
     - name: heimdall
   templateRefs:
     - name: vllm-decode-dp # runtime-base only
+  model:
+    name: meta-llama/Llama-3.2-1B-Instruct
   parallelism:
     data: 2
     tensor: 1
@@ -184,8 +184,6 @@ spec:
       containers:
         - name: main
           env:
-            - name: ISVC_MODEL_NAME
-              value: meta-llama/Llama-3.2-1B-Instruct
             - name: ISVC_EXTRA_ARGS
               value: >-
                 --disable-uvicorn-access-log
@@ -216,12 +214,14 @@ You can turn the configuration above into a reusable preset (`InferenceServiceTe
 
 **For example:**
 
-```yaml {10} title="custom-prefill-dp16ep.yaml"
+```yaml {12} title="custom-prefill-dp16ep.yaml"
 apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceServiceTemplate
 metadata:
   name: custom-prefill-dp16ep
 spec:
+  model:
+    name: deepseek-ai/DeepSeek-R1
   parallelism:
     data: 16
     dataLocal: 8
@@ -231,8 +231,6 @@ spec:
       containers:
         - name: main
           env:
-            - name: ISVC_MODEL_NAME
-              value: deepseek-ai/DeepSeek-R1
             - name: ISVC_EXTRA_ARGS
               value: >-
                 --disable-uvicorn-access-log
