@@ -174,7 +174,7 @@ Odin presets use `mif.moreh.io/*` labels:
 - `--no-enable-prefix-caching`
 
 **Product team templates configure** (must NOT be set in presets):
-- `PYTHONHASHSEED`, `--prefix-caching-hash-algo`, `--kv-events-config`, `--block-size`
+- `--prefix-caching-hash-algo`, `--kv-events-config`, `--block-size`
 
 ### MIF Pod Label Keys
 
