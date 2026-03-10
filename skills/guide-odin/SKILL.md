@@ -306,7 +306,7 @@ parallelism:
 
 ### Available runtime-bases
 
-Runtime-bases define the container startup logic, parallelism wiring, and pod structure. They are installed in the `mif` namespace by the `moai-inference-preset` Helm chart.
+Runtime-bases define `spec.framework`, the container startup logic, parallelism wiring, and pod structure. They are installed in the `mif` namespace by the `moai-inference-preset` Helm chart.
 
 | Runtime-base      | Workload type   | `template` / `workerTemplate` | Use case                                |
 | ----------------- | --------------- | ----------------------------- | --------------------------------------- |
