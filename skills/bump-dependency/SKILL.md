@@ -133,7 +133,7 @@ When a dependency introduces API, CRD, or configuration changes (not just a vers
    - **Odin CRD**: `InferenceService`, `InferenceServiceTemplate`, `templateRefs`, `inferencePoolRefs`
    - **Heimdall**: `InferencePool`, `EndpointPickerConfig`, plugin names/parameters, scheduling profiles, routing, load balancing
    - **LWS**: `LeaderWorkerSet`, worker configuration
-   - **Presets**: model deployment guides, preset feature docs, `mif.moreh.io/*` labels
+   - **Presets**: model deployment guides, `website/docs/features/preset.mdx` (YAML examples of `InferenceService` / `InferenceServiceTemplate`), `mif.moreh.io/*` labels
 
 ### 7. Coordinated Odin + Preset Changes
 
@@ -150,7 +150,7 @@ git diff <old-tag>..<new-tag> -- api/v1alpha1/inferenceservicetemplate_types.go
 1. Add the new fields to all preset YAMLs under `spec:`. A Python script is efficient for bulk updates across 100+ files — extract the field value from existing data (labels, env vars) and insert into the spec.
 2. Update the generator script `hack/gen_moreh_vllm_presets.py` so future presets include the new fields.
 3. Update non-moreh-vllm presets (quickstart, deepseek-r1) with the same changes.
-4. If a new spec field replaces an env var (e.g., `spec.model.name` replaces `ISVC_MODEL_NAME`), remove the redundant env var from presets.
+4. If a new spec field replaces an env var, remove the redundant env var from presets.
 
 **Updating runtime-bases and utils:** Runtime-bases and utils (sim templates) access spec fields via Odin template rendering:
 

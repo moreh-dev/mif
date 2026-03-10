@@ -59,6 +59,8 @@ spec:
     - name: heimdall
   templateRefs:
     - name: vllm-decode-dp
+  model:
+    name: <modelName>
   parallelism:
     data: 2
     tensor: 1
@@ -67,8 +69,6 @@ spec:
       containers:
         - name: main
           env:
-            - name: ISVC_MODEL_NAME
-              value: <modelName>
             - name: ISVC_EXTRA_ARGS
               value: >-
                 --disable-uvicorn-access-log
@@ -206,6 +206,8 @@ kind: InferenceServiceTemplate
 metadata:
   name: custom-prefill-dp16ep
 spec:
+  model:
+    name: <modelName>
   parallelism:
     data: 16
     dataLocal: 8
@@ -215,8 +217,6 @@ spec:
       containers:
         - name: main
           env:
-            - name: ISVC_MODEL_NAME
-              value: <modelName>
             - name: ISVC_EXTRA_ARGS
               value: >-
                 --disable-uvicorn-access-log
@@ -274,6 +274,8 @@ spec:
     - name: heimdall
   templateRefs:
     - name: vllm-pp
+  model:
+    name: <modelName>
   parallelism:
     pipeline: 4
     tensor: 2
@@ -282,8 +284,6 @@ spec:
       containers:
         - name: main
           env:
-            - name: ISVC_MODEL_NAME
-              value: <modelName>
             - name: HF_TOKEN
               value: <huggingFaceToken>
           resources:
