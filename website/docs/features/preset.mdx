@@ -155,7 +155,7 @@ The following environment variables are frequently overridden to customize the b
 
 - **`ISVC_MODEL_PATH`**
   - The model identifier passed to the runtime (e.g., vLLM). This can be either a Hugging Face model ID (for example, `meta-llama/Llama-3.2-1B-Instruct`) or a local filesystem path to the model weights.
-  - Defaults to `spec.model.name`. When you set `ISVC_MODEL_PATH` to a local path, `spec.model.name` is still used as the served model name in other parts of the system (for example, in KV events).
+  - Defaults to `spec.model.name`. `spec.model.name` is the canonical served model name: it is passed to the runtime (for example, as `--served-model-name` for vLLM) and is also used by other consumers in the system (for example, in KV events).
 - **`ISVC_EXTRA_ARGS`**
   - Additional arguments passed to the inference engine (e.g., vLLM). Since parallelism configurations are handled by the runtime-base, use this variable to add other model-specific arguments.
 - **`ISVC_PRE_PROCESS_SCRIPT`**
