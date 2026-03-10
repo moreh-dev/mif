@@ -1,0 +1,48 @@
+apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceServiceTemplate
+metadata:
+  name: vllm-v0.15.1-moonshotai-kimi-k2.5-nvidia-h100-tp8-moe-ep8
+  namespace: {{ include "common.names.namespace" . }}
+  labels:
+    {{- include "mif.preset.labels" . | nindent 4 }}
+    mif.moreh.io/model.org: moonshotai
+    mif.moreh.io/model.name: kimi-k2.5
+    mif.moreh.io/role: e2e
+    mif.moreh.io/accelerator.vendor: nvidia
+    mif.moreh.io/accelerator.model: h100
+    mif.moreh.io/parallelism: "tp8-moe-ep8"
+spec:
+  framework: vllm
+  model:
+    name: moonshotai/Kimi-K2.5
+  parallelism:
+    tensor: 8
+    expert: true
+  template:
+    spec:
+      containers:
+        - name: main
+          image: vllm/vllm-openai:v0.15.1
+          env:
+            - name: ISVC_EXTRA_ARGS
+              value: >-
+                --trust-remote-code
+                --mm-encoder-tp-mode data
+                --tool-call-parser kimi_k2
+                --reasoning-parser kimi_k2
+                --max-model-len 4096
+                --max-num-seqs 16
+                --gpu-memory-utilization 0.95
+                --kv-cache-dtype fp8
+          resources:
+            requests:
+              nvidia.com/gpu: "8"
+            limits:
+              nvidia.com/gpu: "8"
+      nodeSelector:
+        moai.moreh.io/accelerator.vendor: nvidia
+        moai.moreh.io/accelerator.model: h100
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule

@@ -1,0 +1,48 @@
+apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceServiceTemplate
+metadata:
+  name: vllm-v0.15.1-deepseek-ai-deepseek-r1-nvidia-h200-dp8-moe-ep8
+  namespace: {{ include "common.names.namespace" . }}
+  labels:
+    {{- include "mif.preset.labels" . | nindent 4 }}
+    mif.moreh.io/model.org: deepseek-ai
+    mif.moreh.io/model.name: deepseek-r1
+    mif.moreh.io/role: e2e
+    mif.moreh.io/accelerator.vendor: nvidia
+    mif.moreh.io/accelerator.model: h200
+    mif.moreh.io/parallelism: "dp8-moe-ep8"
+spec:
+  framework: vllm
+  model:
+    name: deepseek-ai/DeepSeek-R1
+  parallelism:
+    data: 8
+    expert: true
+  workerTemplate:
+    spec:
+      containers:
+        - name: main
+          image: vllm/vllm-openai:v0.15.1
+          env:
+            - name: VLLM_USE_DEEP_GEMM
+              value: "1"
+            - name: ISVC_EXTRA_ARGS
+              value: >-
+                --trust-remote-code
+                --max-model-len 16384
+                --max-num-seqs 112
+                --max-num-batched-tokens 57344
+                --gpu-memory-utilization 0.9
+                --reasoning-parser deepseek_r1
+          resources:
+            requests:
+              nvidia.com/gpu: "1"
+            limits:
+              nvidia.com/gpu: "1"
+      nodeSelector:
+        moai.moreh.io/accelerator.vendor: nvidia
+        moai.moreh.io/accelerator.model: h200
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
