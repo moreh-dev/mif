@@ -24,7 +24,7 @@ const (
 
 // Istio
 const (
-	IstioVersion         = "1.28.1"
+	IstioVersion         = "1.28.5"
 	IstioNamespace       = "istio-system"
 	IstiodValuesFile     = "test/utils/config/istiod-values.yaml"
 	IstioGatewayTemplate = "test/utils/config/gateway-istio.yaml.tmpl"
