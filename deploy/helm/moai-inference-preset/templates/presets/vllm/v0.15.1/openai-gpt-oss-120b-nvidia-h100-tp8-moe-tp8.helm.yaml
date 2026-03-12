@@ -9,7 +9,7 @@ metadata:
     mif.moreh.io/model.name: gpt-oss-120b
     mif.moreh.io/role: e2e
     mif.moreh.io/accelerator.vendor: nvidia
-    mif.moreh.io/accelerator.model: h100
+    mif.moreh.io/accelerator.model: h100-80gb-hbm3
     mif.moreh.io/parallelism: "tp8-moe-tp8"
 spec:
   framework: vllm
@@ -37,7 +37,7 @@ spec:
               nvidia.com/gpu: "8"
       nodeSelector:
         moai.moreh.io/accelerator.vendor: nvidia
-        moai.moreh.io/accelerator.model: h100
+        moai.moreh.io/accelerator.model: h100-80gb-hbm3
       tolerations:
         - key: nvidia.com/gpu
           operator: Exists
