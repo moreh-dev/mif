@@ -1,42 +1,39 @@
 apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceServiceTemplate
 metadata:
-  name: vllm-v0.15.1-deepseek-ai-deepseek-r1-nvidia-h100-dp16-moe-ep16
+  name: vllm-v0.15.1-moonshotai-kimi-k2.5-nvidia-h100-80gb-hbm3-tp8-moe-ep8
   namespace: {{ include "common.names.namespace" . }}
   labels:
     {{- include "mif.preset.labels" . | nindent 4 }}
-    mif.moreh.io/model.org: deepseek-ai
-    mif.moreh.io/model.name: deepseek-r1
+    mif.moreh.io/model.org: moonshotai
+    mif.moreh.io/model.name: kimi-k2.5
     mif.moreh.io/role: e2e
     mif.moreh.io/accelerator.vendor: nvidia
     mif.moreh.io/accelerator.model: h100-80gb-hbm3
-    mif.moreh.io/parallelism: "dp16-moe-ep16"
+    mif.moreh.io/parallelism: "tp8-moe-ep8"
 spec:
   framework: vllm
   model:
-    name: deepseek-ai/DeepSeek-R1
+    name: moonshotai/Kimi-K2.5
   parallelism:
-    data: 16
-    dataLocal: 8
+    tensor: 8
     expert: true
-  workerTemplate:
+  template:
     spec:
       containers:
         - name: main
           image: vllm/vllm-openai:v0.15.1
           env:
-            - name: VLLM_USE_DEEP_GEMM
-              value: "1"
-            - name: VLLM_ALL2ALL_BACKEND
-              value: deepep_low_latency
             - name: ISVC_EXTRA_ARGS
               value: >-
                 --trust-remote-code
-                --max-model-len 32768
-                --max-num-seqs 128
-                --max-num-batched-tokens 57344
-                --gpu-memory-utilization 0.9
-                --reasoning-parser deepseek_r1
+                --mm-encoder-tp-mode data
+                --tool-call-parser kimi_k2
+                --reasoning-parser kimi_k2
+                --max-model-len 4096
+                --max-num-seqs 16
+                --gpu-memory-utilization 0.95
+                --kv-cache-dtype fp8
           resources:
             requests:
               nvidia.com/gpu: "8"
