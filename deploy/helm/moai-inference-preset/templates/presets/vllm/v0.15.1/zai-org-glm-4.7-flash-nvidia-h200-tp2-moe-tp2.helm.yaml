@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
         - name: main
-          image: vllm/vllm-openai:v0.15.1
+          image: vllm/vllm-openai:glm5
           env:
             - name: ISVC_EXTRA_ARGS
               value: >-
