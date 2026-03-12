@@ -290,7 +290,7 @@ Dec 2025 blog reported ~2,200 tok/s per H200 with this configuration on CoreWeav
 
 ---
 
-### 5.2 gpt-oss-120b (6 presets)
+### 5.2 gpt-oss-120b (5 presets)
 
 gpt-oss-120b ships pre-quantized (MXFP4 for MoE layers, BF16 for attention) and is compact
 at ~63 GB on disk. No additional quantization flags are needed. FP8 KV cache is recommended
@@ -299,26 +299,10 @@ on Hopper GPUs to maximize context length.
 EP is **not used** due to community-reported RuntimeErrors with `--enable-expert-parallel`
 on some GPU types.
 
-#### Preset 3: `vllm-v0.15.1-openai-gpt-oss-120b-nvidia-h100-1`
+> **Note**: The single-GPU H100 preset was removed after E2E testing confirmed OOM — the ~64 GiB
+> model leaves no headroom for KV cache + CUDA graph warmup on an 80 GB GPU.
 
-| Setting     | Value          |
-| ----------- | -------------- |
-| GPU         | NVIDIA H100 x1 |
-| Parallelism | None           |
-
-```
-ISVC_EXTRA_ARGS:
-  --trust-remote-code
-  --max-model-len 4096
-  --max-num-seqs 8
-  --gpu-memory-utilization 0.95
-  --kv-cache-dtype fp8
-```
-
-**Rationale**: Single-GPU deployment. With ~63 GB model + overhead, only ~12 GB remains for
-KV cache. Context length and batch size are heavily constrained.
-
-#### Preset 4: `vllm-v0.15.1-openai-gpt-oss-120b-nvidia-h100-tp2-moe-tp2`
+#### Preset 3: `vllm-v0.15.1-openai-gpt-oss-120b-nvidia-h100-tp2-moe-tp2`
 
 | Setting     | Value          |
 | ----------- | -------------- |
@@ -624,27 +608,27 @@ compared to TP's all-reduce. Recommended for production throughput.
 
 ## 6. Preset Summary Matrix
 
-| #   | Model         | GPU  | Count       | Parallelism             | max-model-len | max-num-seqs | gpu-mem-util | KV dtype |
-| --- | ------------- | ---- | ----------- | ----------------------- | ------------- | ------------ | ------------ | -------- |
-| 1   | DeepSeek-R1   | H200 | 8           | TP=8                    | 32,768        | 128          | 0.90         | auto     |
-| 2   | DeepSeek-R1   | H200 | 8           | TP=8 + EP=8             | 32,768        | 128          | 0.90         | auto     |
-| 3   | DeepSeek-R1   | H200 | 8           | DP=8 + EP=8             | 16,384        | 112          | 0.90         | auto     |
-| 4   | DeepSeek-R1   | H100 | 16 (2-node) | DP=16 + EP=16 (Wide-EP) | 32,768        | 128          | 0.90         | auto     |
-| 5   | DeepSeek-R1   | H200 | 16 (2-node) | DP=16 + EP=16 (Wide-EP) | 65,536        | 256          | 0.90         | auto     |
-| 6   | gpt-oss-120b  | H100 | 1           | None                    | 4,096         | 8            | 0.95         | fp8      |
-| 7   | gpt-oss-120b  | H100 | 2           | TP=2                    | 131,072       | 64           | 0.90         | fp8      |
-| 8   | gpt-oss-120b  | H100 | 4           | TP=4                    | 131,072       | 128          | 0.90         | fp8      |
-| 9   | gpt-oss-120b  | H100 | 8           | TP=8                    | 131,072       | 128          | 0.90         | fp8      |
-| 10  | gpt-oss-120b  | H200 | 1           | None                    | 131,072       | 64           | 0.90         | fp8      |
-| 11  | gpt-oss-120b  | H200 | 2           | TP=2                    | 131,072       | 128          | 0.90         | fp8      |
-| 12  | GLM-4.7-Flash | H100 | 1           | None                    | 32,768        | 32           | 0.90         | auto     |
-| 13  | GLM-4.7-Flash | H100 | 2           | TP=2                    | 131,072       | 64           | 0.90         | auto     |
-| 14  | GLM-4.7-Flash | H100 | 4           | TP=4                    | 200,000       | 64           | 0.90         | auto     |
-| 15  | GLM-4.7-Flash | H200 | 1           | None                    | 131,072       | 64           | 0.90         | auto     |
-| 16  | GLM-4.7-Flash | H200 | 2           | TP=2                    | 200,000       | 64           | 0.90         | auto     |
-| 17  | Kimi-K2.5     | H100 | 8           | TP=8 + EP=8             | 4,096         | 16           | 0.95         | fp8      |
-| 18  | Kimi-K2.5     | H200 | 8           | TP=8                    | 65,536        | 64           | 0.90         | fp8      |
-| 19  | Kimi-K2.5     | H200 | 8           | TP=8 + EP=8             | 65,536        | 64           | 0.90         | fp8      |
+| #   | Model         | GPU  | Count       | Parallelism             | max-model-len | max-num-seqs | gpu-mem-util | KV dtype | Image | Tested |
+| --- | ------------- | ---- | ----------- | ----------------------- | ------------- | ------------ | ------------ | -------- | ----- | ------ |
+| 1   | DeepSeek-R1   | H200 | 8           | TP=8                    | 32,768        | 128          | 0.90         | auto     | v0.15.1 | — |
+| 2   | DeepSeek-R1   | H200 | 8           | TP=8 + EP=8             | 32,768        | 128          | 0.90         | auto     | v0.15.1 | — |
+| 3   | DeepSeek-R1   | H200 | 8           | DP=8 + EP=8             | 16,384        | 112          | 0.90         | auto     | v0.15.1 | — |
+| 4   | DeepSeek-R1   | H100 | 16 (2-node) | DP=16 + EP=16 (Wide-EP) | 32,768        | 128          | 0.90         | auto     | v0.15.1 | — |
+| 5   | DeepSeek-R1   | H200 | 16 (2-node) | DP=16 + EP=16 (Wide-EP) | 65,536        | 256          | 0.90         | auto     | v0.15.1 | — |
+| ~~6~~ | ~~gpt-oss-120b~~ | ~~H100~~ | ~~1~~ | ~~None~~            | ~~4,096~~     | ~~8~~        | ~~0.95~~     | ~~fp8~~  | — | OOM (deleted) |
+| 7   | gpt-oss-120b  | H100 | 2           | TP=2                    | 131,072       | 64           | 0.90         | fp8      | v0.15.1 | PASS |
+| 8   | gpt-oss-120b  | H100 | 4           | TP=4                    | 131,072       | 128          | 0.90         | fp8      | v0.15.1 | PASS |
+| 9   | gpt-oss-120b  | H100 | 8           | TP=8                    | 131,072       | 128          | 0.90         | fp8      | v0.15.1 | PASS |
+| 10  | gpt-oss-120b  | H200 | 1           | None                    | 131,072       | 64           | 0.90         | fp8      | v0.15.1 | — |
+| 11  | gpt-oss-120b  | H200 | 2           | TP=2                    | 131,072       | 128          | 0.90         | fp8      | v0.15.1 | — |
+| 12  | GLM-4.7-Flash | H100 | 1           | None                    | 32,768        | 32           | 0.90         | auto     | glm5 | PASS |
+| 13  | GLM-4.7-Flash | H100 | 2           | TP=2                    | 131,072       | 64           | 0.90         | auto     | glm5 | — |
+| 14  | GLM-4.7-Flash | H100 | 4           | TP=4                    | 200,000       | 64           | 0.90         | auto     | glm5 | — |
+| 15  | GLM-4.7-Flash | H200 | 1           | None                    | 131,072       | 64           | 0.90         | auto     | glm5 | — |
+| 16  | GLM-4.7-Flash | H200 | 2           | TP=2                    | 200,000       | 64           | 0.90         | auto     | glm5 | — |
+| 17  | Kimi-K2.5     | H100 | 8           | TP=8 + EP=8             | 4,096         | 16           | 0.95         | fp8      | v0.15.1 | FAIL |
+| 18  | Kimi-K2.5     | H200 | 8           | TP=8                    | 65,536        | 64           | 0.90         | fp8      | v0.15.1 | — |
+| 19  | Kimi-K2.5     | H200 | 8           | TP=8 + EP=8             | 65,536        | 64           | 0.90         | fp8      | v0.15.1 | — |
 
 ## 7. Known Issues and Caveats
 
@@ -663,9 +647,9 @@ loops. All GLM-4.7-Flash presets use `--kv-cache-dtype auto` to avoid this issue
 
 ### GLM-4.7-Flash vLLM Compatibility
 
-The `glm4_moe_lite` architecture requires very recent vLLM builds. Support may not be fully
-available in v0.15.1. Verify compatibility before deploying. If the architecture is not
-recognized, a newer vLLM nightly build may be required.
+The `glm4_moe_lite` architecture is not recognized by vLLM v0.15.1 or v0.17.1 (bundled
+transformers < 5.0.0). **Use `vllm/vllm-openai:glm5` image** instead. All GLM-4.7-Flash
+presets have been updated accordingly.
 
 ### Kimi-K2.5 on H100
 
@@ -680,8 +664,11 @@ long context or high concurrency.
 
 ### Kimi-K2.5 vLLM Compatibility
 
-Kimi-K2.5 requires patches from vLLM PRs #33320 and #34501. Known issues exist with vLLM
-0.15.0. Verify that v0.15.1 includes these patches before deploying.
+`KimiK25Config` is not recognized by `AutoTokenizer` in any publicly available vLLM image
+(v0.15.1, v0.17.1, nightly). The model's custom configuration class has not been integrated
+into the transformers config registry. Presets remain in the repo but **will not work** until
+vLLM officially adds Kimi-K2.5 support. Additionally, models using `--trust-remote-code` on
+read-only PVCs require `HF_MODULES_CACHE=/tmp/hf_modules`.
 
 ### gpt-oss-120b Expert Parallelism
 
@@ -705,7 +692,58 @@ The current `vllm-dp` runtime base does not pass `--headless` to worker pods. In
 deployments, each worker node runs a full API server unnecessarily. This is functionally
 correct but wasteful. Users can ignore the extra API endpoints on worker pods.
 
-## 8. Sources
+## 8. E2E Test Results (2026-03-12, c-cluster H100-80GB-HBM3)
+
+Test environment: c-cluster `hyeonki` namespace, models served from read-only PVC via
+`vllm-hf-hub-offline` template (`HF_HUB_OFFLINE=1`, `HF_HOME=/mnt/models`).
+
+### deepseek-ai/DeepSeek-R1
+
+| Preset | Image | Result |
+|--------|-------|--------|
+| dp16-moe-ep16 | `vllm/vllm-openai:v0.15.1` | Not tested (16 GPU needed, cluster resource constraint) |
+
+vLLM v0.15.1 supports DeepSeek-R1 well; no issues expected.
+
+### openai/gpt-oss-120b
+
+| Preset | Image | Result |
+|--------|-------|--------|
+| H100 x1 | `vllm/vllm-openai:v0.15.1` | **FAIL — OOM**. Model weights (MXFP4) ~64 GiB, no headroom for KV cache + CUDA graph warmup on 80 GB GPU. |
+| tp2-moe-tp2 | `vllm/vllm-openai:v0.15.1` | **PASS** |
+| tp4-moe-tp4 | `vllm/vllm-openai:v0.15.1` | **PASS** |
+| tp8-moe-tp8 | `vllm/vllm-openai:v0.15.1` | **PASS** |
+
+**Action:** Deleted `openai-gpt-oss-120b-nvidia-h100-1` preset (single-GPU H100 not viable).
+
+### zai-org/GLM-4.7-Flash
+
+| Preset | Image | Result |
+|--------|-------|--------|
+| H100 x1 | `vllm/vllm-openai:v0.15.1` | **FAIL** — `glm4_moe_lite` architecture not recognized (bundled transformers < 5.0.0) |
+| H100 x1 | `vllm/vllm-openai:v0.17.1` | **FAIL** — Same issue |
+| H100 x1 | `vllm/vllm-openai:glm5` | **PASS** — Server started, model loaded and serving |
+
+**Action:** Changed image from `v0.15.1` to `glm5` for all 5 GLM-4.7-Flash presets (3 H100 + 2 H200).
+
+### moonshotai/Kimi-K2.5
+
+| Preset | Image | Result |
+|--------|-------|--------|
+| H100 tp8-moe-ep8 | `vllm/vllm-openai:v0.15.1` | **FAIL** — `KimiK25Config` not recognized by `AutoTokenizer` |
+| H100 tp8-moe-ep8 | `vllm/vllm-openai:v0.17.1` | **FAIL** — Same issue |
+| H100 tp8-moe-ep8 | `vllm/vllm-openai:nightly` | **FAIL** — Same issue |
+
+**Action:** No image change. Kimi-K2.5 unsupported by all publicly available vLLM images.
+Presets remain with `v0.15.1` until vLLM adds official support.
+
+### Other Changes
+
+- All H100 presets: `moai.moreh.io/accelerator.model` and `mif.moreh.io/accelerator.model`
+  changed from `h100` to `h100-80gb-hbm3` to match actual c-cluster node labels.
+- Commit: `475474a` (`MAF-19394` branch).
+
+## 9. Sources
 
 - [vLLM Official Documentation — Production Metrics](https://docs.vllm.ai/en/latest/serving/metrics.html) and [Engine Arguments](https://docs.vllm.ai/en/latest/serving/engine_args.html)
 - [vLLM Recipes — DeepSeek-R1 Deployment](https://docs.vllm.ai/en/latest/recipes/deepseek_r1.html)
