@@ -386,7 +386,7 @@ Install the Istio base chart.
 
 ```shell
 helm upgrade -i istio-base istio/base \
-    --version 1.28.3 \
+    --version 1.28.5 \
     -n istio-system \
     --create-namespace
 ```
@@ -402,7 +402,7 @@ pilot:
 
 ```shell
 helm upgrade -i istiod istio/istiod \
-    --version 1.28.3 \
+    --version 1.28.5 \
     -n istio-system \
     -f istiod-values.yaml
 ```

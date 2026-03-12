@@ -14,7 +14,7 @@ spec:
         - name: moreh-registry
       containers:
         - name: main
-          image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/quickstart/moreh-vllm:20250915.1
+          image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/quickstart/moreh-vllm:v0.15.1.1
           securityContext:
             capabilities:
               add:

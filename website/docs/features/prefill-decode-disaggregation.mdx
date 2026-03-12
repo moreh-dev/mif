@@ -67,6 +67,12 @@ config:
 
 For the InferenceService, use **presets** (`InferenceServiceTemplate`) to simplify the configuration of hardware-specific settings (like parallelism strategy) for different GPU types. For more details on presets, see the [Presets](./preset.mdx) documentation.
 
+:::warning
+
+PD disaggregation requires high-bandwidth network connectivity (e.g., RDMA) between prefill and decode pods for KV cache transfer. The specific network resource configuration (such as `mellanox/hca`) varies by cluster. Consult your cluster administrator to determine the correct network resource type and limits for your environment.
+
+:::
+
 List available prefill and decode presets for a specific model:
 
 ```shell
