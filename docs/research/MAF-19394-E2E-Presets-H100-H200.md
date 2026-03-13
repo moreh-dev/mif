@@ -664,20 +664,35 @@ presets have been updated accordingly.
 
 The H100 EP8 preset loads successfully (72.05 GiB across 8 GPUs, ~22 min) and the server
 starts normally, but **inference produces garbled output** — random token salad mixing
-Chinese, English, and code snippets with no coherent meaning. Likely root cause: extreme
-memory pressure (72.05 GiB / 80 GiB ≈ 90% GPU memory consumed by weights alone) combined
-with FP8 KV cache on H100. Only ~5.6 GB headroom per GPU after weights leaves insufficient
-room for stable KV cache and CUDA graph operation.
+Chinese, English, and code snippets with no coherent meaning.
+
+Retested with correct mode/temperature per HuggingFace model card (§6 Model Usage):
+
+| Test | Mode | Temperature | top_p | Result |
+|------|------|------------|-------|--------|
+| Instant | `chat_template_kwargs: {"thinking": false}` | 0.6 | 0.95 | Garbled |
+| Thinking | (default) | 1.0 | 0.95 | Garbled |
+
+Root cause is confirmed as memory pressure, not thinking mode misconfiguration. 72.05 GiB
+weights on 80 GiB GPUs (≈90% consumed by weights alone) combined with FP8 KV cache causes
+numerical instability. Only ~5.6 GB headroom per GPU is insufficient.
 
 The H100 EP8 preset is retained in the repo for reference but is **not viable for
 production use**.
 
+### Kimi-K2.5 Thinking Mode
+
+Kimi-K2.5 defaults to **thinking mode**. For instant (non-reasoning) responses, clients
+must pass `chat_template_kwargs: {"thinking": false}` in the request body (or via
+`extra_body` in the OpenAI Python SDK). Recommended temperature: 1.0 for thinking mode,
+0.6 for instant mode; `top_p: 0.95` for both.
+
 ### Kimi-K2.5 `--trust-remote-code` on Read-Only PVCs
 
 Models using `--trust-remote-code` on read-only PVCs require `HF_MODULES_CACHE=/tmp/hf_modules`
-to allow vLLM to write dynamically loaded module caches. Without this, `AutoTokenizer` fails
-to resolve the custom `KimiK25Config`. The `vllm-hf-hub-offline` utility template sets this
-variable automatically.
+to allow vLLM to write dynamically loaded module caches. Without this, the tokenizer fails
+to load because `transformers` cannot create its dynamic module directory on the read-only
+filesystem. The `vllm-hf-hub-offline` utility template now sets this variable.
 
 ### gpt-oss-120b Expert Parallelism
 
@@ -742,14 +757,17 @@ vLLM v0.15.1 supports DeepSeek-R1 well; no issues expected.
 | Preset | Image | Result |
 |--------|-------|--------|
 | H100 tp8-moe-ep8 | `vllm/vllm-openai:v0.15.1` | **FAIL** (initial) — `KimiK25Config` not recognized by `AutoTokenizer`. Root cause: missing tokenizer files on PVC, not a vLLM compatibility issue. |
-| H100 tp8-moe-ep8 | `vllm/vllm-openai:v0.15.1` | **FAIL** (retry, with PVC fix + `HF_MODULES_CACHE`) — Model loaded successfully (72.05 GiB, ~22 min), server started. **Garbled output**: `max_tokens=16, temperature=0` produced `!!!!!!!!!!!!!!!!`; `max_tokens=256, temperature=0.6` produced incoherent token salad (random Chinese/English/code mixture). |
+| H100 tp8-moe-ep8 | `vllm/vllm-openai:v0.15.1` | **FAIL** (retry, with PVC fix + `HF_MODULES_CACHE`) — Model loaded successfully (72.05 GiB, ~22 min), server started. **Garbled output** with default thinking mode and `temperature=0`. |
+| H100 tp8-moe-ep8 | `vllm/vllm-openai:v0.15.1` | **FAIL** (retest with correct mode/temp per HF model card) — Tested instant mode (`thinking=false`, temp=0.6) and thinking mode (temp=1.0, top_p=0.95). Both produce garbled output. Confirms memory pressure, not mode misconfiguration. |
 
 **Root cause**: Extreme memory pressure — 72.05 GiB weights on 80 GiB GPUs leaves only ~5.6 GB
 headroom per GPU. Combined with FP8 KV cache, this causes numerical instability during inference.
+Thinking mode / temperature settings do not affect the outcome.
 
 **Action:** H100 EP8 preset retained for reference but marked as non-viable. Added
 `--compilation_config.pass_config.fuse_allreduce_rms true` and `--enable-auto-tool-choice`
-to all 3 Kimi-K2.5 presets per official vLLM recipe.
+to all 3 Kimi-K2.5 presets per official vLLM recipe. Added `HF_MODULES_CACHE=/tmp/hf_modules`
+to `vllm-hf-hub-offline` utility template.
 
 ### Other Changes
 
