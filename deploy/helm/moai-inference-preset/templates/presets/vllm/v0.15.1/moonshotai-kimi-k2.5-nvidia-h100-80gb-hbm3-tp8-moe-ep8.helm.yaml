@@ -28,8 +28,10 @@ spec:
               value: >-
                 --trust-remote-code
                 --mm-encoder-tp-mode data
+                --compilation_config.pass_config.fuse_allreduce_rms true
                 --tool-call-parser kimi_k2
                 --reasoning-parser kimi_k2
+                --enable-auto-tool-choice
                 --max-model-len 4096
                 --max-num-seqs 16
                 --gpu-memory-utilization 0.95

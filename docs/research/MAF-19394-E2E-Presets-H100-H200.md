@@ -539,8 +539,10 @@ ISVC_EXTRA_ARGS:
   --trust-remote-code
   --enable-expert-parallel
   --mm-encoder-tp-mode data
+  --compilation_config.pass_config.fuse_allreduce_rms true
   --tool-call-parser kimi_k2
   --reasoning-parser kimi_k2
+  --enable-auto-tool-choice
   --max-model-len 4096
   --max-num-seqs 16
   --gpu-memory-utilization 0.95
@@ -562,8 +564,10 @@ essential for 384 experts on 8 GPUs.
 ISVC_EXTRA_ARGS:
   --trust-remote-code
   --mm-encoder-tp-mode data
+  --compilation_config.pass_config.fuse_allreduce_rms true
   --tool-call-parser kimi_k2
   --reasoning-parser kimi_k2
+  --enable-auto-tool-choice
   --max-model-len 65536
   --max-num-seqs 64
   --gpu-memory-utilization 0.90
@@ -585,8 +589,10 @@ ISVC_EXTRA_ARGS:
   --trust-remote-code
   --enable-expert-parallel
   --mm-encoder-tp-mode data
+  --compilation_config.pass_config.fuse_allreduce_rms true
   --tool-call-parser kimi_k2
   --reasoning-parser kimi_k2
+  --enable-auto-tool-choice
   --max-model-len 65536
   --max-num-seqs 64
   --gpu-memory-utilization 0.90
@@ -601,9 +607,12 @@ compared to TP's all-reduce. Recommended for production throughput.
 - `--mm-encoder-tp-mode data`: MoonViT (400M params) is small enough that tensor-parallelizing
   it adds more communication overhead than it saves. Data parallelism is more efficient — each
   GPU processes a different image independently.
+- `--compilation_config.pass_config.fuse_allreduce_rms true`: Fuses allreduce + RMS norm
+  operations for improved throughput. Recommended by the official vLLM Kimi-K2.5 recipe.
 - `--tool-call-parser kimi_k2`: Required for Kimi-K2.5's native tool call format.
 - `--reasoning-parser kimi_k2`: Enables structured reasoning extraction from Kimi-K2.5's
   chain-of-thought output.
+- `--enable-auto-tool-choice`: Enables automatic tool calling mode.
 - `--kv-cache-dtype fp8`: Safe for this model and halves KV cache memory on Hopper GPUs.
 
 ## 6. Preset Summary Matrix
@@ -622,11 +631,11 @@ compared to TP's all-reduce. Recommended for production throughput.
 | 10  | gpt-oss-120b  | H200 | 1           | None                    | 131,072       | 64           | 0.90         | fp8      | v0.15.1 | — |
 | 11  | gpt-oss-120b  | H200 | 2           | TP=2                    | 131,072       | 128          | 0.90         | fp8      | v0.15.1 | — |
 | 12  | GLM-4.7-Flash | H100 | 1           | None                    | 32,768        | 32           | 0.90         | auto     | glm5 | PASS |
-| 13  | GLM-4.7-Flash | H100 | 2           | TP=2                    | 131,072       | 64           | 0.90         | auto     | glm5 | — |
-| 14  | GLM-4.7-Flash | H100 | 4           | TP=4                    | 200,000       | 64           | 0.90         | auto     | glm5 | — |
+| 13  | GLM-4.7-Flash | H100 | 2           | TP=2                    | 131,072       | 64           | 0.90         | auto     | glm5 | PASS |
+| 14  | GLM-4.7-Flash | H100 | 4           | TP=4                    | 200,000       | 64           | 0.90         | auto     | glm5 | PASS |
 | 15  | GLM-4.7-Flash | H200 | 1           | None                    | 131,072       | 64           | 0.90         | auto     | glm5 | — |
 | 16  | GLM-4.7-Flash | H200 | 2           | TP=2                    | 200,000       | 64           | 0.90         | auto     | glm5 | — |
-| 17  | Kimi-K2.5     | H100 | 8           | TP=8 + EP=8             | 4,096         | 16           | 0.95         | fp8      | v0.15.1 | FAIL |
+| 17  | Kimi-K2.5     | H100 | 8           | TP=8 + EP=8             | 4,096         | 16           | 0.95         | fp8      | v0.15.1 | FAIL (garbled) |
 | 18  | Kimi-K2.5     | H200 | 8           | TP=8                    | 65,536        | 64           | 0.90         | fp8      | v0.15.1 | — |
 | 19  | Kimi-K2.5     | H200 | 8           | TP=8 + EP=8             | 65,536        | 64           | 0.90         | fp8      | v0.15.1 | — |
 
@@ -651,24 +660,24 @@ The `glm4_moe_lite` architecture is not recognized by vLLM v0.15.1 or v0.17.1 (b
 transformers < 5.0.0). **Use `vllm/vllm-openai:glm5` image** instead. All GLM-4.7-Flash
 presets have been updated accordingly.
 
-### Kimi-K2.5 on H100
+### Kimi-K2.5 on H100 — Garbled Output
 
-With only 5.6 GB headroom per GPU after loading weights, the H100 preset is restricted to:
+The H100 EP8 preset loads successfully (72.05 GiB across 8 GPUs, ~22 min) and the server
+starts normally, but **inference produces garbled output** — random token salad mixing
+Chinese, English, and code snippets with no coherent meaning. Likely root cause: extreme
+memory pressure (72.05 GiB / 80 GiB ≈ 90% GPU memory consumed by weights alone) combined
+with FP8 KV cache on H100. Only ~5.6 GB headroom per GPU after weights leaves insufficient
+room for stable KV cache and CUDA graph operation.
 
-- 4K context length (vs. 256K native)
-- 16 concurrent sequences (vs. 64+ on H200)
-- 0.95 memory utilization (minimal safety margin)
+The H100 EP8 preset is retained in the repo for reference but is **not viable for
+production use**.
 
-This configuration is functional but not recommended for production workloads requiring
-long context or high concurrency.
+### Kimi-K2.5 `--trust-remote-code` on Read-Only PVCs
 
-### Kimi-K2.5 vLLM Compatibility
-
-`KimiK25Config` is not recognized by `AutoTokenizer` in any publicly available vLLM image
-(v0.15.1, v0.17.1, nightly). The model's custom configuration class has not been integrated
-into the transformers config registry. Presets remain in the repo but **will not work** until
-vLLM officially adds Kimi-K2.5 support. Additionally, models using `--trust-remote-code` on
-read-only PVCs require `HF_MODULES_CACHE=/tmp/hf_modules`.
+Models using `--trust-remote-code` on read-only PVCs require `HF_MODULES_CACHE=/tmp/hf_modules`
+to allow vLLM to write dynamically loaded module caches. Without this, `AutoTokenizer` fails
+to resolve the custom `KimiK25Config`. The `vllm-hf-hub-offline` utility template sets this
+variable automatically.
 
 ### gpt-oss-120b Expert Parallelism
 
@@ -692,7 +701,7 @@ The current `vllm-dp` runtime base does not pass `--headless` to worker pods. In
 deployments, each worker node runs a full API server unnecessarily. This is functionally
 correct but wasteful. Users can ignore the extra API endpoints on worker pods.
 
-## 8. E2E Test Results (2026-03-12, c-cluster H100-80GB-HBM3)
+## 8. E2E Test Results (2026-03-12 ~ 2026-03-13, c-cluster H100-80GB-HBM3)
 
 Test environment: c-cluster `hyeonki` namespace, models served from read-only PVC via
 `vllm-hf-hub-offline` template (`HF_HUB_OFFLINE=1`, `HF_HOME=/mnt/models`).
@@ -723,6 +732,8 @@ vLLM v0.15.1 supports DeepSeek-R1 well; no issues expected.
 | H100 x1 | `vllm/vllm-openai:v0.15.1` | **FAIL** — `glm4_moe_lite` architecture not recognized (bundled transformers < 5.0.0) |
 | H100 x1 | `vllm/vllm-openai:v0.17.1` | **FAIL** — Same issue |
 | H100 x1 | `vllm/vllm-openai:glm5` | **PASS** — Server started, model loaded and serving |
+| H100 tp2-moe-tp2 | `vllm/vllm-openai:glm5` | **PASS** — Model loaded (28.19 GiB, 462s). Correct answer ("4" for 2+2). KV cache supports 5.98× concurrency at 131K context. |
+| H100 tp4-moe-tp4 | `vllm/vllm-openai:glm5` | **PASS** — Model loaded and serving. Correct answer ("4" for 2+2). 200K context supported. |
 
 **Action:** Changed image from `v0.15.1` to `glm5` for all 5 GLM-4.7-Flash presets (3 H100 + 2 H200).
 
@@ -730,18 +741,23 @@ vLLM v0.15.1 supports DeepSeek-R1 well; no issues expected.
 
 | Preset | Image | Result |
 |--------|-------|--------|
-| H100 tp8-moe-ep8 | `vllm/vllm-openai:v0.15.1` | **FAIL** — `KimiK25Config` not recognized by `AutoTokenizer` |
-| H100 tp8-moe-ep8 | `vllm/vllm-openai:v0.17.1` | **FAIL** — Same issue |
-| H100 tp8-moe-ep8 | `vllm/vllm-openai:nightly` | **FAIL** — Same issue |
+| H100 tp8-moe-ep8 | `vllm/vllm-openai:v0.15.1` | **FAIL** (initial) — `KimiK25Config` not recognized by `AutoTokenizer`. Root cause: missing tokenizer files on PVC, not a vLLM compatibility issue. |
+| H100 tp8-moe-ep8 | `vllm/vllm-openai:v0.15.1` | **FAIL** (retry, with PVC fix + `HF_MODULES_CACHE`) — Model loaded successfully (72.05 GiB, ~22 min), server started. **Garbled output**: `max_tokens=16, temperature=0` produced `!!!!!!!!!!!!!!!!`; `max_tokens=256, temperature=0.6` produced incoherent token salad (random Chinese/English/code mixture). |
 
-**Action:** No image change. Kimi-K2.5 unsupported by all publicly available vLLM images.
-Presets remain with `v0.15.1` until vLLM adds official support.
+**Root cause**: Extreme memory pressure — 72.05 GiB weights on 80 GiB GPUs leaves only ~5.6 GB
+headroom per GPU. Combined with FP8 KV cache, this causes numerical instability during inference.
+
+**Action:** H100 EP8 preset retained for reference but marked as non-viable. Added
+`--compilation_config.pass_config.fuse_allreduce_rms true` and `--enable-auto-tool-choice`
+to all 3 Kimi-K2.5 presets per official vLLM recipe.
 
 ### Other Changes
 
 - All H100 presets: `moai.moreh.io/accelerator.model` and `mif.moreh.io/accelerator.model`
   changed from `h100` to `h100-80gb-hbm3` to match actual c-cluster node labels.
-- Commit: `475474a` (`MAF-19394` branch).
+- All 3 Kimi-K2.5 presets: Added `--compilation_config.pass_config.fuse_allreduce_rms true`
+  and `--enable-auto-tool-choice` per official vLLM Kimi-K2.5 recipe.
+- Commits: `475474a`, `79c4e78` (`MAF-19394` branch).
 
 ## 9. Sources
 
@@ -764,4 +780,5 @@ Presets remain with `v0.15.1` until vLLM adds official support.
 - [SimpliSmart — Deploy GPT-OSS-120B on H100 GPUs](https://simplismart.ai/blog/deploy-gpt-oss-120b-h100-vllm)
 - [Kempner Institute — Distributed Inference with vLLM for DeepSeek-R1](https://github.com/KempnerInstitute/distributed-inference-vllm/blob/main/README_DeepSeekR1.md)
 - [MoonshotAI — Kimi-K2.5 Deploy Guidance](https://github.com/MoonshotAI/Kimi-K2.5/blob/master/docs/deploy_guidance.md)
+- [vLLM Recipes — Kimi-K2.5 Deployment](https://docs.vllm.ai/projects/recipes/en/latest/moonshotai/Kimi-K2.5.html)
 - [Unsloth — GLM-4.7-Flash Local Deployment Guide](https://unsloth.ai/docs/models/glm-4.7-flash)
