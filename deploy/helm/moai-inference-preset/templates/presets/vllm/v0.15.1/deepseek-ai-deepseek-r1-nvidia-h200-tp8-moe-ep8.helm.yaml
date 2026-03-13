@@ -33,6 +33,8 @@ spec:
                 --kv-cache-dtype auto
                 --reasoning-parser deepseek_r1
                 --enable-chunked-prefill
+                --disable-uvicorn-access-log
+                --no-enable-log-requests
           resources:
             requests:
               nvidia.com/gpu: "8"

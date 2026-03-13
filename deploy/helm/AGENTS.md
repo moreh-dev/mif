@@ -155,6 +155,7 @@ Odin presets use `mif.moreh.io/*` labels:
 **Presets define** (model/GPU-specific, not user-configurable):
 - vLLM arguments for parallelism within a single rank (`--tensor-parallel-size`, `--enable-expert-parallel`, etc.)
 - Model-specific vLLM arguments (`--trust-remote-code`, `--max-model-len`, `--max-num-seqs`, `--kv-cache-type`, `--quantization`, `--gpu-memory-utilization`, etc.)
+- Logging arguments (`--disable-uvicorn-access-log`, `--no-enable-log-requests`) — presets must include these because `ISVC_EXTRA_ARGS` in a preset fully overrides the runtime base's value during Odin strategic merge patch (env vars merge by `name` key)
 - Model-specific environment variables (`VLLM_ROCM_USE_AITER`, `VLLM_MOE_DP_CHUNK_SIZE`, `UCX_*`, `NCCL_*`, etc.)
 - Resources (GPU count, RDMA NICs), tolerations, and nodeSelector
 
@@ -171,7 +172,6 @@ Odin presets use `mif.moreh.io/*` labels:
 - Volume mounts and model loading method (HF download vs. PV)
 - Hugging Face token
 - Number of replicas
-- Logging arguments (`--no-enable-log-requests`, `--disable-uvicorn-access-log`, etc.)
 - `--no-enable-prefix-caching`
 
 **Product team templates configure** (must NOT be set in presets):

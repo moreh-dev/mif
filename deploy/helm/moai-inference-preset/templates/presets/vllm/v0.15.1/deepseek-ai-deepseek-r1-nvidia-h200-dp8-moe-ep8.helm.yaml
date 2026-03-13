@@ -34,6 +34,8 @@ spec:
                 --max-num-batched-tokens 57344
                 --gpu-memory-utilization 0.9
                 --reasoning-parser deepseek_r1
+                --disable-uvicorn-access-log
+                --no-enable-log-requests
           resources:
             requests:
               nvidia.com/gpu: "1"
