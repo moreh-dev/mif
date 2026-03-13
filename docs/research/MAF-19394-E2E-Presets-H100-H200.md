@@ -635,7 +635,7 @@ compared to TP's all-reduce. Recommended for production throughput.
 | 14  | GLM-4.7-Flash | H100 | 4           | TP=4                    | 200,000       | 64           | 0.90         | auto     | glm5 | PASS |
 | 15  | GLM-4.7-Flash | H200 | 1           | None                    | 131,072       | 64           | 0.90         | auto     | glm5 | — |
 | 16  | GLM-4.7-Flash | H200 | 2           | TP=2                    | 200,000       | 64           | 0.90         | auto     | glm5 | — |
-| 17  | Kimi-K2.5     | H100 | 8           | TP=8 + EP=8             | 4,096         | 16           | 0.95         | fp8      | v0.15.1 | FAIL (garbled) |
+| 17  | Kimi-K2.5     | H100 | 8           | TP=8 + EP=8             | 4,096         | 16           | 0.95         | auto     | v0.15.1 | PASS |
 | 18  | Kimi-K2.5     | H200 | 8           | TP=8                    | 65,536        | 64           | 0.90         | fp8      | v0.15.1 | — |
 | 19  | Kimi-K2.5     | H200 | 8           | TP=8 + EP=8             | 65,536        | 64           | 0.90         | fp8      | v0.15.1 | — |
 
@@ -660,25 +660,21 @@ The `glm4_moe_lite` architecture is not recognized by vLLM v0.15.1 or v0.17.1 (b
 transformers < 5.0.0). **Use `vllm/vllm-openai:glm5` image** instead. All GLM-4.7-Flash
 presets have been updated accordingly.
 
-### Kimi-K2.5 on H100 — Garbled Output
+### Kimi-K2.5 on H100 — FP8 KV Cache Instability
 
-The H100 EP8 preset loads successfully (72.05 GiB across 8 GPUs, ~22 min) and the server
-starts normally, but **inference produces garbled output** — random token salad mixing
-Chinese, English, and code snippets with no coherent meaning.
+With `--kv-cache-dtype fp8`, the H100 EP8 preset produces **garbled output after ~30-50
+tokens** in both instant and thinking modes. Short responses (1-2 tokens) are correct,
+but longer generation degenerates into random token salad.
 
-Retested with correct mode/temperature per HuggingFace model card (§6 Model Usage):
+| KV cache dtype | Short output (1-2 tokens) | Long output (>50 tokens) |
+|----------------|---------------------------|--------------------------|
+| fp8            | PASS                      | FAIL (garbled)           |
+| auto (BF16)    | PASS                      | PASS                     |
 
-| Test | Mode | Temperature | top_p | Result |
-|------|------|------------|-------|--------|
-| Instant | `chat_template_kwargs: {"thinking": false}` | 0.6 | 0.95 | Garbled |
-| Thinking | (default) | 1.0 | 0.95 | Garbled |
-
-Root cause is confirmed as memory pressure, not thinking mode misconfiguration. 72.05 GiB
-weights on 80 GiB GPUs (≈90% consumed by weights alone) combined with FP8 KV cache causes
-numerical instability. Only ~5.6 GB headroom per GPU is insufficient.
-
-The H100 EP8 preset is retained in the repo for reference but is **not viable for
-production use**.
+Root cause: FP8 KV cache numerical instability on H100 for this model. Not memory pressure
+per se — the model loads and serves fine — but FP8 quantization errors accumulate during
+longer generation sequences. Switching to `--kv-cache-dtype auto` (BF16) resolves the issue
+completely. Both instant mode and thinking mode produce correct, coherent output.
 
 ### Kimi-K2.5 Thinking Mode
 
@@ -716,7 +712,7 @@ The current `vllm-dp` runtime base does not pass `--headless` to worker pods. In
 deployments, each worker node runs a full API server unnecessarily. This is functionally
 correct but wasteful. Users can ignore the extra API endpoints on worker pods.
 
-## 8. E2E Test Results (2026-03-12 ~ 2026-03-13, c-cluster H100-80GB-HBM3)
+## 8. E2E Test Results (2026-03-12 ~ 2026-03-14, c-cluster H100-80GB-HBM3)
 
 Test environment: c-cluster `hyeonki` namespace, models served from read-only PVC via
 `vllm-hf-hub-offline` template (`HF_HUB_OFFLINE=1`, `HF_HOME=/mnt/models`).
@@ -757,15 +753,15 @@ vLLM v0.15.1 supports DeepSeek-R1 well; no issues expected.
 | Preset | Image | Result |
 |--------|-------|--------|
 | H100 tp8-moe-ep8 | `vllm/vllm-openai:v0.15.1` | **FAIL** (initial) — `KimiK25Config` not recognized by `AutoTokenizer`. Root cause: missing tokenizer files on PVC, not a vLLM compatibility issue. |
-| H100 tp8-moe-ep8 | `vllm/vllm-openai:v0.15.1` | **FAIL** (retry, with PVC fix + `HF_MODULES_CACHE`) — Model loaded successfully (72.05 GiB, ~22 min), server started. **Garbled output** with default thinking mode and `temperature=0`. |
-| H100 tp8-moe-ep8 | `vllm/vllm-openai:v0.15.1` | **FAIL** (retest with correct mode/temp per HF model card) — Tested instant mode (`thinking=false`, temp=0.6) and thinking mode (temp=1.0, top_p=0.95). Both produce garbled output. Confirms memory pressure, not mode misconfiguration. |
+| H100 tp8-moe-ep8 | `vllm/vllm-openai:v0.15.1` | **FAIL** (retry, `--kv-cache-dtype fp8`) — Model loaded, server started. Garbled output after ~30 tokens in both instant and thinking modes. Short responses (e.g., "4" for 2+2) correct. |
+| H100 tp8-moe-ep8 | `vllm/vllm-openai:v0.15.1` | **PASS** (`--kv-cache-dtype auto`) — Both instant mode and thinking mode produce correct, coherent output. Instant: chess history paragraph (289 tokens). Thinking: 15×37=555 with step-by-step reasoning (495 tokens). |
 
-**Root cause**: Extreme memory pressure — 72.05 GiB weights on 80 GiB GPUs leaves only ~5.6 GB
-headroom per GPU. Combined with FP8 KV cache, this causes numerical instability during inference.
-Thinking mode / temperature settings do not affect the outcome.
+**Root cause**: FP8 KV cache numerical instability on H100 for Kimi-K2.5. Quantization errors
+accumulate during longer generation. Switching to `--kv-cache-dtype auto` (BF16) resolves it.
+Previous garbled output was compounded by incomplete model files (only 22/64 weight shards on PVC).
 
-**Action:** H100 EP8 preset retained for reference but marked as non-viable. Added
-`--compilation_config.pass_config.fuse_allreduce_rms true` and `--enable-auto-tool-choice`
+**Action:** Changed H100 preset from `--kv-cache-dtype fp8` to `--kv-cache-dtype auto`.
+Added `--compilation_config.pass_config.fuse_allreduce_rms true` and `--enable-auto-tool-choice`
 to all 3 Kimi-K2.5 presets per official vLLM recipe. Added `HF_MODULES_CACHE=/tmp/hf_modules`
 to `vllm-hf-hub-offline` utility template.
 
@@ -775,7 +771,11 @@ to `vllm-hf-hub-offline` utility template.
   changed from `h100` to `h100-80gb-hbm3` to match actual c-cluster node labels.
 - All 3 Kimi-K2.5 presets: Added `--compilation_config.pass_config.fuse_allreduce_rms true`
   and `--enable-auto-tool-choice` per official vLLM Kimi-K2.5 recipe.
-- Commits: `475474a`, `79c4e78` (`MAF-19394` branch).
+- Kimi-K2.5 H100 preset: Changed `--kv-cache-dtype fp8` to `--kv-cache-dtype auto` after
+  FP8 KV cache caused garbled output on longer sequences.
+- All 18 E2E presets: Added `--disable-uvicorn-access-log --no-enable-log-requests` because
+  preset `ISVC_EXTRA_ARGS` overrides runtime-base's value during Odin strategic merge patch.
+- Commits: `475474a`, `79c4e78`, `c5b75fb`, `cb452e2`, `6e5ad42` (`MAF-19394` branch).
 
 ## 9. Sources
 
