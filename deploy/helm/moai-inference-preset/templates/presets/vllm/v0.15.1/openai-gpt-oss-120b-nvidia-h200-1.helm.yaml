@@ -28,6 +28,8 @@ spec:
                 --max-num-seqs 64
                 --gpu-memory-utilization 0.90
                 --kv-cache-dtype fp8
+                --disable-uvicorn-access-log
+                --no-enable-log-requests
           resources:
             requests:
               nvidia.com/gpu: "1"
