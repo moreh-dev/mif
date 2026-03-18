@@ -289,3 +289,6 @@ test/tmp/
 
 # E2E test reports
 test-reports/
+
+# Prettier
+.prettierignore
