@@ -88,6 +88,15 @@ In this example, **DeepSeek-R1** is deployed using:
 
 Two `InferenceService` resources are created. Because the presets use data parallelism (`dp8-moe-ep8`), the runtime bases are `vllm-prefill-dp` and `vllm-decode-dp`, and the ISVC uses `workerTemplate` instead of `template`.
 
+:::info
+Choose the appropriate PD-specific runtime base template according to your parallelism strategy:
+- **TP-only (Tensor Parallel)**: Use `vllm-prefill` and `vllm-decode`.
+- **DP (Data Parallel)**: Use `vllm-prefill-dp` and `vllm-decode-dp`.
+- **PP (Pipeline Parallel)**: Use `vllm-prefill-pp` and `vllm-decode-pp`.
+
+In offline environments, also include the appropriate offline hub template in your `templateRefs` (e.g., `vllm-dp-hf-hub-offline` for DP setups, `vllm-pp-hf-hub-offline` for PP setups, or `vllm-hf-hub-offline` for TP-only setups).
+:::
+
 #### 1. Prefill Service (MI300X)
 
 This service uses the MI300X prefill preset and the `vllm-prefill-dp` runtime base for data-parallel prefill.
@@ -112,6 +121,7 @@ spec:
           env:
             - name: HF_TOKEN
               value: <huggingFaceToken>
+          # 3. Specify cluster-specific hardware resources (e.g., RDMA NICs for KV cache transfer)
           resources:
             limits:
               mellanox/hca: "1"
@@ -141,6 +151,7 @@ spec:
           env:
             - name: HF_TOKEN
               value: <huggingFaceToken>
+          # 3. Specify cluster-specific hardware resources (e.g., RDMA NICs for KV cache transfer)
           resources:
             limits:
               mellanox/hca: "1"

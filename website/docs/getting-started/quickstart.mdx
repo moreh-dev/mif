@@ -127,6 +127,10 @@ Create a `gateway.yaml` file to add the Gateway resource to the `quickstart` nam
 <Tabs groupId="gateway-class">
 <TabItem value="istio" label="Istio (Default)" default>
 
+:::info
+In environments with multiple Istio control planes, you may need to specify an Istio revision for the Gateway by adding the `istio.io/rev: <revision>` label to the `Gateway` metadata.
+:::
+
 ```yaml title="gateway.yaml"
 apiVersion: v1
 kind: ConfigMap
@@ -163,6 +167,8 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
   name: mif
+  # labels:
+  #   istio.io/rev: <revision>
 spec:
   gatewayClassName: istio
   infrastructure:
@@ -267,6 +273,8 @@ config:
 gateway:
   name: mif
   gatewayClassName: istio
+  # labels:
+  #   istio.io/rev: <revision>
 
 inferencePool:
   targetPorts:
@@ -314,7 +322,7 @@ To enable the vLLM pods to download model parameters from Hugging Face, you must
 
 :::info
 
-In production environments, it is common to download the model parameters to a storage volume in advance and load them at runtime. Refer to the [Hugging Face model management with persistent volume](../operations/hf-model-management-with-pv.mdx) for more details.
+In production or air-gapped environments, you can use the **offline hub templates** (e.g., `vllm-hf-hub-offline`, `vllm-dp-hf-hub-offline`, or `vllm-pp-hf-hub-offline`) instead of `HF_TOKEN` to load models from a pre-provisioned Persistent Volume. These templates require a PVC named `models` in your namespace. Refer to the [Hugging Face model management with persistent volume](../operations/hf-model-management-with-pv.mdx) for more details.
 
 :::
 
@@ -344,6 +352,13 @@ spec:
 - The `replicas` field specifies the number of vLLM pods.
 - The `inferencePoolRefs` field specifies the Heimdall's InferencePool where this vLLM pod will register to.
 - The `templateRefs` field specifies the Odin Template resources; `vllm` is a runtime base, and `quickstart-vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2` is a model-specific template.
+
+:::info
+Select the appropriate runtime base template according to your parallelism strategy:
+- **TP-only (Tensor Parallel)**: Use `vllm`.
+- **DP (Data Parallel)**: Use `vllm-dp`.
+- **PP (Pipeline Parallel)**: Use `vllm-pp`.
+:::
 
 After that, you can deploy the Odin InferenceService by running the following command:
 
