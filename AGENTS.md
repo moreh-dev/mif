@@ -112,6 +112,6 @@ The `skills/` directory intentionally does not have its own `AGENTS.md`. Skills 
 
 When working on a specific MIF component, consult the relevant skill:
 
-- **Dependency version updates**: [`skills/bump-dependency/SKILL.md`](skills/bump-dependency/SKILL.md)
+- **Dependency version updates**: [`.agents/skills/bump-dependency/SKILL.md`](.agents/skills/bump-dependency/SKILL.md)
 - **Heimdall scheduler**: [`skills/guide-heimdall/SKILL.md`](skills/guide-heimdall/SKILL.md)
 - **Odin inference operator**: [`skills/guide-odin/SKILL.md`](skills/guide-odin/SKILL.md)
