@@ -1,6 +1,6 @@
 ---
 title: Prefix Cache-aware Routing
-sidebar_label: Prefix Cache-aware Routing
+sidebar_label: Prefix Cache Routing
 sidebar_position: 3
 ---
 
@@ -31,6 +31,7 @@ config:
   kind: EndpointPickerConfig
   plugins:
     - type: single-profile-handler
+    - type: queue-scorer
     - type: max-score-picker
     - type: precise-prefix-cache-scorer
       parameters:
@@ -63,6 +64,9 @@ config:
     - name: default
       plugins:
         - pluginRef: precise-prefix-cache-scorer
+          # Recommended: Use a higher weight (e.g., 10) to prioritize 
+          # cache locality over simple load balancing.
+          weight: 10
         - pluginRef: max-score-picker
 
 # extraVolumes:
@@ -76,24 +80,41 @@ config:
 #     readOnly: true
 ```
 
-:::tip
+:::info
 In offline environments, use the `local` tokenizer config. If your models are downloaded via the `hf` CLI, set `autoDiscoveryDir` to `/mnt/models/hub` to match the standard Hugging Face cache structure.
 :::
 
-### Components
+---
 
-#### Tokenizer and prefix store
+## Components
+
+### Tokenizer and prefix store
+
 Since vLLM instances manage prefix caches using tokenized sequences, the scorer must tokenize incoming prompts. To minimize overhead, the scorer maintains a **prefix store** that caches previous tokenization results. If a new request shares a significant portion (e.g., >80%) with a cached prefix, the scorer reuses the tokens to estimate the hit rate without re-tokenizing the entire prompt.
 
-#### Token processor
+### Token processor
+
 vLLM uses block hashes to look up prefixes. The scorer emulates this by hashing the tokenized prompt into blocks of size `B`. The `blockSize` and `hashSeed` must match the vLLM configuration of the worker pods.
 
-#### KV block index
+### KV block index
+
 Pods publish events (`BlockStored`, `BlockRemoved`) via ZMQ when their cache updates. The scorer subscribes to these events to maintain a **KV block index**, mapping prefix hashes to the list of pods holding that cache. The pod with the most matching blocks for a request is assigned the highest score.
 
-### Deployment Example
+---
+
+## Deployment example
 
 This section provides a complete example of deploying an inference service with prefix cache-aware routing using the **Llama 3.2 1B Instruct** model on AMD MI250 GPUs. For more details on using templates, see the [Presets](./preset.mdx) documentation.
+
+### 1. Identify available presets
+
+First, find the appropriate preset for your model and hardware:
+
+```shell
+kubectl get inferenceservicetemplate -n mif \
+  -l mif.moreh.io/template.type=preset \
+  -l mif.moreh.io/model.name=llama-3.2-1b-instruct
+```
 
 ### 2. Configure InferenceService
 
@@ -106,7 +127,6 @@ In production environments, it is highly recommended to use **offline hub templa
 :::
 
 ```yaml title="llama-prefix-cache.yaml"
-
 apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceService
 metadata:
