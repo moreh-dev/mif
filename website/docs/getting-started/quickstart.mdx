@@ -322,7 +322,7 @@ To enable the vLLM pods to download model parameters from Hugging Face, you must
 
 :::info
 
-In production or air-gapped environments, you can use **offline hub templates** (e.g., `vllm-hf-hub-offline`, `vllm-dp-hf-hub-offline`, or `vllm-pp-hf-hub-offline`) instead of `HF_TOKEN` to load models from a pre-provisioned Persistent Volume. These templates require a PVC named `models` in your namespace. Refer to the [Hugging Face model management with persistent volume](../operations/hf-model-management-with-pv.mdx) for more details.
+In production environments, it is highly recommended to use **offline hub templates** (e.g., `vllm-hf-hub-offline`, `vllm-dp-hf-hub-offline`, or `vllm-pp-hf-hub-offline`) instead of `HF_TOKEN` to load pre-downloaded models from a Persistent Volume. This ensures reliability by avoiding dependencies on external network conditions during pod startup. These templates require a PVC named `models` in your namespace. Refer to the [Hugging Face model management with persistent volume](../operations/hf-model-management-with-pv.mdx) for more details.
 
 :::
 
