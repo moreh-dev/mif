@@ -1,0 +1,151 @@
+---
+title: Prefix Cache-aware Routing
+sidebar_label: Prefix Cache-aware Routing
+sidebar_position: 3
+---
+
+Prefix caching is a technique that stores the KV cache from previous queries, allowing subsequent queries with an identical prefix to reuse it. This eliminates redundant computation and significantly improves performance for workloads with common prefixes, such as system prompts, conversation history, or shared contextual documents.
+
+In a system with multiple inference instances (pods), each instance maintains its own (L1) prefix cache in GPU memory. Consequently, the cache hit rate varies depending on which instance a request is routed to. **Prefix cache-aware routing** calculates the potential cache hit rate for each pod and prioritizes routing to the pod with the highest coverage. This reduces redundant KV computation, improving both Time to First Token (TTFT) and overall throughput.
+
+In a production environment, cache hit rates are considered alongside other factors, such as pod load and hardware characteristics, to make optimal routing decisions.
+
+---
+
+## Key features
+
+- **Heimdall Integration**: The Heimdall scheduler tokenizes request prompts, calculates cache hit rates for candidate pods, and assigns scores used for routing. It stays synchronized with pod cache states through real-time ZMQ events.
+- **SLO-based Importance**: The framework can dynamically weight prefix cache hits based on Service Level Objectives (SLOs) and the specific cost of KV cache recomputation for different GPU architectures.
+
+---
+
+## Scorer configuration
+
+To enable prefix cache-aware routing, you must configure the `precise-prefix-cache-scorer` plugin in **Heimdall**. This plugin tracks the KV block locality across all pods.
+
+The following example shows how to enable the scorer in `heimdall-values.yaml`:
+
+```yaml title="heimdall-values.yaml"
+config:
+  apiVersion: inference.networking.x-k8s.io/v1alpha1
+  kind: EndpointPickerConfig
+  plugins:
+    - type: single-profile-handler
+    - type: max-score-picker
+    - type: precise-prefix-cache-scorer
+      parameters:
+        tokenProcessorConfig:
+          blockSize: 32
+          hashSeed: "12345"
+        indexerConfig:
+          tokenizersPoolConfig:
+            modelName: "meta-llama/Llama-3.2-1B-Instruct"
+            workersCount: 8
+            hf:
+              enabled: true
+              huggingFaceToken: "<huggingFaceToken>"
+            # local:
+            #   autoDiscoveryDir: "/mnt/models/hub"
+          kvBlockIndexConfig:
+            inMemoryConfig:
+              size: 100000000
+              podCacheSize: 10
+          enableMetrics: true
+        kvEventsConfig:
+          # Pods connect to Heimdall. Set discoverPods to false
+          # and bind to all interfaces on port 5557.
+          discoverPods: false
+          zmqEndpoint: "tcp://0.0.0.0:5557"
+          topicFilter: "kv@"
+          concurrency: 16
+
+  schedulingProfiles:
+    - name: default
+      plugins:
+        - pluginRef: precise-prefix-cache-scorer
+        - pluginRef: max-score-picker
+
+# extraVolumes:
+#   - name: models
+#     persistentVolumeClaim:
+#       claimName: models
+
+# extraVolumeMounts:
+#   - name: models
+#     mountPath: /mnt/models
+#     readOnly: true
+```
+
+:::tip
+In offline environments, use the `local` tokenizer config. If your models are downloaded via the `hf` CLI, set `autoDiscoveryDir` to `/mnt/models/hub` to match the standard Hugging Face cache structure.
+:::
+
+### Components
+
+#### Tokenizer and prefix store
+Since vLLM instances manage prefix caches using tokenized sequences, the scorer must tokenize incoming prompts. To minimize overhead, the scorer maintains a **prefix store** that caches previous tokenization results. If a new request shares a significant portion (e.g., >80%) with a cached prefix, the scorer reuses the tokens to estimate the hit rate without re-tokenizing the entire prompt.
+
+#### Token processor
+vLLM uses block hashes to look up prefixes. The scorer emulates this by hashing the tokenized prompt into blocks of size `B`. The `blockSize` and `hashSeed` must match the vLLM configuration of the worker pods.
+
+#### KV block index
+Pods publish events (`BlockStored`, `BlockRemoved`) via ZMQ when their cache updates. The scorer subscribes to these events to maintain a **KV block index**, mapping prefix hashes to the list of pods holding that cache. The pod with the most matching blocks for a request is assigned the highest score.
+
+---
+
+## Deployment Example
+
+This section provides a complete example of deploying an inference service with prefix cache-aware routing using the **Llama 3.2 1B Instruct** model on AMD MI250 GPUs.
+
+### 1. Identify available presets
+
+First, find the appropriate preset for your model and hardware:
+
+```shell
+kubectl get inferenceservicetemplate -n mif \
+  -l mif.moreh.io/template.type=preset \
+  -l mif.moreh.io/model.name=llama-3.2-1b-instruct
+```
+
+### 2. Configure InferenceService
+
+The following `InferenceService` uses the `quickstart-vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2` preset. By setting `ISVC_USE_KV_EVENTS: "true"`, the required vLLM arguments for ZMQ event publishing are automatically added.
+
+```yaml title="llama-prefix-cache.yaml"
+apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceService
+metadata:
+  name: llama-1b-prefix-cache
+spec:
+  replicas: 4
+  inferencePoolRefs:
+    - name: heimdall
+  templateRefs:
+    - name: vllm
+    - name: quickstart-vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2
+    # Include the appropriate offline hub template if in an air-gapped environment
+    - name: vllm-hf-hub-offline
+  template:
+    spec:
+      containers:
+        - name: main
+          env:
+            - name: HF_TOKEN
+              value: <huggingFaceToken>
+            # Enable automatic generation of --kv-events-config
+            - name: ISVC_USE_KV_EVENTS
+              value: "true"
+            # Ensure the hash seed matches Heimdall scorer config
+            - name: PYTHONHASHSEED
+              value: "12345"
+            # Maintain preset defaults while specifying the block size
+            - name: ISVC_EXTRA_ARGS
+              value: >-
+                --disable-uvicorn-access-log --no-enable-log-requests
+                --max-model-len 16384 --max-num-batched-tokens 8192
+                --block-size 32
+```
+
+:::info
+On AMD MI250, each physical GPU is recognized as two logical devices. In this example, the preset for `tp2` uses 1 physical GPU (requesting `amd.com/gpu: 2`).
+:::
