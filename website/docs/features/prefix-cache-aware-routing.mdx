@@ -1,6 +1,6 @@
 ---
 title: Prefix Cache-aware Routing
-sidebar_label: Prefix Cache Routing
+sidebar_label: Prefix Cache-aware Routing
 sidebar_position: 3
 ---
 
@@ -30,7 +30,6 @@ config:
   kind: EndpointPickerConfig
   plugins:
     - type: single-profile-handler
-    - type: queue-scorer
     - type: max-score-picker
     - type: precise-prefix-cache-scorer
       parameters:
@@ -63,9 +62,6 @@ config:
     - name: default
       plugins:
         - pluginRef: precise-prefix-cache-scorer
-          # Recommended: Use a higher weight (e.g., 10) to prioritize 
-          # cache locality over simple load balancing.
-          weight: 10
         - pluginRef: max-score-picker
 
 # extraVolumes:
