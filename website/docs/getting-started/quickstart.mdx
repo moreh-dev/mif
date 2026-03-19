@@ -351,10 +351,10 @@ spec:
 
 - The `replicas` field specifies the number of vLLM pods.
 - The `inferencePoolRefs` field specifies the Heimdall's InferencePool where this vLLM pod will register to.
-- The `templateRefs` field specifies the Odin Template resources; `vllm` is a runtime base, and `quickstart-vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2` is a model-specific template.
+- The `templateRefs` field specifies the list of `InferenceServiceTemplate` resources. These templates are merged in the order listed, with later templates overriding earlier ones. In this example, `vllm` is a runtime-base and `quickstart-vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2` is a model-specific template.
 
 :::info
-Select the appropriate runtime base template according to your parallelism strategy:
+Select the appropriate runtime-base template according to your parallelism strategy:
 - **TP-only (Tensor Parallel)**: Use `vllm`.
 - **DP (Data Parallel)**: Use `vllm-dp`.
 - **PP (Pipeline Parallel)**: Use `vllm-pp`.

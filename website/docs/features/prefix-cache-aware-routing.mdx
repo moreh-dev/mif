@@ -91,24 +91,12 @@ vLLM uses block hashes to look up prefixes. The scorer emulates this by hashing 
 #### KV block index
 Pods publish events (`BlockStored`, `BlockRemoved`) via ZMQ when their cache updates. The scorer subscribes to these events to maintain a **KV block index**, mapping prefix hashes to the list of pods holding that cache. The pod with the most matching blocks for a request is assigned the highest score.
 
----
+### Deployment Example
 
-## Deployment Example
-
-This section provides a complete example of deploying an inference service with prefix cache-aware routing using the **Llama 3.2 1B Instruct** model on AMD MI250 GPUs.
+This section provides a complete example of deploying an inference service with prefix cache-aware routing using the **Llama 3.2 1B Instruct** model on AMD MI250 GPUs. For more details on using templates, see the [Presets](./preset.mdx) documentation.
 
 ### 1. Identify available presets
-
-First, find the appropriate preset for your model and hardware:
-
-```shell
-kubectl get inferenceservicetemplate -n mif \
-  -l mif.moreh.io/template.type=preset \
-  -l mif.moreh.io/model.name=llama-3.2-1b-instruct
-```
-
-### 2. Configure InferenceService
-
+...
 The following `InferenceService` uses the `quickstart-vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2` preset. By setting `ISVC_USE_KV_EVENTS: "true"`, the required vLLM arguments for ZMQ event publishing are automatically added.
 
 ```yaml title="llama-prefix-cache.yaml"
