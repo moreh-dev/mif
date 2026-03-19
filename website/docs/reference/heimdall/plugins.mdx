@@ -53,7 +53,7 @@ Filters out pods that do not match the configured label selector criteria.
 | Parameter          | Type                                       | Default | Description                                                       |
 | :----------------- | :----------------------------------------- | :------ | :---------------------------------------------------------------- |
 | `matchLabels`      | `map[string]string`                        | -       | Key-value pairs of labels that must match.                        |
-| `matchExpressions` | `[]`[`LabelSelectorRequirement`][k8s-lsr]  | -       | List of label selector requirements (set-based matching).         |
+| `matchExpressions` | [`[]LabelSelectorRequirement`][k8s-lsr]    | -       | List of label selector requirements (set-based matching).         |
 
 [k8s-lsr]: https://kubernetes.io/docs/reference/kubernetes-api/common-definitions/label-selector/
 
