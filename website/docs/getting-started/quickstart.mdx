@@ -131,7 +131,7 @@ Create a `gateway.yaml` file to add the Gateway resource to the `quickstart` nam
 In environments with multiple Istio control planes, you may need to specify an Istio revision for the Gateway by adding the `istio.io/rev: <revision>` label to the `Gateway` metadata.
 :::
 
-```yaml title="gateway.yaml"
+```yaml title="gateway.yaml" {41}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -252,7 +252,7 @@ helm repo update moreh
 
 This quickstart uses a simple scheduling rule that selects the vLLM pod with fewer queued requests between the two pods. Create a `heimdall-values.yaml` file as shown below and deploy the Heimdall scheduler using this file. **Note that you need to set `gatewayClassName` to `kgateway` if you are using Kgateway as the gateway controller**.
 
-```yaml title="heimdall-values.yaml"
+```yaml title="heimdall-values.yaml" {25}
 global:
   imagePullSecrets:
     - name: moreh-registry

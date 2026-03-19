@@ -24,7 +24,8 @@ In a production environment, cache hit rates are considered alongside other fact
 To enable prefix cache-aware routing, you must configure the `precise-prefix-cache-scorer` plugin in **Heimdall**. This plugin tracks the KV block locality across all pods.
 
 The following example shows how to enable the scorer in `heimdall-values.yaml`:
-```yaml title="heimdall-values.yaml" {19,21}
+
+```yaml title="heimdall-values.yaml" {18}
 config:
   apiVersion: inference.networking.x-k8s.io/v1alpha1
   kind: EndpointPickerConfig
@@ -121,7 +122,7 @@ In production environments, it is highly recommended to use **offline hub templa
 
 :::
 
-```yaml title="llama-prefix-cache.yaml" {20}
+```yaml title="llama-prefix-cache.yaml" {19}
 apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceService
 metadata:
@@ -133,8 +134,7 @@ spec:
   templateRefs:
     - name: vllm
     - name: quickstart-vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2
-    # Include the appropriate offline hub template if in an air-gapped environment
-    - name: vllm-hf-hub-offline
+    # - name: vllm-hf-hub-offline
   template:
     spec:
       containers:
