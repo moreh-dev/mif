@@ -50,9 +50,12 @@ Filters out pods based on the values defined by the given label.
 
 Filters out pods that do not match the configured label selector criteria.
 
-| Parameter     | Type                | Default | Description                                |
-| :------------ | :------------------ | :------ | :----------------------------------------- |
-| `matchLabels` | `map[string]string` | -       | Key-value pairs of labels that must match. |
+| Parameter          | Type                                       | Default | Description                                                       |
+| :----------------- | :----------------------------------------- | :------ | :---------------------------------------------------------------- |
+| `matchLabels`      | `map[string]string`                        | -       | Key-value pairs of labels that must match.                        |
+| `matchExpressions` | [`[]LabelSelectorRequirement`][k8s-lsr]    | -       | List of label selector requirements (set-based matching).         |
+
+[k8s-lsr]: https://kubernetes.io/docs/reference/kubernetes-api/common-definitions/label-selector/
 
 ### `prefill-filter`
 
@@ -122,23 +125,23 @@ Scores pods based on precise prefix-cache KV-block locality using an internal in
 
 #### `indexerConfig`
 
-| Parameter                | Type                              | Default | Description                                   |
-| :----------------------- | :-------------------------------- | :------ | :-------------------------------------------- |
-| `kvBlockIndexConfig`     | [`Object`](#kvblockindexconfig)   | -       | Configuration for the KV-block index backend. |
-| `tokenizersPoolConfig`   | [`Object`](#tokenizerspoolconfig) | -       | Configuration for the tokenizers pool.        |
-| `enableMetrics`          | `bool`                            | `false` | Whether to enable metrics for the indexer.    |
-| `metricsLoggingInterval` | `string`                          | `0s`    | Interval for logging metrics (e.g., "10s").   |
+| Parameter              | Type                              | Default | Description                                   |
+| :--------------------- | :-------------------------------- | :------ | :-------------------------------------------- |
+| `kvBlockIndexConfig`   | [`Object`](#kvblockindexconfig)   | -       | Configuration for the KV-block index backend. |
+| `tokenizersPoolConfig` | [`Object`](#tokenizerspoolconfig) | -       | Configuration for the tokenizers pool.        |
 
 #### `kvBlockIndexConfig`
 
 Only one of the following backends should be configured.
 
-| Parameter               | Type                                   | Default | Description                                |
-| :---------------------- | :------------------------------------- | :------ | :----------------------------------------- |
-| `inMemoryConfig`        | [`Object`](#inmemoryconfig)            | -       | Configuration for in-memory index.         |
-| `redisConfig`           | [`Object`](#redisconfig--valkeyconfig) | -       | Configuration for Redis index.             |
-| `valkeyConfig`          | [`Object`](#redisconfig--valkeyconfig) | -       | Configuration for Valkey index.            |
-| `costAwareMemoryConfig` | [`Object`](#costawarememoryconfig)     | -       | Configuration for cost-aware memory index. |
+| Parameter                | Type                                   | Default | Description                                |
+| :----------------------- | :------------------------------------- | :------ | :----------------------------------------- |
+| `inMemoryConfig`         | [`Object`](#inmemoryconfig)            | -       | Configuration for in-memory index.         |
+| `redisConfig`            | [`Object`](#redisconfig--valkeyconfig) | -       | Configuration for Redis index.             |
+| `valkeyConfig`           | [`Object`](#redisconfig--valkeyconfig) | -       | Configuration for Valkey index.            |
+| `costAwareMemoryConfig`  | [`Object`](#costawarememoryconfig)     | -       | Configuration for cost-aware memory index. |
+| `enableMetrics`          | `bool`                                 | `false` | Whether to enable metrics for the indexer. |
+| `metricsLoggingInterval` | `string`                               | `0s`    | Interval for logging metrics (e.g., "10s").|
 
 ##### `inMemoryConfig`
 
@@ -184,17 +187,22 @@ Only one of the following backends should be configured.
 
 ##### `local` (Local Tokenizer)
 
-| Parameter                        | Type                | Default          | Description                                       |
-| :------------------------------- | :------------------ | :--------------- | :------------------------------------------------ |
-| `autoDiscoveryDir`               | `string`            | `/mnt/models`    | Directory to search for tokenizers.               |
-| `autoDiscoveryTokenizerFileName` | `string`            | `tokenizer.json` | Filename to search for.                           |
-| `modelTokenizerMap`              | `map[string]string` | -                | Manual mapping of model names to tokenizer paths. |
+| Parameter                        | Type                | Default          | Description                                                     |
+| :------------------------------- | :------------------ | :--------------- | :-------------------------------------------------------------- |
+| `autoDiscoveryDir`               | `string`            | `/mnt/models`    | Directory to search for tokenizers.                             |
+| `autoDiscoveryTokenizerFileName` | `string`            | `tokenizer.json` | Filename to search for.                                         |
+| `modelTokenizerMap`              | `map[string]string` | -                | Manual mapping of model names to tokenizer paths.               |
+| `tokenizer`                      | `string`            | `""`             | Specific tokenizer to use (defaults to model name).             |
+| `tokenizerMode`                  | `string`            | `"auto"`         | Tokenizer mode ("auto", "hf", "limit", "mistral").             |
+| `tokenizerRevision`              | `string`            | `""`             | Revision of the tokenizer.                                      |
 
 ##### `uds` (UDS Tokenizer)
 
-| Parameter    | Type     | Default                               | Description                  |
-| :----------- | :------- | :------------------------------------ | :--------------------------- |
-| `socketFile` | `string` | `/tmp/tokenizer/tokenizer-uds.socket` | Path to the UDS socket file. |
+| Parameter           | Type                | Default                               | Description                                       |
+| :------------------ | :------------------ | :------------------------------------ | :------------------------------------------------ |
+| `socketFile`        | `string`            | `/tmp/tokenizer/tokenizer-uds.socket` | Path to the UDS socket file.                      |
+| `useTCP`            | `bool`              | `false`                               | Use TCP instead of Unix domain socket.            |
+| `modelTokenizerMap` | `map[string]string` | -                                     | Manual mapping of model names to tokenizer paths. |
 
 #### `kvEventsConfig`
 

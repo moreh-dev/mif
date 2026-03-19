@@ -63,7 +63,7 @@ config:
 # ... (other values)
 ```
 
-### InferenceService configuration with Presets
+### InferenceService configuration with presets
 
 For the InferenceService, use **presets** (`InferenceServiceTemplate`) to simplify the configuration of hardware-specific settings (like parallelism strategy) for different GPU types. For more details on presets, see the [Presets](./preset.mdx) documentation.
 
@@ -86,20 +86,20 @@ In this example, **DeepSeek-R1** is deployed using:
 - **Prefill**: **AMD MI300X** (DP=8, Expert Parallel)
 - **Decode**: **AMD MI308X** (DP=8, Expert Parallel)
 
-Two `InferenceService` resources are created. Because the presets use data parallelism (`dp8-moe-ep8`), the runtime bases are `vllm-prefill-dp` and `vllm-decode-dp`, and the ISVC uses `workerTemplate` instead of `template`.
+Two `InferenceService` resources are created. Because the presets use data parallelism (`dp8-moe-ep8`), the runtime-bases are `vllm-prefill-dp` and `vllm-decode-dp`, and the ISVC uses `workerTemplate` instead of `template`.
 
 :::info
-Choose the appropriate PD-specific runtime base template according to your parallelism strategy:
+Choose the appropriate PD-specific runtime-base template according to your parallelism strategy:
 - **TP-only (Tensor Parallel)**: Use `vllm-prefill` and `vllm-decode`.
 - **DP (Data Parallel)**: Use `vllm-prefill-dp` and `vllm-decode-dp`.
 - **PP (Pipeline Parallel)**: Use `vllm-prefill-pp` and `vllm-decode-pp`.
 
-In offline environments, also include the appropriate offline hub template in your `templateRefs` (e.g., `vllm-dp-hf-hub-offline` for DP setups, `vllm-pp-hf-hub-offline` for PP setups, or `vllm-hf-hub-offline` for TP-only setups).
+In production environments, it is highly recommended to use **offline hub templates** (e.g., `vllm-hf-hub-offline`, `vllm-dp-hf-hub-offline`, or `vllm-pp-hf-hub-offline`) instead of `HF_TOKEN` to load pre-downloaded models from a Persistent Volume. This ensures reliability by avoiding dependencies on external network conditions during pod startup. These templates require a PVC named `models` in your namespace. Refer to the [Hugging Face model management with persistent volume](../operations/hf-model-management-with-pv.mdx) for more details.
 :::
 
 #### 1. Prefill Service (MI300X)
 
-This service uses the MI300X prefill preset and the `vllm-prefill-dp` runtime base for data-parallel prefill.
+This service uses the MI300X prefill preset and the `vllm-prefill-dp` runtime-base for data-parallel prefill.
 
 ```yaml title="deepseek-r1-prefill.yaml" {19}
 apiVersion: odin.moreh.io/v1alpha1
@@ -129,7 +129,7 @@ spec:
 
 #### 2. Decode Service (MI308X)
 
-This service uses the MI308X decode preset and the `vllm-decode-dp` runtime base for data-parallel decode.
+This service uses the MI308X decode preset and the `vllm-decode-dp` runtime-base for data-parallel decode.
 
 ```yaml title="deepseek-r1-decode.yaml" {19}
 apiVersion: odin.moreh.io/v1alpha1
