@@ -130,18 +130,25 @@ flowchart TD
 
 ### Naming Convention
 
-Preset filenames follow the pattern:
+Preset resource names follow the pattern:
 
 ```
-vllm-v0.15.1-<model-org>-<model-name>-nvidia-<gpu>-<parallelism>
+vllm-<image-tag>-<model-org>-<model-name>-nvidia-<gpu>-<parallelism>
 ```
 
-Where `<parallelism>` is one of:
-- `1` — single GPU, no parallelism
-- `tpN-moe-tpN` — TP for both attention and MoE layers
-- `tpN-moe-epN` — TP for attention, EP for MoE layers (EP_SIZE = TP_SIZE)
-- `dpN-moe-epN` — DP+EP single-node (TP=1, one GPU per DP rank)
-- `dpN-moe-epN` with `dataLocal` — Wide-EP multi-node (TP=1, 8 GPUs per DP rank across multiple nodes)
+Where:
+- `<image-tag>` is the vLLM image tag (e.g., `v0.15.1`, `glm5`)
+- `<gpu>` is the full accelerator model identifier (e.g., `h100-80gb-hbm3`, `h200`)
+- `<parallelism>` is one of:
+  - `1` — single GPU, no parallelism
+  - `tpN-moe-tpN` — TP for both attention and MoE layers
+  - `tpN-moe-epN` — TP for attention, EP for MoE layers (EP_SIZE = TP_SIZE)
+  - `dpN-moe-epN` — DP+EP single-node (TP=1, one GPU per DP rank)
+  - `dpN-moe-epN` with `dataLocal` — Wide-EP multi-node (TP=1, 8 GPUs per DP rank across multiple nodes)
+
+> **Note**: Expert parallelism is **not** activated via the `--enable-expert-parallel` vLLM flag
+> in ISVC_EXTRA_ARGS. Instead, the Odin `spec.parallelism.expert: true` field controls it.
+> Odin's runtime base translates this into the appropriate vLLM flag at pod creation time.
 
 ---
 
@@ -189,7 +196,8 @@ ISVC_EXTRA_ARGS:
   --kv-cache-dtype auto
   --reasoning-parser deepseek_r1
   --enable-chunked-prefill
-  --enable-expert-parallel
+
+spec.parallelism.expert: true
 ```
 
 **Rationale**: EP distributes the 256 experts across 8 GPUs, reducing all-reduce overhead.
@@ -208,12 +216,15 @@ env:
 
 ISVC_EXTRA_ARGS:
   --trust-remote-code
-  --enable-expert-parallel
   --max-model-len 16384
   --max-num-seqs 112
   --max-num-batched-tokens 57344
   --gpu-memory-utilization 0.9
   --reasoning-parser deepseek_r1
+
+spec.parallelism:
+  data: 8
+  expert: true
 ```
 
 **Rationale**: High-throughput configuration. DP attention eliminates KV cache duplication across
@@ -221,7 +232,7 @@ ranks, maximizing effective batch size. At 1,024 concurrent requests, DP+EP deli
 throughput than TP+EP. `VLLM_USE_DEEP_GEMM=1` enables DeepGEMM FP8 fused kernels for DeepSeek.
 `--max-num-batched-tokens 57344` comes from official vLLM recipe benchmarks.
 
-#### Preset 4: `vllm-v0.15.1-deepseek-ai-deepseek-r1-nvidia-h100-dp16-moe-ep16` (Wide-EP)
+#### Preset 4: `vllm-v0.15.1-deepseek-ai-deepseek-r1-nvidia-h100-80gb-hbm3-dp16-moe-ep16` (Wide-EP)
 
 | Setting     | Value                                       |
 | ----------- | ------------------------------------------- |
@@ -235,12 +246,16 @@ env:
 
 ISVC_EXTRA_ARGS:
   --trust-remote-code
-  --enable-expert-parallel
   --max-model-len 32768
   --max-num-seqs 128
   --max-num-batched-tokens 57344
   --gpu-memory-utilization 0.9
   --reasoning-parser deepseek_r1
+
+spec.parallelism:
+  data: 16
+  dataLocal: 8
+  expert: true
 ```
 
 **Rationale**: Wide-EP distributes the 256 experts across 16 GPUs (EP=16). Per-GPU memory with
@@ -267,12 +282,16 @@ env:
 
 ISVC_EXTRA_ARGS:
   --trust-remote-code
-  --enable-expert-parallel
   --max-model-len 65536
   --max-num-seqs 256
   --max-num-batched-tokens 57344
   --gpu-memory-utilization 0.9
   --reasoning-parser deepseek_r1
+
+spec.parallelism:
+  data: 16
+  dataLocal: 8
+  expert: true
 ```
 
 **Rationale**: Same Wide-EP topology on H200. H200's 141 GB provides 71 GB headroom per GPU
@@ -302,7 +321,7 @@ on some GPU types.
 > **Note**: The single-GPU H100 preset was removed after E2E testing confirmed OOM — the ~64 GiB
 > model leaves no headroom for KV cache + CUDA graph warmup on an 80 GB GPU.
 
-#### Preset 3: `vllm-v0.15.1-openai-gpt-oss-120b-nvidia-h100-tp2-moe-tp2`
+#### Preset 3: `vllm-v0.15.1-openai-gpt-oss-120b-nvidia-h100-80gb-hbm3-tp2-moe-tp2`
 
 | Setting     | Value          |
 | ----------- | -------------- |
@@ -321,7 +340,7 @@ ISVC_EXTRA_ARGS:
 **Rationale**: 2 GPUs provide enough headroom for full 131K context. FP8 KV cache halves
 cache memory, enabling high concurrency.
 
-#### Preset 5: `vllm-v0.15.1-openai-gpt-oss-120b-nvidia-h100-tp4-moe-tp4`
+#### Preset 5: `vllm-v0.15.1-openai-gpt-oss-120b-nvidia-h100-80gb-hbm3-tp4-moe-tp4`
 
 | Setting     | Value          |
 | ----------- | -------------- |
@@ -340,7 +359,7 @@ ISVC_EXTRA_ARGS:
 **Rationale**: 4 GPUs maximize throughput for high-concurrency workloads while supporting
 full context length.
 
-#### Preset 6: `vllm-v0.15.1-openai-gpt-oss-120b-nvidia-h100-tp8-moe-tp8`
+#### Preset 6: `vllm-v0.15.1-openai-gpt-oss-120b-nvidia-h100-80gb-hbm3-tp8-moe-tp8`
 
 | Setting     | Value          |
 | ----------- | -------------- |
@@ -408,7 +427,7 @@ known bug where FP8 KV cache causes repetitive/looping output with this model.
 MTP (Multi-Token Prediction) speculative decoding is **not included** due to performance
 regressions observed on some GPU types.
 
-#### Preset 9: `vllm-v0.15.1-zai-org-glm-4.7-flash-nvidia-h100-1`
+#### Preset 9: `vllm-glm5-zai-org-glm-4.7-flash-nvidia-h100-80gb-hbm3-1`
 
 | Setting     | Value          |
 | ----------- | -------------- |
@@ -429,7 +448,7 @@ ISVC_EXTRA_ARGS:
 **Rationale**: Single H100 with reduced context (32K) and moderate batch size. The ~60 GB
 model leaves ~12 GB for KV cache at 0.90 utilization.
 
-#### Preset 10: `vllm-v0.15.1-zai-org-glm-4.7-flash-nvidia-h100-tp2-moe-tp2`
+#### Preset 10: `vllm-glm5-zai-org-glm-4.7-flash-nvidia-h100-80gb-hbm3-tp2-moe-tp2`
 
 | Setting     | Value          |
 | ----------- | -------------- |
@@ -449,7 +468,7 @@ ISVC_EXTRA_ARGS:
 
 **Rationale**: 2 GPUs unlock 128K context with sufficient KV cache headroom.
 
-#### Preset 11: `vllm-v0.15.1-zai-org-glm-4.7-flash-nvidia-h100-tp4-moe-tp4`
+#### Preset 11: `vllm-glm5-zai-org-glm-4.7-flash-nvidia-h100-80gb-hbm3-tp4-moe-tp4`
 
 | Setting     | Value          |
 | ----------- | -------------- |
@@ -470,7 +489,7 @@ ISVC_EXTRA_ARGS:
 **Rationale**: 4 GPUs enable near-full native context (200K). MLA keeps KV cache manageable
 even at this length.
 
-#### Preset 12: `vllm-v0.15.1-zai-org-glm-4.7-flash-nvidia-h200-1`
+#### Preset 12: `vllm-glm5-zai-org-glm-4.7-flash-nvidia-h200-1`
 
 | Setting     | Value          |
 | ----------- | -------------- |
@@ -490,7 +509,7 @@ ISVC_EXTRA_ARGS:
 
 **Rationale**: H200's 141 GB provides 81 GB headroom, enough for 128K context on a single GPU.
 
-#### Preset 13: `vllm-v0.15.1-zai-org-glm-4.7-flash-nvidia-h200-tp2-moe-tp2`
+#### Preset 13: `vllm-glm5-zai-org-glm-4.7-flash-nvidia-h200-tp2-moe-tp2`
 
 | Setting     | Value          |
 | ----------- | -------------- |
@@ -527,7 +546,7 @@ Kimi-K2.5 is the largest model at 1T total parameters (384 experts), quantized t
 (W4A16 QAT) for a ~595 GB on-disk footprint. It includes MoonViT, a 400M-parameter vision
 encoder.
 
-#### Preset 14: `vllm-v0.15.1-moonshotai-kimi-k2.5-nvidia-h100-tp8-moe-ep8`
+#### Preset 14: `vllm-v0.15.1-moonshotai-kimi-k2.5-nvidia-h100-80gb-hbm3-tp8-moe-ep8`
 
 | Setting     | Value                     |
 | ----------- | ------------------------- |
@@ -537,7 +556,6 @@ encoder.
 ```
 ISVC_EXTRA_ARGS:
   --trust-remote-code
-  --enable-expert-parallel
   --mm-encoder-tp-mode data
   --compilation_config.pass_config.fuse_allreduce_rms true
   --tool-call-parser kimi_k2
@@ -546,7 +564,11 @@ ISVC_EXTRA_ARGS:
   --max-model-len 4096
   --max-num-seqs 16
   --gpu-memory-utilization 0.95
-  --kv-cache-dtype fp8
+  --kv-cache-dtype auto
+
+spec.parallelism:
+  tensor: 8
+  expert: true
 ```
 
 **Rationale**: H100 with only 5.6 GB headroom per GPU demands aggressive constraints.
@@ -587,7 +609,6 @@ prefer stability over maximum throughput.
 ```
 ISVC_EXTRA_ARGS:
   --trust-remote-code
-  --enable-expert-parallel
   --mm-encoder-tp-mode data
   --compilation_config.pass_config.fuse_allreduce_rms true
   --tool-call-parser kimi_k2
@@ -597,6 +618,10 @@ ISVC_EXTRA_ARGS:
   --max-num-seqs 64
   --gpu-memory-utilization 0.90
   --kv-cache-dtype fp8
+
+spec.parallelism:
+  tensor: 8
+  expert: true
 ```
 
 **Rationale**: EP with 384 experts on 8 GPUs reduces all-to-all communication overhead
@@ -613,7 +638,7 @@ compared to TP's all-reduce. Recommended for production throughput.
 - `--reasoning-parser kimi_k2`: Enables structured reasoning extraction from Kimi-K2.5's
   chain-of-thought output.
 - `--enable-auto-tool-choice`: Enables automatic tool calling mode.
-- `--kv-cache-dtype fp8`: Safe for this model and halves KV cache memory on Hopper GPUs.
+- `--kv-cache-dtype fp8`: Used on H200 presets. Halves KV cache memory on Hopper GPUs. The H100 preset uses `auto` (BF16) instead due to FP8 KV cache instability (see Known Issues).
 
 ## 6. Preset Summary Matrix
 
