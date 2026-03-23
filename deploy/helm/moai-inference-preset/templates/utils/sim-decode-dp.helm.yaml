@@ -18,7 +18,7 @@ spec:
         - name: moreh-registry
       initContainers:
         - name: proxy
-          image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/heimdall-proxy:v0.7.0-rc.4
+          image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/heimdall-proxy:v0.7.0-rc.5
           restartPolicy: Always
           command:
             - /bin/bash
@@ -50,6 +50,7 @@ spec:
             - name: ISVC_EXTRA_ARGS
               value: >-
                 --pd-coordinator vllm/nixl
+                --response-header
                 --log-format json
                 --log-level warn
             - name: POD_IP

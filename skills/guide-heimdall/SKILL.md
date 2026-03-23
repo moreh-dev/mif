@@ -272,6 +272,8 @@ The architecture supports pre-request and post-response plugins. Currently, only
 | --- | --- | --- |
 | `response-header-handler` | Post-response | Adds `x-decoder-host-port` and `x-prefiller-host-port` headers to response |
 
+> **Note:** When heimdall-proxy is deployed with `--response-header`, the proxy natively adds `X-Decoder-Host-Port` and `X-Prefiller-Host-Port` headers, making the `response-header-handler` plugin unnecessary.
+
 ---
 
 ## Configuration Patterns

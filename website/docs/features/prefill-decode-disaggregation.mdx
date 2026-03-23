@@ -46,7 +46,6 @@ config:
     # 2. Add other necessary plugins
     - type: queue-scorer
     - type: max-score-picker
-    - type: response-header-handler
   # 3. Define scheduling profiles for prefill and decode
   schedulingProfiles:
     - name: prefill
@@ -90,6 +89,7 @@ Two `InferenceService` resources are created. Because the presets use data paral
 
 :::info
 Choose the appropriate PD-specific runtime-base template according to your parallelism strategy:
+
 - **TP-only (Tensor Parallel)**: Use `vllm-prefill` and `vllm-decode`.
 - **DP (Data Parallel)**: Use `vllm-prefill-dp` and `vllm-decode-dp`.
 - **PP (Pipeline Parallel)**: Use `vllm-prefill-pp` and `vllm-decode-pp`.
@@ -131,7 +131,7 @@ spec:
 
 This service uses the MI308X decode preset and the `vllm-decode-dp` runtime-base for data-parallel decode.
 
-```yaml title="deepseek-r1-decode.yaml" {19}
+```yaml title="deepseek-r1-decode.yaml" {29}
 apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceService
 metadata:
@@ -146,13 +146,27 @@ spec:
     - name: moreh-vllm-0.15.0-260226-rc2-deepseek-ai-deepseek-r1-decode-amd-mi308x-dp8-moe-ep8
   workerTemplate:
     spec:
+      initContainers:
+        - name: proxy
+          env:
+            # 3. (Optional) Enable response headers for debugging PD routing
+            - name: ISVC_EXTRA_ARGS
+              value: >-
+                --pd-coordinator vllm/nixl
+                --response-header
+                --log-format json
+                --log-level warn
       containers:
         - name: main
           env:
             - name: HF_TOKEN
               value: <huggingFaceToken>
-          # 3. Specify cluster-specific hardware resources (e.g., RDMA NICs for KV cache transfer)
+          # 4. Specify cluster-specific hardware resources (e.g., RDMA NICs for KV cache transfer)
           resources:
             limits:
               mellanox/hca: "1"
 ```
+
+:::info
+When `--response-header` is set on the decode proxy, responses include `x-decoder-host-port` and `x-prefiller-host-port` headers. This is useful for verifying that PD routing is working correctly. Remove it in production to avoid leaking internal pod addresses.
+:::
