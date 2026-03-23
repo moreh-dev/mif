@@ -323,3 +323,7 @@ Adds serving pod information to the response headers. Implements the ResponseRec
 - `x-prefiller-host-port`: Set to the address and port of the prefill pod, if a separate prefill pod was used (PD disaggregation).
 
 No configuration parameters.
+
+:::info
+When heimdall-proxy is deployed with `--response-header`, the proxy natively sets the same headers. In that case, this plugin is not needed.
+:::

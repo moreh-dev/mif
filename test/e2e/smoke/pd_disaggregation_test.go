@@ -28,7 +28,6 @@ config:
   plugins:
     - type: pd-profile-handler
     - type: prefill-header-handler
-    - type: response-header-handler
     - type: prefill-filter
     - type: decode-filter
     - type: queue-scorer

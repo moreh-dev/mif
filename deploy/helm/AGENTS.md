@@ -177,6 +177,13 @@ Odin presets use `mif.moreh.io/*` labels:
 **Product team templates configure** (must NOT be set in presets):
 - `--prefix-caching-hash-algo`, `--kv-events-config`, `--block-size`
 
+### PD decode proxy response headers
+
+- `heimdall-proxy --response-header` is a debug flag that adds `X-Decoder-Host-Port` and `X-Prefiller-Host-Port` to responses.
+- **Sim decode utils** (`sim-decode`, `sim-decode-dp`) include `--response-header` by default because they are debug-only templates.
+- **Production runtime-bases** (`vllm-decode`, `vllm-decode-dp`, `vllm-decode-pp`) do **not** set `--response-header` — users opt in via the decode `InferenceService` by overriding the proxy's `ISVC_EXTRA_ARGS`.
+- When `--response-header` is used, Heimdall's `response-header-handler` plugin is redundant.
+
 ### MIF Pod Label Keys
 
 When filtering or labeling logs, metrics, or other signals by MIF-specific pod attributes, use these label keys:

@@ -508,6 +508,7 @@ flowchart LR
 ```
 
 - **Decode bases** (`vllm-decode`, `vllm-decode-dp`) include a `heimdall-proxy` initContainer with `restartPolicy: Always` (native sidecar). The proxy listens on port 8000 (user-facing) and forwards to the vLLM backend on port 8200.
+- When configured with `--response-header`, the decode proxy injects `X-Decoder-Host-Port` and `X-Prefiller-Host-Port` headers without requiring Heimdall's `response-header-handler` plugin. This flag is enabled by default in the *sim* decode templates; for the `vllm-decode*` runtime-bases you must opt in by overriding the proxy args (for example, via `ISVC_EXTRA_ARGS`).
 - **Prefill bases** (`vllm-prefill`, `vllm-prefill-dp`) serve directly on port 8000 — no proxy involved.
 - The proxy uses the `vllm/nixl` PD coordinator protocol to bridge prefill and decode phases.
 
