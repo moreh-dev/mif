@@ -158,16 +158,16 @@ spec:
                 vendor: { op: In, value: ["10de"] }
                 device: { op: In, value: ["20b5"] }
 
-    - name: accelerator-nvidia-h100
+    - name: accelerator-nvidia-a100-80gb-sxm
       labels:
         moai.moreh.io/accelerator.vendor: nvidia
-        moai.moreh.io/accelerator.model: h100
+        moai.moreh.io/accelerator.model: a100-80gb-sxm
       matchAny:
         - matchFeatures:
             - feature: pci.device
               matchExpressions:
                 vendor: { op: In, value: ["10de"] }
-                device: { op: In, value: ["2339"] }
+                device: { op: In, value: ["20b2"] }
 
     - name: accelerator-nvidia-h100-pcie
       labels:
@@ -180,16 +180,38 @@ spec:
                 vendor: { op: In, value: ["10de"] }
                 device: { op: In, value: ["2331"] }
 
-    - name: accelerator-nvidia-h100-80gb-hbm3
+    - name: accelerator-nvidia-h100-sxm
       labels:
         moai.moreh.io/accelerator.vendor: nvidia
-        moai.moreh.io/accelerator.model: h100-80gb-hbm3
+        moai.moreh.io/accelerator.model: h100-sxm
       matchAny:
         - matchFeatures:
             - feature: pci.device
               matchExpressions:
                 vendor: { op: In, value: ["10de"] }
                 device: { op: In, value: ["2330"] }
+
+    - name: accelerator-nvidia-h200-sxm
+      labels:
+        moai.moreh.io/accelerator.vendor: nvidia
+        moai.moreh.io/accelerator.model: h200-sxm
+      matchAny:
+        - matchFeatures:
+            - feature: pci.device
+              matchExpressions:
+                vendor: { op: In, value: ["10de"] }
+                device: { op: In, value: ["2335"] }
+
+    - name: accelerator-nvidia-h20-3e
+      labels:
+        moai.moreh.io/accelerator.vendor: nvidia
+        moai.moreh.io/accelerator.model: h20-3e
+      matchAny:
+        - matchFeatures:
+            - feature: pci.device
+              matchExpressions:
+                vendor: { op: In, value: ["10de"] }
+                device: { op: In, value: ["232c"] }
 
     - name: accelerator-nvidia-h800
       labels:
@@ -212,6 +234,28 @@ spec:
               matchExpressions:
                 vendor: { op: In, value: ["10de"] }
                 device: { op: In, value: ["2322"] }
+
+    - name: accelerator-nvidia-b200
+      labels:
+        moai.moreh.io/accelerator.vendor: nvidia
+        moai.moreh.io/accelerator.model: b200
+      matchAny:
+        - matchFeatures:
+            - feature: pci.device
+              matchExpressions:
+                vendor: { op: In, value: ["10de"] }
+                device: { op: In, value: ["2901"] }
+
+    - name: accelerator-nvidia-b300
+      labels:
+        moai.moreh.io/accelerator.vendor: nvidia
+        moai.moreh.io/accelerator.model: b300
+      matchAny:
+        - matchFeatures:
+            - feature: pci.device
+              matchExpressions:
+                vendor: { op: In, value: ["10de"] }
+                device: { op: In, value: ["3182"] }
 
     # the PCI info is from these websites:
     # source1: https://admin.pci-ids.ucw.cz/read/PC/1e52
