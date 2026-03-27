@@ -1,7 +1,7 @@
 apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceServiceTemplate
 metadata:
-  name: vllm-v0.15.1-deepseek-ai-deepseek-r1-nvidia-h200-dp8-moe-ep8
+  name: vllm-v0.15.1-deepseek-ai-deepseek-r1-nvidia-h200-sxm-dp8-moe-ep8
   namespace: {{ include "common.names.namespace" . }}
   labels:
     {{- include "mif.preset.labels" . | nindent 4 }}
