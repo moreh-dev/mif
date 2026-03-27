@@ -164,6 +164,7 @@ Odin presets use `mif.moreh.io/*` labels:
 - Execution command(s) and launch logic (for-loop for DP, cleanup traps)
 - Cross-rank parallelism arguments (`--data-parallel-rank`, `--data-parallel-address`, `--data-parallel-rpc-port`)
 - Disaggregation-specific environment variables (`VLLM_NIXL_SIDE_CHANNEL_HOST`, `VLLM_IS_DECODE_WORKER`)
+- Offline Hugging Face cache environment (`HF_HOME`, `HF_HUB_OFFLINE`, `HF_MODULES_CACHE`) in `*-hf-hub-offline` templates
 - Shared memory settings, readiness probes
 - Proxy sidecar configuration (for PD disaggregation)
 
