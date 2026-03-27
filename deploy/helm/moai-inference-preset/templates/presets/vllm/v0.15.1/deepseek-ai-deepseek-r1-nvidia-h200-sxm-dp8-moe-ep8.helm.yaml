@@ -38,9 +38,9 @@ spec:
                 --no-enable-log-requests
           resources:
             requests:
-              nvidia.com/gpu: "1"
+              nvidia.com/gpu: "8"
             limits:
-              nvidia.com/gpu: "1"
+              nvidia.com/gpu: "8"
       nodeSelector:
         moai.moreh.io/accelerator.vendor: nvidia
         moai.moreh.io/accelerator.model: h200-sxm
