@@ -17,7 +17,7 @@ spec:
         - name: moreh-registry
       initContainers:
         - name: proxy
-          image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/heimdall-proxy:v0.7.0-rc.5
+          image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/heimdall-proxy:v0.7.0
           restartPolicy: Always
           command:
             - /bin/bash
