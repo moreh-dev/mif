@@ -7,7 +7,7 @@ description: Guide for updating MIF dependency versions. Use this skill when ask
 
 ## Overview
 
-MIF depends on several components whose versions are tracked across Helm charts, container image references, preset directories, and website documentation. This guide ensures all references are updated consistently when bumping a dependency. After every version bump, also update the version table in `website/docs/operations/latest-release.mdx`.
+MIF depends on several components whose versions are tracked across Helm charts, container image references, preset directories, and website documentation. This guide ensures all references are updated consistently when bumping a dependency. After every version bump, you **must** also update the version table in `website/docs/operations/latest-release.mdx`.
 
 ## Components
 
