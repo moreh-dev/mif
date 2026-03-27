@@ -1,7 +1,7 @@
 apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceServiceTemplate
 metadata:
-  name: vllm-glm5-zai-org-glm-4.7-flash-nvidia-h100-80gb-hbm3-tp4-moe-tp4
+  name: vllm-glm5-zai-org-glm-4.7-flash-nvidia-h200-tp2-moe-tp2
   namespace: {{ include "common.names.namespace" . }}
   labels:
     {{- include "mif.preset.labels" . | nindent 4 }}
@@ -9,14 +9,14 @@ metadata:
     mif.moreh.io/model.name: glm-4.7-flash
     mif.moreh.io/role: e2e
     mif.moreh.io/accelerator.vendor: nvidia
-    mif.moreh.io/accelerator.model: h100-80gb-hbm3
-    mif.moreh.io/parallelism: "tp4-moe-tp4"
+    mif.moreh.io/accelerator.model: h200-sxm
+    mif.moreh.io/parallelism: "tp2-moe-tp2"
 spec:
   framework: vllm
   model:
     name: zai-org/GLM-4.7-Flash
   parallelism:
-    tensor: 4
+    tensor: 2
   template:
     spec:
       containers:
@@ -36,12 +36,12 @@ spec:
                 --no-enable-log-requests
           resources:
             requests:
-              nvidia.com/gpu: "4"
+              nvidia.com/gpu: "2"
             limits:
-              nvidia.com/gpu: "4"
+              nvidia.com/gpu: "2"
       nodeSelector:
         moai.moreh.io/accelerator.vendor: nvidia
-        moai.moreh.io/accelerator.model: h100-80gb-hbm3
+        moai.moreh.io/accelerator.model: h200-sxm
       tolerations:
         - key: nvidia.com/gpu
           operator: Exists

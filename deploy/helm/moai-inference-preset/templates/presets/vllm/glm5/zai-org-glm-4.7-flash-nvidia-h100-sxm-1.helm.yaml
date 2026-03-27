@@ -1,51 +1,45 @@
 apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceServiceTemplate
 metadata:
-  name: vllm-v0.15.1-moonshotai-kimi-k2.5-nvidia-h200-tp8-moe-ep8
+  name: vllm-glm5-zai-org-glm-4.7-flash-nvidia-h100-sxm-1
   namespace: {{ include "common.names.namespace" . }}
   labels:
     {{- include "mif.preset.labels" . | nindent 4 }}
-    mif.moreh.io/model.org: moonshotai
-    mif.moreh.io/model.name: kimi-k2.5
+    mif.moreh.io/model.org: zai-org
+    mif.moreh.io/model.name: glm-4.7-flash
     mif.moreh.io/role: e2e
     mif.moreh.io/accelerator.vendor: nvidia
-    mif.moreh.io/accelerator.model: h200
-    mif.moreh.io/parallelism: "tp8-moe-ep8"
+    mif.moreh.io/accelerator.model: h100-sxm
+    mif.moreh.io/parallelism: "1"
 spec:
   framework: vllm
   model:
-    name: moonshotai/Kimi-K2.5
-  parallelism:
-    tensor: 8
-    expert: true
+    name: zai-org/GLM-4.7-Flash
   template:
     spec:
       containers:
         - name: main
-          image: vllm/vllm-openai:v0.15.1
+          image: vllm/vllm-openai:glm5
           env:
             - name: ISVC_EXTRA_ARGS
               value: >-
                 --trust-remote-code
-                --mm-encoder-tp-mode data
-                --compilation_config.pass_config.fuse_allreduce_rms true
-                --tool-call-parser kimi_k2
-                --reasoning-parser kimi_k2
-                --enable-auto-tool-choice
-                --max-model-len 65536
-                --max-num-seqs 64
+                --tool-call-parser glm47
+                --reasoning-parser glm45
+                --max-model-len 32768
+                --max-num-seqs 32
                 --gpu-memory-utilization 0.90
-                --kv-cache-dtype fp8
+                --kv-cache-dtype auto
                 --disable-uvicorn-access-log
                 --no-enable-log-requests
           resources:
             requests:
-              nvidia.com/gpu: "8"
+              nvidia.com/gpu: "1"
             limits:
-              nvidia.com/gpu: "8"
+              nvidia.com/gpu: "1"
       nodeSelector:
         moai.moreh.io/accelerator.vendor: nvidia
-        moai.moreh.io/accelerator.model: h200
+        moai.moreh.io/accelerator.model: h100-sxm
       tolerations:
         - key: nvidia.com/gpu
           operator: Exists
