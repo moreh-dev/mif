@@ -164,9 +164,11 @@ Odin presets use `mif.moreh.io/*` labels:
 - Execution command(s) and launch logic (for-loop for DP, cleanup traps)
 - Parallelism flag assembly from `spec.parallelism` (`--tensor-parallel-size`, `--pipeline-parallel-size`, `--enable-expert-parallel`, `--data-parallel-rank`, `--data-parallel-address`, `--data-parallel-rpc-port`)
 - Disaggregation-specific environment variables (`VLLM_NIXL_SIDE_CHANNEL_HOST`, `VLLM_IS_DECODE_WORKER`)
-- Offline Hugging Face cache environment (`HF_HOME`, `HF_HUB_OFFLINE`, `HF_MODULES_CACHE`) in `*-hf-hub-offline` templates
 - Shared memory settings, readiness probes
 - Proxy sidecar configuration (for PD disaggregation)
+
+**Utils define** (shared utility templates, not runtime bases or presets):
+- Offline Hugging Face cache environment (`HF_HOME`, `HF_HUB_OFFLINE`, `HF_MODULES_CACHE`) in `*-hf-hub-offline` templates
 
 **Users configure** (not defined by presets or runtime bases):
 - Image repository and tag (with default provided)
@@ -174,9 +176,6 @@ Odin presets use `mif.moreh.io/*` labels:
 - Hugging Face token
 - Number of replicas
 - `--no-enable-prefix-caching`
-
-**Product team templates configure** (must NOT be set in presets):
-- `--prefix-caching-hash-algo`, `--kv-events-config`, `--block-size`
 
 ### PD decode proxy response headers
 
