@@ -23,8 +23,6 @@ spec:
         - name: main
           image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/quickstart/moreh-vllm:v0.15.1.1
           env:
-            - name: HF_MODULES_CACHE
-              value: /tmp/hf_modules
             - name: ISVC_EXTRA_ARGS
               value: >-
                 --trust-remote-code

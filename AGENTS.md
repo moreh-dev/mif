@@ -115,3 +115,7 @@ When working on a specific MIF component, consult the relevant skill:
 - **Dependency version updates**: [`.agents/skills/bump-dependency/SKILL.md`](.agents/skills/bump-dependency/SKILL.md)
 - **Heimdall scheduler**: [`skills/guide-heimdall/SKILL.md`](skills/guide-heimdall/SKILL.md)
 - **Odin inference operator**: [`skills/guide-odin/SKILL.md`](skills/guide-odin/SKILL.md)
+
+## Offline Hugging Face cache
+
+- For air-gapped `trust_remote_code` deployments, pre-download both the model snapshot and the dynamic module sources. `hf download` alone may leave `HF_MODULES_CACHE` incomplete; if the warm-up pod lacks `torch` or other model-side dependencies, populate `HF_MODULES_CACHE` from the local HF snapshot cache rather than relying on `transformers` to import the remote module.
