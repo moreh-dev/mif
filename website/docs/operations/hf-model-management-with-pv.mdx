@@ -9,7 +9,7 @@ Efficient management of large language models (LLMs) is crucial for optimizing s
 This workflow optimizes your LLM deployment pipeline by:
 
 1. Centralizing storage: Creating a ReadWriteMany (RWX) volume named `models` to store multiple large models.
-2. Decoupling management: Utilizing a dedicated model manager pod to download model parameters into the volume.
+2. Decoupling management: Utilizing a dedicated model manager pod to download model parameters and remote-code modules into the volume.
 3. Accelerating deployment: Enabling vLLM or other engines to load the parameters directly from the local mount when an InferenceService is created.
 
 ---
@@ -85,6 +85,8 @@ spec:
               value: <huggingFaceToken>
             - name: HF_HOME
               value: /mnt/models
+            - name: HF_MODULES_CACHE
+              value: /mnt/models/modules
           volumeMounts:
             - name: models
               mountPath: /mnt/models
@@ -115,6 +117,24 @@ Download models directly to the mounted volume. This example downloads the meta-
 ```shell
 hf download meta-llama/Llama-3.2-1B-Instruct
 ```
+
+For models that require `--trust-remote-code`, pre-populate the dynamic module cache on the shared volume before deploying the inference pods.
+
+```shell
+export HF_HOME=/mnt/models
+export HF_MODULES_CACHE=/mnt/models/modules
+hf download microsoft/Phi-mini-MoE-instruct
+python3 - <<'PY'
+from transformers import AutoConfig, AutoTokenizer
+
+model_id = "microsoft/Phi-mini-MoE-instruct"
+AutoConfig.from_pretrained(model_id, trust_remote_code=True)
+AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
+print("remote code cached")
+PY
+```
+
+This warm-up step resolves and caches the custom Python modules required by `trust_remote_code` models. In offline or air-gapped clusters, inference pods cannot fetch these modules at startup, so they must already exist on the shared volume.
 
 List downloaded models:
 
@@ -156,6 +176,8 @@ spec:
           env:
             - name: HF_HOME
               value: /mnt/models
+            - name: HF_MODULES_CACHE
+              value: /mnt/models/modules
             - name: HF_HUB_OFFLINE
               value: '1'
           volumeMounts:
@@ -226,7 +248,7 @@ spec:
 
 Alternatively, you can configure the volume mount and environment variables directly within the InferenceService without using a template. However, as the number of InferenceService and models grows, managing individual configurations can become complex. In such cases, using templates is recommended to simplify management and reduce duplication.
 
-```yaml {5,19-23,42-48}
+```yaml {5,19-25,44-50}
 apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceService
 metadata:
@@ -248,6 +270,8 @@ spec:
           env:
             - name: HF_HOME
               value: /mnt/models
+            - name: HF_MODULES_CACHE
+              value: /mnt/models/modules
             - name: HF_HUB_OFFLINE
               value: '1'
           resources:
