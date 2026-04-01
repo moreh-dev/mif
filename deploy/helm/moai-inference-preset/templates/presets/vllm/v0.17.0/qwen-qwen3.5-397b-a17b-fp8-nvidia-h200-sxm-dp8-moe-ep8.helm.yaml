@@ -30,7 +30,9 @@ spec:
               value: >-
                 --trust-remote-code
                 --max-model-len -1
+                --reasoning-parser qwen3
                 --disable-uvicorn-access-log
+                --no-enable-log-requests
           resources:
             requests:
               nvidia.com/gpu: "8"

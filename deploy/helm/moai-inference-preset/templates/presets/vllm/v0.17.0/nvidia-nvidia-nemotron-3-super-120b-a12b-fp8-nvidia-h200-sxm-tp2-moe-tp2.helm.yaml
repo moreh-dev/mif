@@ -27,7 +27,10 @@ spec:
               value: >-
                 --trust-remote-code
                 --max-model-len -1
+                --mamba-ssm-cache-dtype float16
+                --enable-chunked-prefill
                 --disable-uvicorn-access-log
+                --no-enable-log-requests
           resources:
             requests:
               nvidia.com/gpu: "2"

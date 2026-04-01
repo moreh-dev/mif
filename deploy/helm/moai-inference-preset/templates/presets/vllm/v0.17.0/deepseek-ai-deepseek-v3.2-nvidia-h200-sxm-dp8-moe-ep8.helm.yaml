@@ -33,6 +33,7 @@ spec:
                 --enable-auto-tool-choice
                 --max-model-len -1
                 --disable-uvicorn-access-log
+                --no-enable-log-requests
           resources:
             requests:
               nvidia.com/gpu: "8"
