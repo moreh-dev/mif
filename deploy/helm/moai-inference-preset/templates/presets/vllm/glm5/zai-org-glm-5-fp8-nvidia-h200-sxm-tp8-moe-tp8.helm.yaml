@@ -21,10 +21,11 @@ spec:
     spec:
       containers:
         - name: main
-          image: dev.local/vllm-glm5:final
+          # glm_moe_dsa arch is not supported in official vLLM.
+          # CUDA driver 580+ clusters may need a custom image override
+          # in InferenceService (e.g. dev.local/vllm-glm5:final).
+          image: vllm/vllm-openai:glm5
           env:
-            - name: ISVC_MODEL_PATH
-              value: /models/glm5-fp8
             - name: ISVC_EXTRA_ARGS
               value: >-
                 --trust-remote-code
