@@ -28,7 +28,7 @@ spec:
                 --trust-remote-code
                 --disable-uvicorn-access-log
                 --no-enable-log-requests
-                --max-model-len 4096
+                --max-model-len -1
                 --max-num-batched-tokens 4096
           resources:
             requests:

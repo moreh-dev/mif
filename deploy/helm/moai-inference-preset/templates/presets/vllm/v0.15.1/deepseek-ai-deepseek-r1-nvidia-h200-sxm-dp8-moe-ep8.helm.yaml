@@ -29,7 +29,7 @@ spec:
             - name: ISVC_EXTRA_ARGS
               value: >-
                 --trust-remote-code
-                --max-model-len 16384
+                --max-model-len -1
                 --max-num-seqs 112
                 --max-num-batched-tokens 57344
                 --gpu-memory-utilization 0.9
