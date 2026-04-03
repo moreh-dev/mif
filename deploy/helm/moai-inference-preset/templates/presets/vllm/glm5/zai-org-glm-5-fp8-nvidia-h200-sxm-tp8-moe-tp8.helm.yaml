@@ -1,0 +1,50 @@
+apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceServiceTemplate
+metadata:
+  name: vllm-glm5-zai-org-glm-5-fp8-nvidia-h200-sxm-tp8-moe-tp8
+  namespace: {{ include "common.names.namespace" . }}
+  labels:
+    {{- include "mif.preset.labels" . | nindent 4 }}
+    mif.moreh.io/model.org: zai-org
+    mif.moreh.io/model.name: glm-5-fp8
+    mif.moreh.io/role: e2e
+    mif.moreh.io/accelerator.vendor: nvidia
+    mif.moreh.io/accelerator.model: h200-sxm
+    mif.moreh.io/parallelism: "tp8-moe-tp8"
+spec:
+  framework: vllm
+  model:
+    name: zai-org/GLM-5-FP8
+  parallelism:
+    tensor: 8
+  template:
+    spec:
+      containers:
+        - name: main
+          # glm_moe_dsa arch is not supported in official vLLM.
+          # CUDA driver 580+ clusters may need a custom image override
+          # in InferenceService (e.g. dev.local/vllm-glm5:final).
+          image: vllm/vllm-openai:glm5
+          env:
+            - name: ISVC_EXTRA_ARGS
+              value: >-
+                --trust-remote-code
+                --tool-call-parser glm47
+                --reasoning-parser glm45
+                --enable-auto-tool-choice
+                --max-model-len -1
+                --gpu-memory-utilization 0.85
+                --disable-uvicorn-access-log
+                --no-enable-log-requests
+          resources:
+            requests:
+              nvidia.com/gpu: "8"
+            limits:
+              nvidia.com/gpu: "8"
+      nodeSelector:
+        moai.moreh.io/accelerator.vendor: nvidia
+        moai.moreh.io/accelerator.model: h200-sxm
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
