@@ -28,7 +28,7 @@ spec:
                 --trust-remote-code
                 --tool-call-parser glm47
                 --reasoning-parser glm45
-                --max-model-len 131072
+                --max-model-len -1
                 --max-num-seqs 64
                 --gpu-memory-utilization 0.90
                 --kv-cache-dtype auto

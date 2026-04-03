@@ -26,7 +26,7 @@ spec:
             - name: ISVC_EXTRA_ARGS
               value: >-
                 --trust-remote-code
-                --max-model-len 131072
+                --max-model-len -1
                 --max-num-seqs 128
                 --gpu-memory-utilization 0.90
                 --kv-cache-dtype fp8

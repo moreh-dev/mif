@@ -32,7 +32,7 @@ spec:
                 --tool-call-parser kimi_k2
                 --reasoning-parser kimi_k2
                 --enable-auto-tool-choice
-                --max-model-len 65536
+                --max-model-len -1
                 --max-num-seqs 64
                 --gpu-memory-utilization 0.90
                 --kv-cache-dtype fp8
