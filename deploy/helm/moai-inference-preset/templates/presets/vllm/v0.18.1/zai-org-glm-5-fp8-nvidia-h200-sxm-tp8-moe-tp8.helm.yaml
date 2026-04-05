@@ -1,0 +1,56 @@
+apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceServiceTemplate
+metadata:
+  name: vllm-v0.18.1-zai-org-glm-5-fp8-nvidia-h200-sxm-tp8-moe-tp8
+  namespace: {{ include "common.names.namespace" . }}
+  labels:
+    {{- include "mif.preset.labels" . | nindent 4 }}
+    mif.moreh.io/model.org: zai-org
+    mif.moreh.io/model.name: glm-5-fp8
+    mif.moreh.io/role: e2e
+    mif.moreh.io/accelerator.vendor: nvidia
+    mif.moreh.io/accelerator.model: h200-sxm
+    mif.moreh.io/parallelism: "tp8-moe-tp8"
+spec:
+  framework: vllm
+  model:
+    name: zai-org/GLM-5-FP8
+  parallelism:
+    tensor: 8
+  template:
+    spec:
+      containers:
+        - name: main
+          # glm_moe_dsa requires transformers>=5.4.0 at runtime.
+          # Override entrypoint in InferenceService to install it:
+          #   uv pip install --system "transformers>=5.4.0"
+          image: vllm/vllm-openai:v0.18.1
+          env:
+            - name: PYTORCH_CUDA_ALLOC_CONF
+              value: expandable_segments:True
+            - name: ISVC_EXTRA_ARGS
+              value: >-
+                --trust-remote-code
+                --tool-call-parser glm47
+                --reasoning-parser glm45
+                --enable-auto-tool-choice
+                --max-model-len -1
+                --gpu-memory-utilization 0.90
+                --max-num-seqs 128
+                --max-num-batched-tokens 16384
+                --speculative-config {"method":"mtp","num_speculative_tokens":3}
+                --compilation-config {"pass_config":{"fuse_allreduce_rms":true}}
+                --disable-uvicorn-access-log
+                --no-enable-log-requests
+          resources:
+            requests:
+              nvidia.com/gpu: "8"
+            limits:
+              nvidia.com/gpu: "8"
+      nodeSelector:
+        moai.moreh.io/accelerator.vendor: nvidia
+        moai.moreh.io/accelerator.model: h200-sxm
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
