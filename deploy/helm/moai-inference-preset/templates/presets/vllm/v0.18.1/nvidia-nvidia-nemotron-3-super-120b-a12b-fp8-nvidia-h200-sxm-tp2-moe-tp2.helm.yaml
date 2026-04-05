@@ -28,7 +28,6 @@ spec:
                 --trust-remote-code
                 --max-model-len -1
                 --gpu-memory-utilization 0.90
-                --max-num-seqs 128
                 --mamba-ssm-cache-dtype float16
                 --enable-chunked-prefill
                 --compilation-config {"pass_config":{"fuse_allreduce_rms":true}}

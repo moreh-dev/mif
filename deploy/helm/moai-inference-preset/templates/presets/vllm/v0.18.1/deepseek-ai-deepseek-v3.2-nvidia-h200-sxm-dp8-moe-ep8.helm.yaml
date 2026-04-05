@@ -33,7 +33,6 @@ spec:
                 --enable-auto-tool-choice
                 --max-model-len -1
                 --gpu-memory-utilization 0.90
-                --max-num-seqs 128
                 --disable-uvicorn-access-log
                 --no-enable-log-requests
           resources:

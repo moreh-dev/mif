@@ -31,7 +31,6 @@ spec:
                 --trust-remote-code
                 --max-model-len -1
                 --gpu-memory-utilization 0.90
-                --max-num-seqs 128
                 --reasoning-parser qwen3
                 --speculative-config {"method":"mtp","num_speculative_tokens":1}
                 --disable-uvicorn-access-log
