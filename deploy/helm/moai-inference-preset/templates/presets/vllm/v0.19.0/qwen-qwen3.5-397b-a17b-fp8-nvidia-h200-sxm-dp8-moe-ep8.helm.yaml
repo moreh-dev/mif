@@ -1,46 +1,39 @@
 apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceServiceTemplate
 metadata:
-  name: vllm-v0.18.1-zai-org-glm-5-fp8-nvidia-h200-sxm-tp8-moe-tp8
+  name: vllm-v0.19.0-qwen-qwen3.5-397b-a17b-fp8-nvidia-h200-sxm-dp8-moe-ep8
   namespace: {{ include "common.names.namespace" . }}
   labels:
     {{- include "mif.preset.labels" . | nindent 4 }}
-    mif.moreh.io/model.org: zai-org
-    mif.moreh.io/model.name: glm-5-fp8
+    mif.moreh.io/model.org: qwen
+    mif.moreh.io/model.name: qwen3.5-397b-a17b-fp8
     mif.moreh.io/role: e2e
     mif.moreh.io/accelerator.vendor: nvidia
     mif.moreh.io/accelerator.model: h200-sxm
-    mif.moreh.io/parallelism: "tp8-moe-tp8"
+    mif.moreh.io/parallelism: "dp8-moe-ep8"
 spec:
   framework: vllm
   model:
-    name: zai-org/GLM-5-FP8
+    name: Qwen/Qwen3.5-397B-A17B-FP8
   parallelism:
-    tensor: 8
-  template:
+    data: 8
+    expert: true
+  workerTemplate:
     spec:
       containers:
         - name: main
-          # glm_moe_dsa requires transformers>=5.4.0 at runtime.
-          # Override entrypoint in InferenceService to install it:
-          #   uv pip install --system "transformers>=5.4.0"
-          image: vllm/vllm-openai:v0.18.1
+          image: vllm/vllm-openai:v0.19.0
           env:
-            - name: ISVC_PRE_PROCESS_SCRIPT
-              value: "uv pip install --system 'transformers>=5.4.0'"
-            - name: PYTORCH_CUDA_ALLOC_CONF
-              value: expandable_segments:True
+            - name: VLLM_USE_DEEP_GEMM
+              value: "0"
             - name: ISVC_EXTRA_ARGS
               value: >-
                 --trust-remote-code
-                --tool-call-parser glm47
-                --reasoning-parser glm45
-                --enable-auto-tool-choice
                 --max-model-len -1
                 --gpu-memory-utilization 0.90
-                --max-num-batched-tokens 16384
-                --speculative-config '{"method":"mtp","num_speculative_tokens":3}'
-                --compilation-config '{"pass_config":{"fuse_allreduce_rms":true}}'
+                --language-model-only
+                --reasoning-parser qwen3
+                --enable-prefix-caching
                 --disable-uvicorn-access-log
                 --no-enable-log-requests
           resources:
