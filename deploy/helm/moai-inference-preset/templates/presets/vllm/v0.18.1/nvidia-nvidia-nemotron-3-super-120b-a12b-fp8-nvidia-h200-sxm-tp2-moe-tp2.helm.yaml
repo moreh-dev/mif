@@ -30,7 +30,7 @@ spec:
                 --gpu-memory-utilization 0.90
                 --mamba-ssm-cache-dtype float16
                 --enable-chunked-prefill
-                --compilation-config {"pass_config":{"fuse_allreduce_rms":true}}
+                --compilation-config '{"pass_config":{"fuse_allreduce_rms":true}}'
                 --disable-uvicorn-access-log
                 --no-enable-log-requests
           resources:

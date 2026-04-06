@@ -32,7 +32,7 @@ spec:
                 --max-model-len -1
                 --gpu-memory-utilization 0.90
                 --reasoning-parser qwen3
-                --speculative-config {"method":"mtp","num_speculative_tokens":1}
+                --speculative-config '{"method":"mtp","num_speculative_tokens":1}'
                 --disable-uvicorn-access-log
                 --no-enable-log-requests
           resources:
