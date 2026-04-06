@@ -1,12 +1,12 @@
 apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceServiceTemplate
 metadata:
-  name: quickstart-vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2
+  name: quickstart-vllm-google-gemma-4-31b-it-amd-mi250-tp2
   namespace: {{ include "common.names.namespace" . }}
   labels:
     {{- include "mif.preset.labels" . | nindent 4 }}
-    mif.moreh.io/model.org: meta-llama
-    mif.moreh.io/model.name: llama-3.2-1b-instruct
+    mif.moreh.io/model.org: google
+    mif.moreh.io/model.name: gemma-4-31b-it
     mif.moreh.io/role: e2e
     mif.moreh.io/accelerator.vendor: amd
     mif.moreh.io/accelerator.model: mi250
@@ -14,7 +14,7 @@ metadata:
 spec:
   framework: vllm
   model:
-    name: meta-llama/Llama-3.2-1B-Instruct
+    name: google/gemma-4-31B-it
   parallelism:
     tensor: 2
   template:
