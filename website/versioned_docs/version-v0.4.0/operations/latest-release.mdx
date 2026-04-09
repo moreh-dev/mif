@@ -1,0 +1,43 @@
+---
+title: Latest release
+sidebar_label: Latest Release
+sidebar_position: -999
+---
+
+The following table lists the latest released versions of MIF components and their bundled dependencies.
+
+## MIF Helm charts
+
+| Component                | Version     | Chart Repository                 |
+| :----------------------- | :---------- | :------------------------------- |
+| moai-inference-framework | v0.4.0      | `moreh/moai-inference-framework` |
+| moai-inference-preset    | v0.5.0      | `moreh/moai-inference-preset`    |
+
+---
+
+## Core components
+
+| Component         | Version           | Type                |
+| :---------------- | :---------------- | :------------------ |
+| Odin              | v0.8.0            | Helm sub-chart      |
+| Odin CRD          | v0.8.0            | Helm sub-chart      |
+| Heimdall          | v0.7.1            | External Helm chart |
+| heimdall-proxy    | v0.7.0            | Container image     |
+| LWS               | 0.8.0             | Helm sub-chart      |
+| moreh-vLLM preset | 0.15.0-260226-rc2 | Preset directory    |
+
+---
+
+## Infrastructure dependencies
+
+Bundled as sub-charts in `moai-inference-framework`:
+
+| Component              | Version |
+| :--------------------- | :------ |
+| kube-prometheus-stack  | 80.7.0  |
+| KEDA                   | 2.18.0  |
+| Loki                   | 6.30.0  |
+| Vector                 | 0.39.0  |
+| MinIO                  | 5.4.0   |
+| Node Feature Discovery | 0.18.3  |
+| kubernetes-replicator  | 2.12.2  |
