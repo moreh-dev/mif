@@ -158,6 +158,28 @@ div.docusaurus-mermaid-container {
   background: rgba(255, 255, 255, 0.06);
 }
 
+/* Landing — responsive grid */
+.landing-grid {
+  display: grid;
+  gap: 3rem;
+  align-items: center;
+}
+
+.landing-grid--3-2 {
+  grid-template-columns: 3fr 2fr;
+}
+
+.landing-grid--1-1 {
+  grid-template-columns: 1fr 1fr;
+}
+
+@media (max-width: 768px) {
+  .landing-grid--3-2,
+  .landing-grid--1-1 {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Image zoom */
 .medium-zoom-overlay {
   z-index: 999;

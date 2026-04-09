@@ -103,7 +103,7 @@ function Hero() {
   return (
     <header style={{ ...sectionStyle, textAlign: "center" }}>
       <div style={containerStyle}>
-        <p style={labelStyle}>MoAI Inference Framework</p>
+        <p style={{ ...labelStyle, fontSize: "2.5rem" }}>MoAI Inference Framework</p>
         <h1 style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>
           Automating distributed inference at data center scale
         </h1>
@@ -135,14 +135,7 @@ function KeyDifferentiator() {
   return (
     <section className="hero-contrast-section" style={sectionStyle}>
       <div style={containerStyle}>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "3fr 2fr",
-            gap: "3rem",
-            alignItems: "center",
-          }}
-        >
+        <div className="landing-grid landing-grid--3-2">
           <div>
             <p style={{ ...labelStyle, color: "var(--ifm-color-primary)" }}>
               Key Differentiator
@@ -354,14 +347,7 @@ function KubernetesNative() {
   return (
     <section className="hero-contrast-section" style={sectionStyle}>
       <div style={containerStyle}>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: "3rem",
-            alignItems: "center",
-          }}
-        >
+        <div className="landing-grid landing-grid--1-1">
           <div>
             <p style={{ ...labelStyle, color: "var(--ifm-color-primary)" }}>
               Architecture
@@ -403,13 +389,7 @@ function SupportedModelsAndHardware() {
       }}
     >
       <div style={containerStyle}>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: "3rem",
-          }}
-        >
+        <div className="landing-grid landing-grid--1-1">
           {/* Models */}
           <div>
             <h2 style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>

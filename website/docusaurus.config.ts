@@ -1,6 +1,15 @@
 import type {Config} from "@docusaurus/types";
 import type * as Preset from "@docusaurus/preset-classic";
 import {themes} from "prism-react-renderer";
+import versions from "./versions.json";
+
+function getLastStableVersion(): string {
+  const lastStable = versions.find((v) => !v.includes("-"));
+  if (!lastStable) {
+    throw new Error("No stable version found in versions.json");
+  }
+  return lastStable;
+}
 
 const config: Config = {
   title: "Moreh",
@@ -36,6 +45,7 @@ const config: Config = {
       {
         docs: {
           sidebarPath: require.resolve("./sidebars"),
+          lastVersion: getLastStableVersion(),
           versions: {
             current: {
               label: "Dev 🚧",
