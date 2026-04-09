@@ -19,7 +19,7 @@ To create a new documentation version aligned with a MIF release tag:
 
 ```shell
 cd website
-npm run docs:version X.Y.Z
+npm run docs:version vX.Y.Z
 ```
 
 Commit the generated `versioned_docs`, `versioned_sidebars`, and `versions.json` before creating the corresponding `vX.Y.Z` Git tag.
