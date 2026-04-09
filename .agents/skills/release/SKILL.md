@@ -91,17 +91,14 @@ Group commits by scope to understand the breadth of changes:
 
 #### 3b. Dependency version changes
 
-Read the version table from the **current** `website/docs/operations/latest-release.mdx`.
-This is the source of truth for v0.4.0+ component versions.
-
-Also read the **previous release's** version of the same file to build the comparison:
+Read the version tables from the versioned docs created in step 2:
 
 ```bash
-# Current versions
-cat website/versioned_docs/version-<release-version>/operations/latest-release.mdx
+# Release versions
+cat website/versioned_docs/version-v<release-version>/operations/latest-release.mdx
 
-# Previous versions (for comparison)
-cat website/versioned_docs/version-<prev-version>/operations/latest-release.mdx
+# Previous release versions (for comparison)
+cat website/versioned_docs/version-v<prev-version>/operations/latest-release.mdx
 ```
 
 If versioned docs don't exist for the previous release, extract versions from the Helm chart at that tag:

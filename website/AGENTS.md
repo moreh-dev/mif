@@ -4,7 +4,7 @@ Rules specific to the `website/` directory. General contribution guidelines are 
 
 These rules cover both:
 - documentation content under `docs/`
-- Docusaurus site code and configuration under `website/`
+- Docusaurus site code and configuration in this directory (e.g., `src/`, `static/`, `blog/`, `docusaurus.config.ts`, `sidebars.ts`)
 
 ## Production Build
 
