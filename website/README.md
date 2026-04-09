@@ -9,21 +9,3 @@ cd website
 npm install
 npm run start
 ```
-
-## Production build
-
-```shell
-cd website
-npm run build
-```
-
-## Versioned docs
-
-To create a new documentation version aligned with a MIF release tag:
-
-```shell
-cd website
-npm run docs:version X.Y.Z
-```
-
-Commit the generated `versioned_docs`, `versioned_sidebars`, and `versions.json` before creating the corresponding `vX.Y.Z` Git tag.

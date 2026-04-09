@@ -21,6 +21,16 @@ Rules specific to the `deploy/helm/` directory. General contribution guidelines 
 
 ## Helm Chart Development
 
+### Verification
+
+- After changing Helm charts, run the narrowest verification that proves the change.
+- Use `make helm-lint` for repo-wide chart linting, or run `helm lint <chart>` when only a single chart is affected.
+- Run `helm template <chart>` with representative values whenever the change affects rendered manifests or templating behavior.
+- If `Chart.yaml` dependencies change, run `make helm-dependency`.
+- If chart documentation generated from templates or values changes, run `make helm-docs`.
+- Do not claim a Helm change is complete without at least one render- or lint-level verification step unless the environment prevents running Helm locally.
+- If verification could not be run, state exactly which command was skipped and why.
+
 ### Sub-chart Integration
 
 - **All infrastructure components belong as sub-chart dependencies** of `moai-inference-framework`. Do not design them as standalone prerequisites that users install separately.
