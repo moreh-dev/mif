@@ -36,7 +36,6 @@ const config: Config = {
       {
         docs: {
           sidebarPath: require.resolve("./sidebars"),
-          routeBasePath: "/",
           versions: {
             current: {
               label: "Dev 🚧",
@@ -45,7 +44,7 @@ const config: Config = {
           },
         },
         theme: {
-          customCss: require.resolve("./css/custom.css"),
+          customCss: require.resolve("./src/css/custom.css"),
         },
         blog: {
           blogTitle: "Blog",
@@ -68,7 +67,7 @@ const config: Config = {
       },
       items: [
         {
-          to: "/",
+          to: "/docs/getting-started/quickstart",
           label: "Docs",
           position: "left",
         },
