@@ -61,6 +61,10 @@ helm repo update moreh
 
 The container images for the MoAI Inference Framework are distributed through a private repository on [Amazon ECR](https://aws.amazon.com/ecr/) `255250787067.dkr.ecr.ap-northeast-2.amazonaws.com`, and you need to obtain an authorization token to download them. To facilitate this, the `moai-inference-framework` chart defines the installation of an ECR token refresher. You need to specify your AWS credentials in the values file to configure the ECR token refresher.
 
+:::info
+If you pull images through a local registry such as Harbor instead of directly from ECR, disable the ECR token refresher by setting `ecrTokenRefresher.enabled` to `false`. See [Container image caching with Harbor](../operations/container-image-caching-with-harbor/index.mdx) for details.
+:::
+
 :::warning
 **The AWS credentials (`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`) should have been provided to you along with your purchase or trial issuance of the MoAI Inference Framework**. If you did not receive this information, please contact your point of purchase separately.
 :::
@@ -138,7 +142,7 @@ deviceConfig:
   spec:
     driver:
       enable: true
-      version: "6.4.3"
+      version: "30.30.1"
       blacklist: true
       image: <registry>/amdgpu-driver
       imageRegistrySecret:
@@ -351,8 +355,8 @@ rdma-shared-device-plugin-wh9fz   1/1     Running   0          7s
 Add the Gateway API and Gateway API Inference Extension CRDs.
 
 ```shell
-kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.3.0/standard-install.yaml
-kubectl apply -f https://github.com/kubernetes-sigs/gateway-api-inference-extension/releases/download/v1.1.0/manifests.yaml
+kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.1/standard-install.yaml
+kubectl apply -f https://github.com/kubernetes-sigs/gateway-api-inference-extension/releases/download/v1.4.0/manifests.yaml
 ```
 
 You can verify the CRDs are installed using the following command.
@@ -386,7 +390,7 @@ Install the Istio base chart.
 
 ```shell
 helm upgrade -i istio-base istio/base \
-    --version 1.28.5 \
+    --version 1.29.1 \
     -n istio-system \
     --create-namespace
 ```
@@ -396,13 +400,12 @@ Create a `istiod-values.yaml` file and install the Istio control plane.
 ```yaml title="istiod-values.yaml"
 pilot:
   env:
-    PILOT_ENABLE_ALPHA_GATEWAY_API: "true"
     ENABLE_GATEWAY_API_INFERENCE_EXTENSION: "true"
 ```
 
 ```shell
 helm upgrade -i istiod istio/istiod \
-    --version 1.28.5 \
+    --version 1.29.1 \
     -n istio-system \
     -f istiod-values.yaml
 ```

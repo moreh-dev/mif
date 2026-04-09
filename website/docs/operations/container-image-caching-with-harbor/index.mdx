@@ -404,10 +404,21 @@ If you want to check policy status, then follow this command.
 kubectl get clusterpolicy
 ```
 
-```shell
+```shell title="Expected output"
 NAME                   ADMISSION   BACKGROUND   READY   AGE   MESSAGE
 ecr-rewrite-registry   true        true         True    19h   Ready
 ```
 
 </TabItem>
 </Tabs>
+
+---
+
+## Disable ECR token refresher
+
+When pulling images through Harbor instead of directly from Amazon ECR, the `ecrTokenRefresher` CronJob is no longer needed. Harbor handles ECR authentication on its own using the registry endpoint credentials configured earlier. Disable it in your values file:
+
+```yaml title="moai-inference-framework-values.yaml"
+ecrTokenRefresher:
+  enabled: false
+```
