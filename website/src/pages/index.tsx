@@ -103,7 +103,7 @@ function Hero() {
   return (
     <header style={{ ...sectionStyle, textAlign: "center" }}>
       <div style={containerStyle}>
-        <p style={labelStyle}>MoAI Inference Framework</p>
+        <p style={{ ...labelStyle, fontSize: "2.5rem" }}>MoAI Inference Framework</p>
         <h1 style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>
           Automating distributed inference at data center scale
         </h1>
