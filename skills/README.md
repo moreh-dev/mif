@@ -8,9 +8,10 @@ Skills follow the [Agent Skills open standard](https://agentskills.io/specificat
 
 | Skill | Description |
 | ----- | ----------- |
-| [bump-dependency](../.agents/skills/bump-dependency/) | Dependency version update procedures for Helm charts, images, presets, and docs |
 | [guide-heimdall](./guide-heimdall/) | Heimdall scheduler configuration, plugin selection, and deployment |
 | [guide-odin](./guide-odin/) | Odin inference operator, InferenceService, templates, and parallelism |
+
+> Skills under `.agents/skills/` (e.g., `bump-dependency`, `release`) are not part of this plugin package. They are discovered automatically via `AGENTS.md` when working inside the MIF repository.
 
 ## Installation
 

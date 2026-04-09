@@ -48,20 +48,20 @@ Before investigating changes, verify that versioned docs exist for **both** the 
 
 ```bash
 # Check if versioned docs exist for the release version
-ls website/versioned_docs/version-v<release-version>/operations/latest-release.mdx
+ls website/versioned_docs/version-<releaseVersion>/operations/latest-release.mdx
 
 # Check if versioned docs exist for the previous version
-ls website/versioned_docs/version-v<prev-version>/operations/latest-release.mdx
+ls website/versioned_docs/version-<prevVersion>/operations/latest-release.mdx
 ```
 
 If the release version's versioned docs do not exist, create them:
 
 ```bash
 cd website
-npm run docs:version v<release-version>
+npm run docs:version <releaseVersion>
 ```
 
-This snapshots the current `website/docs/` into `website/versioned_docs/version-v<release-version>/`.
+This snapshots the current `website/docs/` into `website/versioned_docs/version-<releaseVersion>/`.
 Commit the generated `versioned_docs`, `versioned_sidebars`, and `versions.json` before proceeding.
 
 **Important:** `website/docs/operations/latest-release.mdx` must already reflect the release version's
@@ -76,10 +76,10 @@ Thoroughly research all changes between the previous stable tag and the release 
 
 ```bash
 # Commits between releases
-git log <prev-tag>..<release-tag> --oneline --no-merges
+git log <prevVersion>..<releaseVersion> --oneline --no-merges
 
 # Overall change stats
-git diff <prev-tag>..<release-tag> --stat | tail -5
+git diff <prevVersion>..<releaseVersion> --stat | tail -5
 ```
 
 Group commits by scope to understand the breadth of changes:
@@ -95,16 +95,16 @@ Read the version tables from the versioned docs created in step 2:
 
 ```bash
 # Release versions
-cat website/versioned_docs/version-v<release-version>/operations/latest-release.mdx
+cat website/versioned_docs/version-<releaseVersion>/operations/latest-release.mdx
 
 # Previous release versions (for comparison)
-cat website/versioned_docs/version-v<prev-version>/operations/latest-release.mdx
+cat website/versioned_docs/version-<prevVersion>/operations/latest-release.mdx
 ```
 
 If versioned docs don't exist for the previous release, extract versions from the Helm chart at that tag:
 
 ```bash
-git show <prev-tag>:deploy/helm/moai-inference-framework/Chart.yaml
+git show <prevVersion>:deploy/helm/moai-inference-framework/Chart.yaml
 ```
 
 #### 3c. Area-specific diffs
@@ -113,19 +113,19 @@ Check each major area for changes:
 
 ```bash
 # Helm chart changes
-git diff <prev-tag>..<release-tag> --stat -- deploy/helm/moai-inference-framework/
+git diff <prevVersion>..<releaseVersion> --stat -- deploy/helm/moai-inference-framework/
 
 # Preset changes
-git diff <prev-tag>..<release-tag> --stat -- deploy/helm/moai-inference-preset/
+git diff <prevVersion>..<releaseVersion> --stat -- deploy/helm/moai-inference-preset/
 
 # Website changes
-git diff <prev-tag>..<release-tag> --stat -- website/
+git diff <prevVersion>..<releaseVersion> --stat -- website/
 
 # Test changes
-git diff <prev-tag>..<release-tag> --stat -- test/
+git diff <prevVersion>..<releaseVersion> --stat -- test/
 
 # Skills changes
-git diff <prev-tag>..<release-tag> --stat -- skills/ .agents/skills/
+git diff <prevVersion>..<releaseVersion> --stat -- skills/ .agents/skills/
 ```
 
 ### 4. Write release notes
@@ -137,14 +137,14 @@ Structure the release notes as follows:
 
 ### MIF Helm Charts
 
-| Component | <prev-version> | <release-version> |
+| Component | <prevVersion> | <releaseVersion> |
 |-----------|--------|--------|
 | moai-inference-framework | vX.Y.Z | **vA.B.C** |
 | moai-inference-preset | vX.Y.Z | **vA.B.C** |
 
 ### Core Components
 
-| Component | <prev-version> | <release-version> |
+| Component | <prevVersion> | <releaseVersion> |
 |-----------|--------|--------|
 | Odin | vX.Y.Z | **vA.B.C** |
 | Odin CRD | vX.Y.Z | **vA.B.C** |
@@ -158,7 +158,7 @@ Structure the release notes as follows:
 
 Bundled as sub-charts in `moai-inference-framework`:
 
-| Component | <prev-version> | <release-version> |
+| Component | <prevVersion> | <releaseVersion> |
 |-----------|--------|--------|
 | kube-prometheus-stack | X.Y.Z | X.Y.Z |
 | KEDA | X.Y.Z | X.Y.Z |
@@ -177,7 +177,7 @@ Bundled as sub-charts in `moai-inference-framework`:
 
 ## What's Changed
 
-**Full Changelog**: https://github.com/moreh-dev/mif/compare/<prev-tag>...<release-tag>
+**Full Changelog**: https://github.com/moreh-dev/mif/compare/<prevVersion>...<releaseVersion>
 ```
 
 Guidelines for the **Highlights** section:
