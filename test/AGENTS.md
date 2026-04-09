@@ -33,6 +33,7 @@ Rules specific to the `test/` directory. General contribution guidelines are in 
   - Environment variables are only for: execution settings (`SKIP_PREREQUISITE`, `SKIP_CLEANUP`), credentials (`AWS_*`, `S3_*`), and environment-specific values (`MIF_NAMESPACE`, `WORKLOAD_NAMESPACE`, `GATEWAY_CLASS_NAME`, `ISTIO_REV`).
   - `SKIP_PREREQUISITE` defaults to `true` — on product clusters with pre-installed infrastructure, tests run without prerequisite setup. Set to `false` for standalone environments (e.g. Kind).
   - Manage all E2E environment variables centrally in `test/e2e/envs/env_vars.go`.
+  - Use `make test-e2e-env` to inspect the current supported E2E environment variables as rendered from code.
   - Do not add new environment variables for fixed configuration values. Instead, hardcode them in `test/utils/settings/constants.go` or in the test file that uses them.
   - Do not call `os.Getenv` directly in test code.
 

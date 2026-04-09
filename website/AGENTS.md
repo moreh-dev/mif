@@ -2,6 +2,38 @@
 
 Rules specific to the `website/` directory. General contribution guidelines are in the root [`AGENTS.md`](/AGENTS.md).
 
+These rules cover both:
+- documentation content under `docs/`
+- Docusaurus site code and configuration in this directory (e.g., `src/`, `static/`, `blog/`, `docusaurus.config.ts`, `sidebars.ts`)
+
+## Production Build
+
+```shell
+cd website
+npm run build
+```
+
+## Versioned Docs
+
+To create a new documentation version aligned with a MIF release tag:
+
+```shell
+cd website
+npm run docs:version vX.Y.Z
+```
+
+Commit the generated `versioned_docs`, `versioned_sidebars`, and `versions.json` before creating the corresponding `vX.Y.Z` Git tag.
+
+## Verification
+
+- For documentation, config, or UI changes in `website/`, run:
+  ```shell
+  cd website
+  npm run build
+  ```
+- Do not claim website work is complete if the production build fails.
+- If the task changes only prose and the build cannot be run in the current environment, state that explicitly in the final report.
+
 ## 1. Structure & Metadata
 
 - **File Extension**: All documentation files must use the `.mdx` extension.
@@ -15,7 +47,9 @@ Rules specific to the `website/` directory. General contribution guidelines are 
   ```
 - **Categories**: Every subfolder under `docs/` containing docs must have a `_category_.yaml` with `label`, `position`, and `collapsed: false`.
 - **Placement**: Place new docs in appropriate subfolders (e.g., `getting-started`, `reference`). Create a new folder with `_category_.yaml` only if necessary.
-- **Artifacts**: Never edit `versioned_docs/` or `versioned_sidebars/`. Only edit source files in `docs/`.
+- **Artifacts**: Never edit `versioned_docs/` or `versioned_sidebars/` directly.
+- **Documentation source**: For documentation content, edit source files under `docs/` only.
+- **Website code/config**: When the task involves Docusaurus configuration, UI components, assets, or blog content, edit the relevant source files under `website/` (for example `src/`, `static/`, `blog/`, `docusaurus.config.ts`, `sidebars.ts`) instead of generated artifacts.
 - **Images**: If a documentation file contains images, convert the file to a directory of the same name containing an `index.mdx` file. Place images directly within that directory (not in a subdirectory) and use simple filenames (e.g., `my-doc/image.png`).
 
 ## 2. Formatting & Syntax
@@ -28,33 +62,11 @@ Rules specific to the `website/` directory. General contribution guidelines are 
 
 ### Tabs
 
-https://docusaurus.io/docs/markdown-features/tabs
-
-```mdx
-import Tabs from "@theme/Tabs";
-import TabItem from "@theme/TabItem";
-
-<Tabs groupId="fruits" queryString>
-  <TabItem value="apple" label="Apple" default>
-    This is Apple
-  </TabItem>
-  <TabItem value="orange" label="Orange">
-    This is Orange
-  </TabItem>
-</Tabs>
-```
+See [Docusaurus Tabs](https://docusaurus.io/docs/markdown-features/tabs). Always use `groupId` and `queryString` props.
 
 ### Code blocks
 
-https://docusaurus.io/docs/markdown-features/code-blocks
-
-````mdx
-```yaml
-image:
-  repository: ubuntu
-  tag: "22.04"
-```
-````
+See [Docusaurus Code Blocks](https://docusaurus.io/docs/markdown-features/code-blocks).
 
 - title: ` ```<language> title="<title>"`
 - highlight: ` ```<language> {1,4-6}`
@@ -74,21 +86,7 @@ image:
 
 ### Admonitions
 
-https://docusaurus.io/docs/markdown-features/admonitions
-
-```mdx
-::::info
-
-This is a tip
-
-:::warning
-This is a warning
-:::
-
-::::
-```
-
-- `:::info`, `:::warning`
+See [Docusaurus Admonitions](https://docusaurus.io/docs/markdown-features/admonitions). Use `:::info` and `:::warning`.
 
 ## 3. Tone & Voice
 

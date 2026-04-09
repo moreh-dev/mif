@@ -1,0 +1,223 @@
+---
+name: release
+description: >
+  Create a new MIF GitHub release. Use this skill when the user asks to "release",
+  "cut a release", "create a release", "write release notes", or says "/release".
+  Also trigger when the user mentions "release notes" or "changelog" in the context
+  of shipping a new MIF version.
+---
+
+# MIF Release
+
+Create GitHub releases for the MIF project with curated release notes that highlight
+dependency version changes and key improvements.
+
+## Version Rules
+
+MIF follows [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) and semver.
+Since we're pre-1.0 (`v0.x.y`):
+
+| Commit type | Bump |
+|---|---|
+| `fix`, `refactor`, `style`, `chore`, `docs`, `test` | patch |
+| `feat` | minor |
+| `!` (breaking change) | minor (not major, because v0.x) |
+
+## Release Flow
+
+### 1. Determine version
+
+```bash
+# Find the latest stable tag
+git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1
+
+# Find the previous stable tag for comparison
+git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -2
+
+# List commits since last stable tag
+git log <latest-stable-tag>..HEAD --oneline --no-merges
+```
+
+If the tag already exists, use it. Otherwise, analyze commit types to compute the recommended
+version bump. Present and wait for user confirmation.
+
+### 2. Ensure versioned docs exist
+
+The version comparison tables in the release notes rely on `website/versioned_docs/version-v<X.Y.Z>/operations/latest-release.mdx`.
+Before investigating changes, verify that versioned docs exist for **both** the release version and the previous version.
+
+```bash
+# Check if versioned docs exist for the release version
+ls website/versioned_docs/version-<releaseVersion>/operations/latest-release.mdx
+
+# Check if versioned docs exist for the previous version
+ls website/versioned_docs/version-<prevVersion>/operations/latest-release.mdx
+```
+
+If the release version's versioned docs do not exist, create them:
+
+```bash
+cd website
+npm run docs:version <releaseVersion>
+```
+
+This snapshots the current `website/docs/` into `website/versioned_docs/version-<releaseVersion>/`.
+Commit the generated `versioned_docs`, `versioned_sidebars`, and `versions.json` before proceeding.
+
+**Important:** `website/docs/operations/latest-release.mdx` must already reflect the release version's
+dependency versions **before** running `docs:version`. If it doesn't, update it first, then create
+the versioned docs.
+
+### 3. Investigate changes
+
+Thoroughly research all changes between the previous stable tag and the release tag.
+
+#### 3a. Commit and PR analysis
+
+```bash
+# Commits between releases
+git log <prevVersion>..<releaseVersion> --oneline --no-merges
+
+# Overall change stats
+git diff <prevVersion>..<releaseVersion> --stat | tail -5
+```
+
+Group commits by scope to understand the breadth of changes:
+- `deploy` — Helm chart, infrastructure, dependency bumps
+- `preset` — inference service templates, quickstart presets
+- `website` — documentation
+- `e2e` / `test` — testing framework
+- `skills` — agent skills
+
+#### 3b. Dependency version changes
+
+Read the version tables from the versioned docs created in step 2:
+
+```bash
+# Release versions
+cat website/versioned_docs/version-<releaseVersion>/operations/latest-release.mdx
+
+# Previous release versions (for comparison)
+cat website/versioned_docs/version-<prevVersion>/operations/latest-release.mdx
+```
+
+If versioned docs don't exist for the previous release, extract versions from the Helm chart at that tag:
+
+```bash
+git show <prevVersion>:deploy/helm/moai-inference-framework/Chart.yaml
+```
+
+#### 3c. Area-specific diffs
+
+Check each major area for changes:
+
+```bash
+# Helm chart changes
+git diff <prevVersion>..<releaseVersion> --stat -- deploy/helm/moai-inference-framework/
+
+# Preset changes
+git diff <prevVersion>..<releaseVersion> --stat -- deploy/helm/moai-inference-preset/
+
+# Website changes
+git diff <prevVersion>..<releaseVersion> --stat -- website/
+
+# Test changes
+git diff <prevVersion>..<releaseVersion> --stat -- test/
+
+# Skills changes
+git diff <prevVersion>..<releaseVersion> --stat -- skills/ .agents/skills/
+```
+
+### 4. Write release notes
+
+Structure the release notes as follows:
+
+```markdown
+## Dependency Version Changes
+
+### MIF Helm Charts
+
+| Component | <prevVersion> | <releaseVersion> |
+|-----------|--------|--------|
+| moai-inference-framework | vX.Y.Z | **vA.B.C** |
+| moai-inference-preset | vX.Y.Z | **vA.B.C** |
+
+### Core Components
+
+| Component | <prevVersion> | <releaseVersion> |
+|-----------|--------|--------|
+| Odin | vX.Y.Z | **vA.B.C** |
+| Odin CRD | vX.Y.Z | **vA.B.C** |
+| Heimdall | vX.Y.Z | **vA.B.C** |
+| heimdall-proxy | vX.Y.Z | **vA.B.C** |
+| LWS | X.Y.Z | **A.B.C** |
+| moreh-vLLM preset | X.Y.Z | **A.B.C** |
+| Istio | X.Y.Z | **A.B.C** |
+
+### Infrastructure Dependencies
+
+Bundled as sub-charts in `moai-inference-framework`:
+
+| Component | <prevVersion> | <releaseVersion> |
+|-----------|--------|--------|
+| kube-prometheus-stack | X.Y.Z | X.Y.Z |
+| KEDA | X.Y.Z | X.Y.Z |
+| ... | ... | ... |
+
+> Use `—` for components that didn't exist in the previous release.
+> **Bold** changed versions. Leave unchanged versions unbolded.
+
+## Highlights
+
+### <Area Name>
+- Description of change (#PR)
+
+### <Area Name>
+- Description of change (#PR)
+
+## What's Changed
+
+**Full Changelog**: https://github.com/moreh-dev/mif/compare/<prevVersion>...<releaseVersion>
+```
+
+Guidelines for the **Highlights** section:
+- Group by functional area, not by commit type. Common areas:
+  - Observability Stack
+  - Hardware Support
+  - Preset Expansion
+  - Documentation (Website)
+  - E2E Testing
+  - Agent Skills
+- Write from the **user's perspective** — focus on what they gain, not internal implementation.
+- Reference PR numbers with `#N` format (auto-linked by GitHub).
+- Group related PRs into a single entry when they form one logical change.
+- Omit purely internal changes (CI tweaks, minor doc typos) unless they affect users.
+
+### 5. Present for review
+
+Show the full release note to the user and ask for approval or edits. Do not proceed until
+the user explicitly approves.
+
+Pay special attention to dependency versions — the agent may not have full visibility into
+versions managed outside this repo (e.g., Heimdall, Istio). Explicitly ask the user to
+verify any versions you are uncertain about.
+
+### 6. Create GitHub Release
+
+```bash
+gh release create <version> --title "<version>" --notes "$(cat <<'EOF'
+<release-note-content>
+EOF
+)"
+```
+
+After creation, print the release URL.
+
+If edits are needed after creation, update with:
+
+```bash
+gh release edit <version> --notes "$(cat <<'EOF'
+<updated-release-note-content>
+EOF
+)"
+```
