@@ -41,11 +41,38 @@ git log <latest-stable-tag>..HEAD --oneline --no-merges
 If the tag already exists, use it. Otherwise, analyze commit types to compute the recommended
 version bump. Present and wait for user confirmation.
 
-### 2. Investigate changes
+### 2. Ensure versioned docs exist
+
+The version comparison tables in the release notes rely on `website/versioned_docs/version-v<X.Y.Z>/operations/latest-release.mdx`.
+Before investigating changes, verify that versioned docs exist for **both** the release version and the previous version.
+
+```bash
+# Check if versioned docs exist for the release version
+ls website/versioned_docs/version-v<release-version>/operations/latest-release.mdx
+
+# Check if versioned docs exist for the previous version
+ls website/versioned_docs/version-v<prev-version>/operations/latest-release.mdx
+```
+
+If the release version's versioned docs do not exist, create them:
+
+```bash
+cd website
+npm run docs:version v<release-version>
+```
+
+This snapshots the current `website/docs/` into `website/versioned_docs/version-v<release-version>/`.
+Commit the generated `versioned_docs`, `versioned_sidebars`, and `versions.json` before proceeding.
+
+**Important:** `website/docs/operations/latest-release.mdx` must already reflect the release version's
+dependency versions **before** running `docs:version`. If it doesn't, update it first, then create
+the versioned docs.
+
+### 3. Investigate changes
 
 Thoroughly research all changes between the previous stable tag and the release tag.
 
-#### 2a. Commit and PR analysis
+#### 3a. Commit and PR analysis
 
 ```bash
 # Commits between releases
@@ -62,7 +89,7 @@ Group commits by scope to understand the breadth of changes:
 - `e2e` / `test` — testing framework
 - `skills` — agent skills
 
-#### 2b. Dependency version changes
+#### 3b. Dependency version changes
 
 Read the version table from the **current** `website/docs/operations/latest-release.mdx`.
 This is the source of truth for v0.4.0+ component versions.
@@ -83,7 +110,7 @@ If versioned docs don't exist for the previous release, extract versions from th
 git show <prev-tag>:deploy/helm/moai-inference-framework/Chart.yaml
 ```
 
-#### 2c. Area-specific diffs
+#### 3c. Area-specific diffs
 
 Check each major area for changes:
 
@@ -104,7 +131,7 @@ git diff <prev-tag>..<release-tag> --stat -- test/
 git diff <prev-tag>..<release-tag> --stat -- skills/ .agents/skills/
 ```
 
-### 3. Write release notes
+### 4. Write release notes
 
 Structure the release notes as follows:
 
@@ -169,7 +196,7 @@ Guidelines for the **Highlights** section:
 - Group related PRs into a single entry when they form one logical change.
 - Omit purely internal changes (CI tweaks, minor doc typos) unless they affect users.
 
-### 4. Present for review
+### 5. Present for review
 
 Show the full release note to the user and ask for approval or edits. Do not proceed until
 the user explicitly approves.
@@ -178,7 +205,7 @@ Pay special attention to dependency versions — the agent may not have full vis
 versions managed outside this repo (e.g., Heimdall, Istio). Explicitly ask the user to
 verify any versions you are uncertain about.
 
-### 5. Create GitHub Release
+### 6. Create GitHub Release
 
 ```bash
 gh release create <version> --title "<version>" --notes "$(cat <<'EOF'
