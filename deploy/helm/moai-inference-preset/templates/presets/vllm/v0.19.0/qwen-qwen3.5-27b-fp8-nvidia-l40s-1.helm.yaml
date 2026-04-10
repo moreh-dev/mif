@@ -21,6 +21,8 @@ spec:
         - name: main
           image: vllm/vllm-openai:v0.19.0
           env:
+            - name: VLLM_USE_DEEP_GEMM
+              value: "0"
             - name: ISVC_EXTRA_ARGS
               value: >-
                 --trust-remote-code
@@ -29,6 +31,8 @@ spec:
                 --enforce-eager
                 --language-model-only
                 --reasoning-parser qwen3
+                --tool-call-parser hermes
+                --enable-auto-tool-choice
                 --enable-prefix-caching
                 --disable-uvicorn-access-log
                 --no-enable-log-requests

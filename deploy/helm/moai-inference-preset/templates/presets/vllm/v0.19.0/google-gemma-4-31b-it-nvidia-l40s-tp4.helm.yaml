@@ -21,14 +21,19 @@ spec:
     spec:
       containers:
         - name: main
-          image: vllm/vllm-openai:v0.19.0
+          image: vllm/vllm-openai:gemma4
           env:
+            - name: VLLM_WORKER_MULTIPROC_METHOD
+              value: spawn
             - name: ISVC_EXTRA_ARGS
               value: >-
                 --trust-remote-code
                 --max-model-len -1
                 --gpu-memory-utilization 0.90
-                --limit-mm-per-prompt image=0 audio=0
+                --language-model-only
+                --tool-call-parser gemma4
+                --reasoning-parser gemma4
+                --enable-auto-tool-choice
                 --disable-uvicorn-access-log
                 --no-enable-log-requests
           resources:

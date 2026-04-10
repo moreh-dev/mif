@@ -28,7 +28,7 @@ spec:
                 --trust-remote-code
                 --max-model-len -1
                 --gpu-memory-utilization 0.90
-                --limit-mm-per-prompt image=0 audio=0
+                --limit-mm-per-prompt '{"image":0,"audio":0}'
                 --disable-uvicorn-access-log
                 --no-enable-log-requests
           resources:

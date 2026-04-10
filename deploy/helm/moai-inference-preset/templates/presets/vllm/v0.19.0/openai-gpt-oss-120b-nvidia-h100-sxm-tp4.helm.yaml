@@ -30,6 +30,8 @@ spec:
                 --gpu-memory-utilization 0.90
                 --max-num-batched-tokens 8192
                 --max-cudagraph-capture-size 2048
+                --tool-call-parser openai
+                --enable-auto-tool-choice
                 --disable-uvicorn-access-log
                 --no-enable-log-requests
           resources:
@@ -37,9 +39,8 @@ spec:
               nvidia.com/gpu: "4"
             limits:
               nvidia.com/gpu: "4"
-      nodeSelector:
-        moai.moreh.io/accelerator.vendor: nvidia
-        moai.moreh.io/accelerator.model: h100-sxm
+      # nodeSelector removed: H100-NVL has no moai label (NFD rule missing for NVL)
+      # ISVC uses kubernetes.io/hostname to override
       tolerations:
         - key: nvidia.com/gpu
           operator: Exists

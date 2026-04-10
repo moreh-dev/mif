@@ -33,6 +33,8 @@ spec:
                 --gpu-memory-utilization 0.90
                 --language-model-only
                 --reasoning-parser qwen3
+                --tool-call-parser hermes
+                --enable-auto-tool-choice
                 --enable-prefix-caching
                 --disable-uvicorn-access-log
                 --no-enable-log-requests
