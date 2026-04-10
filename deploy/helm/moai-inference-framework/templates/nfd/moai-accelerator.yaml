@@ -136,17 +136,6 @@ spec:
     # source1: https://admin.pci-ids.ucw.cz/read/PC/10de
     # source2: https://devicehunt.com/view/type/pci/vendor/10de
     # --- NVIDIA ---
-    - name: accelerator-nvidia-l40s
-      labels:
-        moai.moreh.io/accelerator.vendor: nvidia
-        moai.moreh.io/accelerator.model: l40s
-      matchAny:
-        - matchFeatures:
-            - feature: pci.device
-              matchExpressions:
-                vendor: { op: In, value: ["10de"] }
-                device: { op: In, value: ["26b9"] }
-
     - name: accelerator-nvidia-a100-40gb-pcie
       labels:
         moai.moreh.io/accelerator.vendor: nvidia
