@@ -31,7 +31,7 @@ spec:
                 --enforce-eager
                 --language-model-only
                 --reasoning-parser qwen3
-                --tool-call-parser hermes
+                --tool-call-parser qwen3_coder
                 --enable-auto-tool-choice
                 --enable-prefix-caching
                 --disable-uvicorn-access-log
