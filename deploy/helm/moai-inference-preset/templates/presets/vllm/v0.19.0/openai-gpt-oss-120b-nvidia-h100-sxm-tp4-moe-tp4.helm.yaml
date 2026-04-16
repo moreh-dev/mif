@@ -1,7 +1,7 @@
 apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceServiceTemplate
 metadata:
-  name: vllm-v0.19.0-openai-gpt-oss-120b-nvidia-h100-sxm-tp4
+  name: vllm-v0.19.0-openai-gpt-oss-120b-nvidia-h100-sxm-tp4-moe-tp4
   namespace: {{ include "common.names.namespace" . }}
   labels:
     {{- include "mif.preset.labels" . | nindent 4 }}
@@ -10,7 +10,7 @@ metadata:
     mif.moreh.io/role: e2e
     mif.moreh.io/accelerator.vendor: nvidia
     mif.moreh.io/accelerator.model: h100-sxm
-    mif.moreh.io/parallelism: "tp4"
+    mif.moreh.io/parallelism: "tp4-moe-tp4"
 spec:
   framework: vllm
   model:
