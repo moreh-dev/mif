@@ -23,7 +23,7 @@ spec:
       containers:
         - name: main
           # glm_moe_dsa requires transformers>=5.4.0 at runtime.
-          # Override entrypoint in InferenceService to install it:
+          # This preset installs it via ISVC_PRE_PROCESS_SCRIPT before startup:
           #   uv pip install --system "transformers>=5.4.0"
           image: vllm/vllm-openai:v0.18.1
           env:
