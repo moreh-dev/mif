@@ -1,0 +1,56 @@
+apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceServiceTemplate
+metadata:
+  name: vllm-glm51-zai-org-glm-5.1-fp8-nvidia-b300-tp8-moe-tp8
+  namespace: {{ include "common.names.namespace" . }}
+  labels:
+    {{- include "mif.preset.labels" . | nindent 4 }}
+    mif.moreh.io/model.org: zai-org
+    mif.moreh.io/model.name: glm-5.1-fp8
+    mif.moreh.io/model.mtp: "true"
+    mif.moreh.io/role: e2e
+    mif.moreh.io/accelerator.vendor: nvidia
+    mif.moreh.io/accelerator.model: b300
+    mif.moreh.io/parallelism: "tp8-moe-tp8"
+spec:
+  framework: vllm
+  model:
+    name: zai-org/GLM-5.1-FP8
+  parallelism:
+    tensor: 8
+  template:
+    spec:
+      containers:
+        - name: main
+          # GLM-5.1 uses glm51-cu130 image (transformers>=5.4.0 pre-installed, CUDA 13.0 for B300).
+          # --chat-template-content-format string: workaround for vllm#39614.
+          # GLM-5.1's chat template checks `m.content is string` for tool messages,
+          # but vLLM auto-converts string content to list format for multimodal models.
+          # This flag keeps tool message content as string. Fixed upstream in vllm#39899.
+          image: vllm/vllm-openai:glm51-cu130
+          env:
+            - name: ISVC_EXTRA_ARGS
+              value: >-
+                --trust-remote-code
+                --tool-call-parser glm47
+                --reasoning-parser glm45
+                --enable-auto-tool-choice
+                --max-model-len -1
+                --gpu-memory-utilization 0.90
+                --speculative-config.method mtp
+                --speculative-config.num_speculative_tokens 3
+                --chat-template-content-format string
+                --disable-uvicorn-access-log
+                --no-enable-log-requests
+          resources:
+            requests:
+              nvidia.com/gpu: "8"
+            limits:
+              nvidia.com/gpu: "8"
+      nodeSelector:
+        moai.moreh.io/accelerator.vendor: nvidia
+        moai.moreh.io/accelerator.model: b300
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
