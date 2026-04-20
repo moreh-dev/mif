@@ -1,7 +1,7 @@
 apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceServiceTemplate
 metadata:
-  name: vllm-cu130-qwen-qwen3.5-397b-a17b-fp8-nvidia-b300-tp2
+  name: vllm-v0.19.0-qwen-qwen3.5-397b-a17b-fp8-nvidia-b300-tp2
   namespace: {{ include "common.names.namespace" . }}
   labels:
     {{- include "mif.preset.labels" . | nindent 4 }}
