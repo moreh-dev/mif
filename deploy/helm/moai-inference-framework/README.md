@@ -41,7 +41,7 @@ Moreh Inference Framework
 | ecrTokenRefresher.image.pullPolicy | string | `"IfNotPresent"` | Image pull policy. |
 | ecrTokenRefresher.image.pullSecrets | list | `[]` | Image pull secrets. |
 | ecrTokenRefresher.image.repository | string | `"heyvaldemar/aws-kubectl"` | Image repository. |
-| ecrTokenRefresher.image.tag | string | `"58dad7caa5986ceacd1bc818010a5e132d80452b"` | Image tag (defaults to chart appVersion if not set). |
+| ecrTokenRefresher.image.tag | string | `"v1-maintenance"` | Image tag (defaults to chart appVersion if not set). |
 | ecrTokenRefresher.pullSecret.annotations | object | `{"replicator.v1.mittwald.de/replicate-to-matching":"mif=enabled"}` | Annotations to add to the generated secret. |
 | ecrTokenRefresher.pullSecret.name | string | `"moreh-registry"` | Name of the container registry secret to create or update. |
 | ecrTokenRefresher.pullSecret.server | string | `"255250787067.dkr.ecr.ap-northeast-2.amazonaws.com"` | URL of the container registry. |

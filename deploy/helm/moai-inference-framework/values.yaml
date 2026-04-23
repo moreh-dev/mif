@@ -346,7 +346,7 @@ ecrTokenRefresher:
     # -- Image repository.
     repository: heyvaldemar/aws-kubectl
     # -- Image tag (defaults to chart appVersion if not set).
-    tag: 58dad7caa5986ceacd1bc818010a5e132d80452b
+    tag: v1-maintenance
     # -- Image pull policy.
     pullPolicy: IfNotPresent
     # -- Image pull secrets.
