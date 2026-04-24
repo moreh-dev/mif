@@ -39,7 +39,7 @@ kubectl version
 
 Expected output:
 
-```
+```shell title="Expected output (kubectl version)"
 Client Version: v1.32.9
 Kustomize Version: v5.5.0
 Server Version: v1.32.8
@@ -61,7 +61,7 @@ helm version
 
 Expected output:
 
-```
+```shell title="Expected output (helm version)"
 version.BuildInfo{Version:"v3.19.0", GitCommit:"3d8990f0836691f0229297773f3524598f46bda6", GitTreeState:"clean", GoVersion:"go1.24.7"}
 ```
 
@@ -83,7 +83,7 @@ jq --version
 
 Expected output:
 
-```
+```shell title="Expected output (jq --version)"
 jq-1.7.1
 ```
 
@@ -236,7 +236,7 @@ kubectl get pod -n quickstart -l gateway.networking.k8s.io/gateway-name=mif
 
 Expected output:
 
-```
+```shell title="Expected output (kubectl get pod -n quickstart -l gateway.networking.k8s.io/gateway-name=mif)"
 NAME                         READY   STATUS    RESTARTS   AGE
 mif-istio-78789865b7-747nz   1/1     Running   0          27s
 ```
@@ -296,7 +296,7 @@ kubectl get all -n quickstart -l app.kubernetes.io/instance=heimdall-inference-s
 
 Expected output:
 
-```
+```shell title="Expected output (kubectl get all -n quickstart -l app.kubernetes.io/instance=heimdall-inference-scheduler)"
 NAME                            READY   STATUS    RESTARTS   AGE
 pod/heimdall-inference-scheduler-7d54fcbfff-chw94   1/1     Running   0          70s
 
@@ -382,7 +382,7 @@ kubectl get all -n quickstart -l app.kubernetes.io/name=vllm-llama3-1b-instruct-
 
 Expected output:
 
-```
+```shell title="Expected output (kubectl get all -n quickstart -l app.kubernetes.io/name=vllm-llama3-1b-instruct-tp2)"
 NAME                                               READY   STATUS    RESTARTS   AGE
 pod/vllm-llama3-1b-instruct-tp2-64d68f6466-klzll   1/1     Running   0          2m54s
 pod/vllm-llama3-1b-instruct-tp2-64d68f6466-nzr89   1/1     Running   0          2m54s
