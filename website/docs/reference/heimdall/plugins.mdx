@@ -10,10 +10,10 @@ All plugins are declared in the top-level [`plugins`](./api-reference.mdx#plugin
 - **Deciders** are helper plugins consumed by `disagg-profile-handler` (via its `deciders.*` parameters) or by the legacy `pd-profile-handler` (via its flat `deciderPluginName` parameter, prefill decider only). They are declared in the top-level `plugins` list but **not** referenced from `schedulingProfiles`.
 - **Filter, Scorer, and Picker** run within a [`SchedulingProfile`](./api-reference.mdx#schedulingprofile). Each profile executes them in order: Filters → Scorers → Picker. These are the only plugin types that can be referenced in `schedulingProfiles[].plugins[].pluginRef`.
 - **Pre-request handlers** hook into the request path before the scheduler runs. They are activated automatically when declared in the top-level `plugins` list and are **not** referenced from `schedulingProfiles`.
-- **Prepare-data plugins** enrich the request with derived data (for example tokenized prompts) that downstream plugins can consume. They are activated automatically when declared in the top-level `plugins` list.
+- **Prepare-data plugins** enrich the request with derived data (for example tokenized prompts) that downstream plugins can consume. They are activated automatically when declared in the top-level `plugins` list, provided the `prepareDataPlugins` feature gate is enabled.
 - **Response plugins** hook into the response lifecycle after scheduling. They are activated automatically when declared in the top-level `plugins` list and are **not** referenced from `schedulingProfiles`.
-- **Data layer plugins** (sources and extractors) feed pod metrics into the scheduler. They are referenced from the top-level [`data`](./api-reference.mdx#datalayerconfig) field, not from `schedulingProfiles`.
-- **Store plugins** manage multi-turn conversation state. They are activated automatically when declared in the top-level `plugins` list.
+- **Data layer plugins** (sources and extractors) feed pod metrics into the scheduler. They are referenced from the top-level [`data`](./api-reference.mdx#datalayerconfig) field, not from `schedulingProfiles`, and require the `dataLayer` feature gate to be enabled.
+- **Store plugins** manage multi-turn conversation state. They are activated automatically when declared in the top-level `plugins` list, provided the `prepareDataPlugins` feature gate is enabled.
 
 ## Profile handlers
 
