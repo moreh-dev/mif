@@ -105,14 +105,6 @@ Separate profile handler for Prefill-Decode (PD) disaggregation, predating `disa
 Like `disagg-profile-handler`, the decider plugin (and `disagg-headers-handler`) must appear **earlier** in the top-level `plugins` list than `pd-profile-handler`. New deployments should prefer `disagg-profile-handler` — `pd-profile-handler` is kept for backward compatibility with existing `heimdall-values.yaml` files.
 :::
 
-### `data-parallel-profile-handler`
-
-Handles scheduler profiles for data-parallel deployments. It runs the primary profile and rewrites each selected endpoint's port to `primaryPort`, so the request is routed to a specific data-parallel worker on the pod.
-
-| Parameter     | Type  | Default | Description                                                                                          |
-| :------------ | :---- | :------ | :--------------------------------------------------------------------------------------------------- |
-| `primaryPort` | `int` | `8000`  | Port number of the primary data-parallel worker on each pod. Must be between 1 and 65535 when set. |
-
 ---
 
 ## Deciders
@@ -189,24 +181,6 @@ No parameters.
 Filters for pods designated with an `encode` role. It retains pods whose `mif.moreh.io/role` label value is one of `encode`, `encode-prefill`, or `encode-prefill-decode`. Pods without the role label are rejected.
 
 No parameters.
-
-### `prefill-weight-filter`
-
-Filters to a weighted share of pods labeled as `prefill` (or without the role label). Use together with [`decode-weight-filter`](#decode-weight-filter) to split traffic between prefill and decode pools by weight. The weights are relative: a prefill weight of `2.0` and a decode weight of `1.0` sends roughly two-thirds of the candidates to prefill.
-
-| Parameter | Type      | Default | Description                                                                                                                |
-| :-------- | :-------- | :------ | :------------------------------------------------------------------------------------------------------------------------- |
-| `weight`  | `float64` | `1.0`   | Positive weight value for the prefill pool. Must be greater than `0`.                                                       |
-| `precise` | `bool`    | `false` | If `true`, uses a precise weighted sampler. If `false`, falls back to an ordered rotation over the pool (lower overhead). |
-
-### `decode-weight-filter`
-
-Filters to a weighted share of pods labeled as `decode` (or without the role label). Companion to [`prefill-weight-filter`](#prefill-weight-filter).
-
-| Parameter | Type      | Default | Description                                                                                                                |
-| :-------- | :-------- | :------ | :------------------------------------------------------------------------------------------------------------------------- |
-| `weight`  | `float64` | `1.0`   | Positive weight value for the decode pool. Must be greater than `0`.                                                        |
-| `precise` | `bool`    | `false` | If `true`, uses a precise weighted sampler. If `false`, falls back to an ordered rotation over the pool (lower overhead). |
 
 ### `context-length-aware` {#context-length-aware-filter}
 
