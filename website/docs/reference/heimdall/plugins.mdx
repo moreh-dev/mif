@@ -7,7 +7,7 @@ sidebar_position: 2
 All plugins are declared in the top-level [`plugins`](./api-reference.mdx#pluginspec) list of `EndpointPickerConfig`. Heimdall assigns each plugin to the appropriate extension point based on the interfaces it implements. A single plugin can implement multiple interfaces (for example, `context-length-aware` acts as both a Filter and a Scorer; `active-request-scorer` acts as both a Scorer and a response lifecycle hook).
 
 - **Profile handlers** manage the outer scheduling loop — selecting which profiles to run and aggregating results. They are **not** referenced from `schedulingProfiles`.
-- **Deciders** are helper plugins consumed by `disagg-profile-handler` (or its legacy alias `pd-profile-handler`) through its `deciders.*` parameters. They are declared in the top-level `plugins` list but **not** referenced from `schedulingProfiles`.
+- **Deciders** are helper plugins consumed by `disagg-profile-handler` (via its `deciders.*` parameters) or by the legacy `pd-profile-handler` (via its flat `deciderPluginName` parameter, prefill decider only). They are declared in the top-level `plugins` list but **not** referenced from `schedulingProfiles`.
 - **Filter, Scorer, and Picker** run within a [`SchedulingProfile`](./api-reference.mdx#schedulingprofile). Each profile executes them in order: Filters → Scorers → Picker. These are the only plugin types that can be referenced in `schedulingProfiles[].plugins[].pluginRef`.
 - **Pre-request handlers** hook into the request path before the scheduler runs. They are activated automatically when declared in the top-level `plugins` list and are **not** referenced from `schedulingProfiles`.
 - **Prepare-data plugins** enrich the request with derived data (for example tokenized prompts) that downstream plugins can consume. They are activated automatically when declared in the top-level `plugins` list.
@@ -29,9 +29,9 @@ Unified profile handler for disaggregated inference deployments. It orchestrates
 
 Stage pipeline:
 
-1. **Decode** always runs and selects the primary endpoint.
-2. **Encode** (optional) runs first when the `deciders.encode` plugin decides the request benefits from a dedicated encode stage (for example, multimodal inputs).
-3. **Prefill** (optional) runs after decode when the `deciders.prefill` plugin decides the request has enough uncached tokens to justify dedicated prefill.
+1. **Decode** always runs first and selects the primary endpoint.
+2. **Encode** (optional) runs next when the `deciders.encode` plugin decides the request benefits from a dedicated encode stage (for example, multimodal inputs).
+3. **Prefill** (optional) runs last when the `deciders.prefill` plugin decides the request has enough uncached tokens to justify dedicated prefill.
 
 When prefill or encode selects an endpoint, `disagg-headers-handler` (declared separately) writes the chosen endpoint(s) into request headers so the decode pod can reach them.
 
@@ -89,10 +89,10 @@ Handles scheduler profiles for data-parallel deployments. It runs the primary pr
 
 ## Deciders
 
-Decider plugins are consumed by [`disagg-profile-handler`](#disagg-profile-handler) (or its legacy alias [`pd-profile-handler`](#pd-profile-handler-legacy)). Each decider answers one of two questions:
+Decider plugins are consumed by [`disagg-profile-handler`](#disagg-profile-handler) through its nested `deciders.*` parameters, and by the legacy [`pd-profile-handler`](#pd-profile-handler-legacy) through its flat `deciderPluginName` parameter. `pd-profile-handler` only supports a prefill decider; encode deciders are exclusive to `disagg-profile-handler`. Each decider answers one of two questions:
 
-- **Prefill deciders** — "should this request run prefill?" Consumed via `deciders.prefill`.
-- **Encode deciders** — "should this request run encode?" Consumed via `deciders.encode`.
+- **Prefill deciders** — "should this request run prefill?" Consumed via `disagg-profile-handler.deciders.prefill` or `pd-profile-handler.deciderPluginName`.
+- **Encode deciders** — "should this request run encode?" Consumed via `disagg-profile-handler.deciders.encode`.
 
 Declare the decider in the top-level `plugins` list (before the profile handler) and reference it by name.
 
@@ -389,7 +389,7 @@ Scores pods based on how well their context-length range matches the estimated t
 Advanced scorer that predicts TTFT (time-to-first-token) and TPOT (time-per-output-token) per pod using an online running-request model, then scores pods so the request is routed to the pod most likely to meet its latency SLO. Emits per-pod latency metrics.
 
 :::warning
-This scorer has a large parameter surface (20+ fields covering sampling, headroom weights, affinity gates, and selection strategies). Most deployments should leave every field at its default. Refer to the source at `pkg/epp/framework/plugins/scheduling/scorer/predictedlatency/scorer.go` in the GAIE fork for a complete list and tune only after establishing a baseline.
+This scorer has a large parameter surface (20+ fields covering sampling, headroom weights, affinity gates, and selection strategies). Most deployments should leave every field at its default. For the complete parameter list, refer to `pkg/epp/framework/plugins/scheduling/scorer/predictedlatency/scorer.go` in the [`moreh-dev/heimdall-inference-extension`](https://github.com/moreh-dev/heimdall-inference-extension) repository, and tune only after establishing a baseline.
 :::
 
 ---
