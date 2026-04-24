@@ -426,7 +426,7 @@ Picks pod(s) based on weighted random sampling (A-Res algorithm) derived from th
 
 ### `disagg-headers-handler`
 
-Publishes the endpoints selected by `disagg-profile-handler` (or by the legacy `pd-profile-handler`) as request headers, so the decode pod can reach prefill / encode pods:
+Publishes the endpoints selected by `disagg-profile-handler` or the legacy `pd-profile-handler` as request headers, so the decode pod can reach prefill / encode pods:
 
 - `mif-prefill-endpoint` — host:port of the prefill endpoint, when prefill ran.
 - `mif-encode-endpoints` — comma-separated host:port list of the encode endpoints, when encode ran.
