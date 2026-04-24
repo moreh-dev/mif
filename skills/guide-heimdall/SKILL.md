@@ -131,7 +131,7 @@ config:
     - name: <profileName>
       plugins:
         - pluginRef: <instanceName>
-          weight: <int>           # optional, scorer weight (default: 1)
+          weight: <number>        # optional, scorer weight (float, default: 1)
   saturationDetector:   # optional
     queueDepthThreshold: <int>
     kvCacheUtilThreshold: <float>  # 0.0-1.0
@@ -222,7 +222,7 @@ Use this decision tree to choose the right plugins for your deployment.
 | **PD-disaggregated** — separate prefill and decode pod pools | `pd-profile-handler` | `prefill`, `decode` |
 
 - If using `pd-profile-handler` (or the newer `disagg-profile-handler`), you **must** also instantiate `prefill-filter`, `decode-filter`, one PD decider plugin (`always-disagg-pd-decider` by default, or `prefix-based-pd-decider` for cache-aware PD), and `disagg-headers-handler` (or its legacy alias `prefill-header-handler`). The filters must be present in the top-level `plugins` list because `schedulingProfiles[].plugins[].pluginRef` resolves against that list. The ordering requirement is specific to the decider and `disagg-headers-handler`: both must appear **before** the profile handler in the top-level `plugins` list, because the profile handler's factory looks them up during initialization.
-- Pods must be labeled with `mif.moreh.io/role: prefill`, `decode`, or `both`.
+- Prefill pods must be labeled with `mif.moreh.io/role: prefill`. Decode pods can be labeled `mif.moreh.io/role: decode` or `both`, and `decode-filter` also treats pods with no `mif.moreh.io/role` label as decode.
 
 ### Step 2: Choose scorer(s)
 
