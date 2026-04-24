@@ -367,7 +367,7 @@ Routes requests to pods with the required LoRA adapter already loaded, reducing 
 ### Install
 
 ```shell
-helm upgrade -i heimdall moreh/heimdall-inference-scheduler \
+helm upgrade -i heimdall-inference-scheduler moreh/heimdall-inference-scheduler \
     --version <version> \
     -n <namespace> \
     -f heimdall-values.yaml
@@ -376,15 +376,15 @@ helm upgrade -i heimdall moreh/heimdall-inference-scheduler \
 ### Verify
 
 ```shell
-kubectl get all -n <namespace> -l app.kubernetes.io/instance=heimdall
+kubectl get all -n <namespace> -l app.kubernetes.io/instance=heimdall-inference-scheduler
 ```
 
-Expected: Pod `heimdall-*` (1/1 Running), Service with ports 9002 (gRPC), 9090 (metrics), 5557 (ZMQ), Deployment, ReplicaSet. The chart also creates ConfigMap, InferencePool, HTTPRoute, ClusterRole/Binding, and optionally ServiceMonitor, PodMonitor, and DestinationRule (Istio).
+Expected: Pod `heimdall-inference-scheduler-*` (1/1 Running), Service with ports 9002 (gRPC), 9090 (metrics), 5557 (ZMQ), Deployment, ReplicaSet. The chart also creates ConfigMap, InferencePool, HTTPRoute, ClusterRole/Binding, and optionally ServiceMonitor, PodMonitor, and DestinationRule (Istio).
 
 ### Uninstall
 
 ```shell
-helm uninstall heimdall -n <namespace>
+helm uninstall heimdall-inference-scheduler -n <namespace>
 ```
 
 ---
@@ -403,7 +403,7 @@ metadata:
 spec:
   replicas: <count>
   inferencePoolRefs:
-    - name: heimdall    # must match Heimdall's InferencePool name
+    - name: heimdall-inference-scheduler    # must match Heimdall's InferencePool name
   templateRefs:
     - name: vllm        # runtime base
     - name: <preset>    # model-specific template
@@ -419,7 +419,7 @@ Heimdall and MIF use these labels for routing and observability:
 
 | Label | Purpose | Example values |
 | --- | --- | --- |
-| `mif.moreh.io/pool` | Pool membership | `heimdall` |
+| `mif.moreh.io/pool` | Pool membership | `heimdall-inference-scheduler` |
 | `mif.moreh.io/role` | PD role assignment | `prefill`, `decode`, `both` |
 | `app.kubernetes.io/name` | Application name | `vllm` |
 | `app.kubernetes.io/instance` | InferenceService name | `llama-3-2-1b` |

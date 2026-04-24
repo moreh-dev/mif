@@ -282,7 +282,7 @@ inferencePool:
 ```
 
 ```shell
-helm upgrade -i heimdall moreh/heimdall-inference-scheduler \
+helm upgrade -i heimdall-inference-scheduler moreh/heimdall-inference-scheduler \
     --version v0.9.0 \
     -n quickstart \
     -f heimdall-values.yaml
@@ -291,23 +291,23 @@ helm upgrade -i heimdall moreh/heimdall-inference-scheduler \
 You can verify that the Heimdall pod is running and the related objects (ReplicaSet, Deployment and Service) are created as follows.
 
 ```shell
-kubectl get all -n quickstart -l app.kubernetes.io/instance=heimdall
+kubectl get all -n quickstart -l app.kubernetes.io/instance=heimdall-inference-scheduler
 ```
 
 Expected output:
 
 ```
 NAME                            READY   STATUS    RESTARTS   AGE
-pod/heimdall-7d54fcbfff-chw94   1/1     Running   0          70s
+pod/heimdall-inference-scheduler-7d54fcbfff-chw94   1/1     Running   0          70s
 
 NAME               TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)                      AGE
-service/heimdall   ClusterIP   10.110.35.57   <none>        9002/TCP,9090/TCP,5557/TCP   70s
+service/heimdall-inference-scheduler   ClusterIP   10.110.35.57   <none>        9002/TCP,9090/TCP,5557/TCP   70s
 
 NAME                       READY   UP-TO-DATE   AVAILABLE   AGE
-deployment.apps/heimdall   1/1     1            1           70s
+deployment.apps/heimdall-inference-scheduler   1/1     1            1           70s
 
 NAME                                  DESIRED   CURRENT   READY   AGE
-replicaset.apps/heimdall-7d54fcbfff   1         1         1       70s
+replicaset.apps/heimdall-inference-scheduler-7d54fcbfff   1         1         1       70s
 ```
 
 ### Odin
@@ -336,7 +336,7 @@ metadata:
 spec:
   replicas: 2
   inferencePoolRefs:
-    - name: heimdall
+    - name: heimdall-inference-scheduler
   templateRefs:
     - name: vllm
     - name: quickstart-vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2
@@ -476,6 +476,6 @@ To delete all the resources created in this quickstart, run the following comman
 
 ```shell
 kubectl delete -n quickstart -f vllm-llama3-1b-instruct-tp2.yaml
-helm uninstall -n quickstart heimdall
+helm uninstall -n quickstart heimdall-inference-scheduler
 kubectl delete -n quickstart -f gateway.yaml
 ```

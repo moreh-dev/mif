@@ -65,7 +65,7 @@ Heimdall is deployed as a separate Helm chart (`moreh/heimdall-inference-schedul
 
 **Steps:**
 
-1. Update the `--version` in `website/docs/getting-started/quickstart.mdx` (the `helm upgrade -i heimdall moreh/heimdall-inference-scheduler` command).
+1. Update the `--version` in `website/docs/getting-started/quickstart.mdx` (the `helm upgrade -i heimdall-inference-scheduler moreh/heimdall-inference-scheduler` command).
 2. Search `website/docs/` for other Heimdall version references and update them.
 3. Clone the Heimdall source repo with `--recurse-submodules` and review what changed between the old and new version tags. Heimdall uses Git submodules for its core components, so check both the main repo diff (`git diff <old-tag>..<new-tag>`) and the submodule commit ranges for plugin or API changes. Use `git ls-tree <tag> third_party/` to get the submodule commit SHAs at each tag, then diff within each submodule.
 4. **Verify plugin documentation against source structs.** Do not rely solely on the diff — diffs can miss pre-existing documentation gaps. For every plugin listed in `plugins.mdx`:

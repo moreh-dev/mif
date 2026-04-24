@@ -85,7 +85,7 @@ The dashboard includes several filters at the top that allow you to customize th
 - **inference_pool**: Filter metrics by inference pool name. This helps you monitor specific pool configurations.
 - **inference_service**: Filter metrics by inference service name. Use this to focus on specific model deployments.
 
-By setting the **namespace** and **inference_pool** filters together, you can view metrics for a specific model deployment. For example, if you followed the [quickstart guide](/getting-started/quickstart.mdx), you would set **namespace** to `quickstart` and **inference_pool** to `heimdall` to see metrics for the `meta-llama/Llama-3.2-1B-Instruct` model deployed in that guide.
+By setting the **namespace** and **inference_pool** filters together, you can view metrics for a specific model deployment. For example, if you followed the [quickstart guide](/getting-started/quickstart.mdx), you would set **namespace** to `quickstart` and **inference_pool** to `heimdall-inference-scheduler` to see metrics for the `meta-llama/Llama-3.2-1B-Instruct` model deployed in that guide.
 
 These filters work together to help you drill down into specific components of your infrastructure for detailed analysis. While you can typically use `All` for most filters to view aggregate metrics across your entire cluster, you may want to use specific filter values when comparing performance across different optimization options. For instance, if a selected pool contains multiple inference services with different optimization configurations, you can use the **inference_service** filter to compare how each optimization option performs.
 

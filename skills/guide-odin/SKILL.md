@@ -373,7 +373,7 @@ metadata:
 spec:
   replicas: 2
   inferencePoolRefs:
-    - name: heimdall
+    - name: heimdall-inference-scheduler
   templateRefs:
     - name: vllm
     - name: vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2
@@ -402,7 +402,7 @@ metadata:
 spec:
   replicas: 1
   inferencePoolRefs:
-    - name: heimdall
+    - name: heimdall-inference-scheduler
   templateRefs:
     - name: vllm-decode-dp
   parallelism:
@@ -487,7 +487,7 @@ This opt-in mechanism prevents forced affinity injection on templates that don't
 
 ### Pod labels injected
 
-The InferencePool's `matchLabels` are propagated to pods. Typically this includes `mif.moreh.io/pool: heimdall`, which Heimdall uses to discover routable pods.
+The InferencePool's `matchLabels` are propagated to pods. Typically this includes `mif.moreh.io/pool: heimdall-inference-scheduler`, which Heimdall uses to discover routable pods.
 
 ---
 

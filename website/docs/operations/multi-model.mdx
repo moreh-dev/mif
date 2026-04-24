@@ -292,7 +292,7 @@ helm upgrade -i heimdall-qwen moreh/heimdall-inference-scheduler \
 Verify that both Heimdall pods are running:
 
 ```shell
-kubectl get pods -n multi-model-test -l app.kubernetes.io/name=heimdall
+kubectl get pods -n multi-model-test -l app.kubernetes.io/name=heimdall-inference-scheduler
 ```
 
 ```shell title="Expected output"

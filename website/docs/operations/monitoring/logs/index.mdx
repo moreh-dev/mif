@@ -207,7 +207,7 @@ Vector enriches every log entry with the following labels, which can be used as 
 | :------------------ | :--------------------------------------------------------------------------------- | :---------------------- |
 | `namespace`         | `kubernetes.pod_namespace`                                                         | `default`               |
 | `inference_service` | pod label `app.kubernetes.io/instance`                                             | `llama-3-2-1b`          |
-| `pool_name`         | pod label `mif.moreh.io/pool`                                                      | `heimdall`              |
+| `pool_name`         | pod label `mif.moreh.io/pool`                                                      | `heimdall-inference-scheduler` |
 | `role`              | pod label `mif.moreh.io/role`                                                      | `prefill`, `decode`     |
 | `app`               | pod label `app.kubernetes.io/name`                                                 | `vllm`                  |
 | `node_name`         | `VECTOR_SELF_NODE_NAME` env var (injected by Vector)                               | `gpu-node-01`           |
@@ -220,7 +220,7 @@ Filter by a single label:
 ```promql
 {namespace="default"}
 {inference_service="llama-3-2-1b"}
-{pool_name="heimdall"}
+{pool_name="heimdall-inference-scheduler"}
 {role="decode"}
 ```
 
