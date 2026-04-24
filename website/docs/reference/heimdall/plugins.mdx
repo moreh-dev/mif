@@ -426,7 +426,7 @@ Picks pod(s) based on weighted random sampling (A-Res algorithm) derived from th
 
 ### `disagg-headers-handler`
 
-Publishes the endpoints selected by `disagg-profile-handler` (or its legacy alias) as request headers, so the decode pod can reach prefill / encode pods:
+Publishes the endpoints selected by `disagg-profile-handler` (or by the legacy `pd-profile-handler`) as request headers, so the decode pod can reach prefill / encode pods:
 
 - `mif-prefill-endpoint` — host:port of the prefill endpoint, when prefill ran.
 - `mif-encode-endpoints` — comma-separated host:port list of the encode endpoints, when encode ran.
@@ -437,7 +437,7 @@ Publishes the endpoints selected by `disagg-profile-handler` (or its legacy alia
 | `encodeProfile`   | `string` | `"encode"`  | Name of the `SchedulingProfile` whose result provides the encode endpoint list. |
 
 :::info
-`prefill-header-handler` is kept as a deprecated alias that resolves to this same plugin. Existing `heimdall-values.yaml` files that reference `prefill-header-handler` continue to work.
+`prefill-header-handler` is kept as a legacy alias that resolves to this same plugin (both names share `DisaggHeadersHandlerFactory`). Existing `heimdall-values.yaml` files that reference `prefill-header-handler` continue to work.
 :::
 
 ---
