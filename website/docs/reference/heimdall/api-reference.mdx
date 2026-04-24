@@ -79,7 +79,7 @@ The Heimdall Endpoint Picker is configured with a YAML document that parses into
 | :------------------- | :------------------------------------------ | :------: | :------------------------------------------------------------------------------------------------------- |
 | `plugins`            | [`[]PluginSpec`](#pluginspec)               | Yes      | List of plugins that will be instantiated. See [Plugins](./plugins.mdx) for more details.                |
 | `schedulingProfiles` | [`[]SchedulingProfile`](#schedulingprofile) | Yes      | Named `SchedulingProfile` entries created from the plugin list.                                           |
-| `featureGates`       | `[]string`                                  | No       | Set of flags that enable experimental features. When omitted, no experimental features are enabled.       |
+| `featureGates`       | `[]string`                                  | No       | Experimental features to enable. Currently recognized values: `"dataLayer"`, `"prepareDataPlugins"`, `"flowControl"`. See [Feature gates](#feature-gates) for what each one unlocks. |
 | `saturationDetector` | [`SaturationDetector`](#saturationdetector) | No       | Configuration of the saturation detector. When omitted, default values are used.                         |
 | `data`               | [`DataLayerConfig`](#datalayerconfig)       | No       | Configures the DataLayer. Required when the experimental DataLayer feature gate is enabled.               |
 | `flowControl`        | [`FlowControlConfig`](#flowcontrolconfig)   | No       | Configures the Flow Control layer. Only respected when the `flowControl` feature gate is enabled.         |
@@ -159,3 +159,13 @@ Controls the Flow Control layer, which manages per-priority admission and global
 | :--------- | :-------- | :------: | :---------------------------------------------------------------------------------------------------------- |
 | `priority` | `integer` | Yes      | Integer priority level. Higher values indicate higher priority.                                               |
 | `maxBytes` | `integer` | No       | Byte capacity for this band. Omit (or set to `0`) to use the system default of 1 GiB.                       |
+
+#### Feature gates
+
+Set the experimental features to enable through the top-level `featureGates` list. Each gate unlocks a specific subsystem that is otherwise inert:
+
+| Gate                   | What it enables                                                                                                                                       |
+| :--------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `dataLayer`            | Activates the DataLayer subsystem. Required for the `data:` section to have any effect and for the `models` / `models-extractor` plugins to run.     |
+| `prepareDataPlugins`   | Activates the `PrepareDataPlugin` interface. Required by the [`tokenizer`](./plugins.mdx#tokenizer) and [`responses-store`](./plugins.mdx#responses-store) plugins. |
+| `flowControl`          | Activates the Flow Control subsystem. Required for the `flowControl:` section to have any effect.                                                    |

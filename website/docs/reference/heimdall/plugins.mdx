@@ -60,6 +60,34 @@ Parameters use a nested format (preferred). A legacy flat format is still accept
 When `deciders.prefill` or `deciders.encode` is set, `disagg-profile-handler` requires [`disagg-headers-handler`](#disagg-headers-handler) to also be registered. The lookup happens at **initialization**, so both the referenced decider plugin and `disagg-headers-handler` must appear **earlier** in the top-level `plugins` list than `disagg-profile-handler` itself.
 :::
 
+Minimal canonical example enabling prefill disaggregation with the prefix-based decider:
+
+```yaml
+plugins:
+  - type: disagg-headers-handler
+  - type: prefix-based-pd-decider
+    parameters:
+      nonCachedTokens: 16
+  - type: prefill-filter
+  - type: decode-filter
+  - type: max-score-picker
+  - type: disagg-profile-handler
+    parameters:
+      deciders:
+        prefill: prefix-based-pd-decider
+schedulingProfiles:
+  - name: prefill
+    plugins:
+      - pluginRef: prefill-filter
+      - pluginRef: max-score-picker
+  - name: decode
+    plugins:
+      - pluginRef: decode-filter
+      - pluginRef: max-score-picker
+```
+
+For a full walkthrough, see [PD disaggregation](../../features/prefill-decode-disaggregation.mdx).
+
 ### `pd-profile-handler` (legacy)
 
 Separate profile handler for Prefill-Decode (PD) disaggregation, predating `disagg-profile-handler`. Still registered in moreh-v0.7.x with its own factory (parameter struct is flat, not nested).
@@ -218,11 +246,13 @@ Favors pods that were least recently used for **cold** requests (requests that m
 
 Scores pods based on **precise** prefix-cache KV-block locality, computed from real-time KV-cache events published by each pod. Requires a tokenizer for the target model.
 
-| Parameter              | Type                              | Default                            | Description                                  |
-| :--------------------- | :-------------------------------- | :--------------------------------- | :------------------------------------------- |
-| `tokenProcessorConfig` | [`Object`](#tokenprocessorconfig) | Library defaults (`vllm` scheme, block size `16`). | Configuration for the token processor.      |
-| `indexerConfig`        | [`Object`](#indexerconfig)        | Library defaults + `tokenizersPoolConfig.modelName` must be set. | Configuration for the KV cache indexer. |
-| `kvEventsConfig`       | [`Object`](#kveventsconfig)       | Library defaults.                  | Configuration for KV events subscription.   |
+| Parameter              | Type                              | Default                            | Description                                                                                                 |
+| :--------------------- | :-------------------------------- | :--------------------------------- | :---------------------------------------------------------------------------------------------------------- |
+| `tokenProcessorConfig` | [`Object`](#tokenprocessorconfig) | Library defaults (`vllm` scheme, block size `16`). | Configuration for the token processor.                                                                     |
+| `indexerConfig`        | [`Object`](#indexerconfig)        | Library defaults + `tokenizersPoolConfig.modelName` must be set. | Configuration for the KV cache indexer.                                                |
+| `kvEventsConfig`       | [`Object`](#kveventsconfig)       | Library defaults.                  | Configuration for KV events subscription.                                                                   |
+| `speculativeIndexing`  | `bool`                            | `false`                            | When `true`, proactively inserts predicted cache entries into the index right after a routing decision, closing the short window between the decision and KV-event arrival. |
+| `speculativeTTL`       | `string`                          | `"2s"`                             | Go duration string. TTL for speculative entries before they are evicted. Ignored when `speculativeIndexing` is `false`. |
 
 #### `tokenProcessorConfig`
 
@@ -284,25 +314,25 @@ Configure exactly one backend.
 
 ##### `hf` (HuggingFace Tokenizer)
 
-| Parameter            | Type     | Default  | Description                                         |
-| :------------------- | :------- | :------- | :-------------------------------------------------- |
-| `enabled`            | `bool`   | `true`   | Enable HuggingFace tokenizer.                       |
-| `huggingFaceToken`   | `string` | `""`     | HuggingFace API token.                              |
-| `tokenizersCacheDir` | `string` | `bin`    | Directory to cache downloaded tokenizers.           |
-| `tokenizer`          | `string` | `""`     | Specific tokenizer to use (defaults to model name). |
-| `tokenizerMode`      | `string` | `"auto"` | Tokenizer mode (`"auto"`, `"hf"`, `"limit"`, `"mistral"`). |
-| `tokenizerRevision`  | `string` | `""`     | Revision of the tokenizer.                          |
+| Parameter            | Type     | Default  | Description                                                                                     |
+| :------------------- | :------- | :------- | :---------------------------------------------------------------------------------------------- |
+| `enabled`            | `bool`   | `true`   | Enable HuggingFace tokenizer.                                                                   |
+| `huggingFaceToken`   | `string` | `""`     | HuggingFace API token.                                                                          |
+| `tokenizersCacheDir` | `string` | `bin`    | Directory to cache downloaded tokenizers.                                                       |
+| `tokenizer`          | `string` | `""`     | Specific tokenizer to use (defaults to model name).                                             |
+| `tokenizerMode`      | `string` | `"auto"` | Tokenizer mode. One of `"auto"`, `"hf"`, `"slow"`, `"mistral"`, `"deepseek_v32"`.               |
+| `tokenizerRevision`  | `string` | `""`     | Revision of the tokenizer.                                                                      |
 
 ##### `local` (Local Tokenizer)
 
-| Parameter                        | Type                | Default          | Description                                         |
-| :------------------------------- | :------------------ | :--------------- | :-------------------------------------------------- |
-| `autoDiscoveryDir`               | `string`            | `/mnt/models`    | Directory to search for tokenizers.                 |
-| `autoDiscoveryTokenizerFileName` | `string`            | `tokenizer.json` | Filename to search for.                             |
-| `modelTokenizerMap`              | `map[string]string` | -                | Manual mapping of model names to tokenizer paths.   |
-| `tokenizer`                      | `string`            | `""`             | Specific tokenizer to use (defaults to model name). |
-| `tokenizerMode`                  | `string`            | `"auto"`         | Tokenizer mode (`"auto"`, `"hf"`, `"limit"`, `"mistral"`). |
-| `tokenizerRevision`              | `string`            | `""`             | Revision of the tokenizer.                          |
+| Parameter                        | Type                | Default          | Description                                                                                     |
+| :------------------------------- | :------------------ | :--------------- | :---------------------------------------------------------------------------------------------- |
+| `autoDiscoveryDir`               | `string`            | `/mnt/models`    | Directory to search for tokenizers.                                                             |
+| `autoDiscoveryTokenizerFileName` | `string`            | `tokenizer.json` | Filename to search for.                                                                         |
+| `modelTokenizerMap`              | `map[string]string` | -                | Manual mapping of model names to tokenizer paths.                                               |
+| `tokenizer`                      | `string`            | `""`             | Specific tokenizer to use (defaults to model name).                                             |
+| `tokenizerMode`                  | `string`            | `"auto"`         | Tokenizer mode. One of `"auto"`, `"hf"`, `"slow"`, `"mistral"`, `"deepseek_v32"`.               |
+| `tokenizerRevision`              | `string`            | `""`             | Revision of the tokenizer.                                                                      |
 
 ##### `uds` (UDS Tokenizer)
 
@@ -448,6 +478,10 @@ Publishes the endpoints selected by `disagg-profile-handler` or the legacy `pd-p
 
 Runs a tokenizer on each incoming request and stores the tokenized prompt on the request so downstream plugins (for example `precise-prefix-cache-scorer`, `disagg-profile-handler`'s deciders) can reuse it without re-tokenizing. Fails open: if tokenization errors, the request continues with no tokenized prompt attached.
 
+:::warning
+This plugin only activates when the `prepareDataPlugins` feature gate is enabled. Add `featureGates: [prepareDataPlugins]` to the top of your `EndpointPickerConfig`; otherwise the plugin registration is silently skipped.
+:::
+
 | Parameter            | Type     | Default | Description                                                                                              |
 | :------------------- | :------- | :------ | :------------------------------------------------------------------------------------------------------- |
 | `modelName`          | `string` | -       | Base model name for the tokenizer. (Required)                                                            |
@@ -511,6 +545,10 @@ No parameters.
 ### `responses-store`
 
 Persists multi-turn conversation state for the OpenAI Responses API (`/v1/responses` with `previous_response_id`). Exposes `PrepareDataPlugin` (to look up prior responses on request), `ResponseStreaming` (to accumulate streamed chunks), and `ResponseComplete` (to commit the final response to the store).
+
+:::warning
+This plugin only activates when the `prepareDataPlugins` feature gate is enabled. Add `featureGates: [prepareDataPlugins]` to the top of your `EndpointPickerConfig`; otherwise the plugin registration is silently skipped.
+:::
 
 Supported backends: in-memory, Redis/Valkey, and MongoDB. Configure exactly one under `storeConfig`.
 

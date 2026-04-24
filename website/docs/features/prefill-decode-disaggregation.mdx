@@ -65,7 +65,54 @@ config:
 ```
 
 :::info
-`pd-profile-handler` resolves both its decider plugin (default: `always-disagg-pd-decider`) and `disagg-headers-handler` at initialization, so both must appear **earlier** in the top-level `plugins` list. Swap in [`prefix-based-pd-decider`](../reference/heimdall/plugins.mdx#prefix-based-pd-decider) when you want prefill to run only after a cache-miss budget is exceeded. New deployments can also use the canonical [`disagg-profile-handler`](../reference/heimdall/plugins.mdx#disagg-profile-handler) with the nested `profiles.*`/`deciders.*` schema.
+`pd-profile-handler` resolves both its decider plugin (default: `always-disagg-pd-decider`) and `disagg-headers-handler` at initialization, so both must appear **earlier** in the top-level `plugins` list.
+:::
+
+#### Using `disagg-profile-handler` (recommended for new deployments)
+
+For new deployments, prefer [`disagg-profile-handler`](../reference/heimdall/plugins.mdx#disagg-profile-handler) over the legacy `pd-profile-handler`. It accepts a nested `profiles.*` / `deciders.*` schema and also manages an optional `encode` stage when you configure an encode decider — convenient for multimodal traffic.
+
+Swap [`always-disagg-pd-decider`](../reference/heimdall/plugins.mdx#always-disagg-pd-decider) for [`prefix-based-pd-decider`](../reference/heimdall/plugins.mdx#prefix-based-pd-decider) when you want prefill to run only after the request exceeds a non-cached-token budget (set `nonCachedTokens` on the decider).
+
+```yaml title="heimdall-values.yaml"
+# ... (other values)
+
+config:
+  plugins:
+    # 1. Declare the decider and header handler before the profile handler
+    - type: disagg-headers-handler
+    - type: prefix-based-pd-decider
+      parameters:
+        nonCachedTokens: 16
+    - type: prefill-filter
+    - type: decode-filter
+    - type: queue-scorer
+    - type: max-score-picker
+    # 2. Canonical disagg profile handler wires them via nested parameters
+    - type: disagg-profile-handler
+      parameters:
+        profiles:
+          prefill: prefill
+          decode: decode
+        deciders:
+          prefill: prefix-based-pd-decider
+  schedulingProfiles:
+    - name: prefill
+      plugins:
+        - pluginRef: prefill-filter
+        - pluginRef: queue-scorer
+        - pluginRef: max-score-picker
+    - name: decode
+      plugins:
+        - pluginRef: decode-filter
+        - pluginRef: queue-scorer
+        - pluginRef: max-score-picker
+
+# ... (other values)
+```
+
+:::info
+The legacy flat parameter form (`decodeProfile`, `prefillProfile`, `deciderPluginName`) is still accepted by `disagg-profile-handler` for migrations from `pd-profile-handler`, but each legacy field emits a deprecation log entry. Use the nested form for new configs.
 :::
 
 ### InferenceService configuration with presets
