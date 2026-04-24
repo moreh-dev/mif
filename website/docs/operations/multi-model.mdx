@@ -278,12 +278,12 @@ inferencePool:
 Deploy both instances:
 
 ```shell {2,7}
-helm upgrade -i heimdall-llama moreh/heimdall \
+helm upgrade -i heimdall-llama moreh/heimdall-inference-scheduler \
     --version <heimdallVersion> \
     -n multi-model-test \
     -f heimdall-llama-values.yaml
 
-helm upgrade -i heimdall-qwen moreh/heimdall \
+helm upgrade -i heimdall-qwen moreh/heimdall-inference-scheduler \
     --version <heimdallVersion> \
     -n multi-model-test \
     -f heimdall-qwen-values.yaml

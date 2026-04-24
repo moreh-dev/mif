@@ -221,7 +221,7 @@ Use this decision tree to choose the right plugins for your deployment.
 | **Aggregate** — all pods serve both prefill and decode | `single-profile-handler` | `default` |
 | **PD-disaggregated** — separate prefill and decode pod pools | `pd-profile-handler` | `prefill`, `decode` |
 
-- If using `pd-profile-handler`, you **must** also instantiate `prefill-filter` and `decode-filter`.
+- If using `pd-profile-handler` (or the newer `disagg-profile-handler`), you **must** also instantiate `prefill-filter`, `decode-filter`, one PD decider plugin (`always-disagg-pd-decider` by default, or `prefix-based-pd-decider` for cache-aware PD), and `disagg-headers-handler` (or its legacy alias `prefill-header-handler`). All four — the decider, `disagg-headers-handler`, the filters, and the profile handler itself — are looked up at factory initialization time and must appear in the top-level `plugins` list even though they are not referenced from `schedulingProfiles`. Ordering matters: the decider and `disagg-headers-handler` must appear **before** the profile handler in the list.
 - Pods must be labeled with `mif.moreh.io/role: prefill`, `decode`, or `both`.
 
 ### Step 2: Choose scorer(s)
@@ -310,6 +310,8 @@ config:
   apiVersion: inference.networking.x-k8s.io/v1alpha1
   kind: EndpointPickerConfig
   plugins:
+    - type: always-disagg-pd-decider  # must precede pd-profile-handler (factory-time lookup)
+    - type: disagg-headers-handler    # must precede pd-profile-handler (factory-time lookup)
     - type: pd-profile-handler
     - type: prefill-filter
     - type: decode-filter
@@ -365,7 +367,7 @@ Routes requests to pods with the required LoRA adapter already loaded, reducing 
 ### Install
 
 ```shell
-helm upgrade -i heimdall moreh/heimdall \
+helm upgrade -i heimdall moreh/heimdall-inference-scheduler \
     --version <version> \
     -n <namespace> \
     -f heimdall-values.yaml
@@ -494,7 +496,7 @@ The MIF Grafana dashboard includes these Heimdall-specific panels:
 
 1. **Start simple.** Begin with `queue-scorer` + `max-score-picker`. Add scorers only when metrics show a need.
 2. **One profile handler.** Exactly one profile handler must be instantiated. Using both `single-profile-handler` and `pd-profile-handler` is invalid.
-3. **PD filters are mandatory.** When using `pd-profile-handler`, always pair with `prefill-filter` (in the prefill profile) and `decode-filter` (in the decode profile).
+3. **PD filters, decider, and header handler are mandatory.** When using `pd-profile-handler` (or `disagg-profile-handler`), always pair with `prefill-filter` (in the prefill profile), `decode-filter` (in the decode profile), a PD decider plugin (`always-disagg-pd-decider` or `prefix-based-pd-decider`), and `disagg-headers-handler` in the top-level `plugins` list.
 4. **Set scorer weights explicitly** when combining multiple scorers. Default weight of 1 for all scorers may not reflect your routing priorities.
 5. **Enable ServiceMonitor** in all non-development deployments for observability.
 6. **Use `saturationDetector`** in production to reject requests to overloaded pods rather than queueing indefinitely.

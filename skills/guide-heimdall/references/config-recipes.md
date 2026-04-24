@@ -62,6 +62,8 @@ config:
   apiVersion: inference.networking.x-k8s.io/v1alpha1
   kind: EndpointPickerConfig
   plugins:
+    - type: always-disagg-pd-decider  # must precede pd-profile-handler (factory-time lookup)
+    - type: disagg-headers-handler    # must precede pd-profile-handler (factory-time lookup)
     - type: pd-profile-handler
     - type: prefill-filter
     - type: decode-filter
@@ -107,6 +109,8 @@ config:
   apiVersion: inference.networking.x-k8s.io/v1alpha1
   kind: EndpointPickerConfig
   plugins:
+    - type: always-disagg-pd-decider  # must precede pd-profile-handler (factory-time lookup)
+    - type: disagg-headers-handler    # must precede pd-profile-handler (factory-time lookup)
     - type: pd-profile-handler
     - type: prefill-filter
     - type: decode-filter

@@ -30,7 +30,7 @@ To enable PD disaggregation, you must configure both **Heimdall** (to route requ
 
 ### Heimdall configuration
 
-In the Heimdall configuration, you need to enable the [`pd-profile-handler`](../reference/heimdall/plugins.mdx#pd-profile-handler) plugin. This plugin selects the appropriate prefill or decode pod using the `prefill` and `decode` scheduling profiles. The [`prefill-filter`](../reference/heimdall/plugins.mdx#prefill-filter) and [`decode-filter`](../reference/heimdall/plugins.mdx#decode-filter) plugins filter pods by the `mif.moreh.io/role` label within their respective profiles. The configuration is part of the [`EndpointPickerConfig`](../reference/heimdall/api-reference.mdx#endpointpickerconfig).
+In the Heimdall configuration, you need to enable the [`pd-profile-handler`](../reference/heimdall/plugins.mdx#pd-profile-handler-legacy) plugin together with a [PD decider](../reference/heimdall/plugins.mdx#deciders) and [`disagg-headers-handler`](../reference/heimdall/plugins.mdx#disagg-headers-handler). The profile handler selects the appropriate prefill or decode pod using the `prefill` and `decode` scheduling profiles; the decider decides whether a given request needs prefill; and `disagg-headers-handler` writes the prefill endpoint into a request header so the decode pod can reach it. The [`prefill-filter`](../reference/heimdall/plugins.mdx#prefill-filter) and [`decode-filter`](../reference/heimdall/plugins.mdx#decode-filter) plugins filter pods by the `mif.moreh.io/role` label within their respective profiles. The configuration is part of the [`EndpointPickerConfig`](../reference/heimdall/api-reference.mdx#endpointpickerconfig).
 
 Consider the following `heimdall-values.yaml` example:
 
@@ -39,7 +39,9 @@ Consider the following `heimdall-values.yaml` example:
 
 config:
   plugins:
-    # 1. Enable PD profile handler
+    # 1. Declare the PD decider and header handler first so pd-profile-handler can look them up during initialization
+    - type: always-disagg-pd-decider
+    - type: disagg-headers-handler
     - type: pd-profile-handler
     - type: prefill-filter
     - type: decode-filter
@@ -61,6 +63,10 @@ config:
 
 # ... (other values)
 ```
+
+:::info
+`pd-profile-handler` resolves both its decider plugin (default: `always-disagg-pd-decider`) and `disagg-headers-handler` at initialization, so both must appear **earlier** in the top-level `plugins` list. Swap in [`prefix-based-pd-decider`](../reference/heimdall/plugins.mdx#prefix-based-pd-decider) when you want prefill to run only after a cache-miss budget is exceeded. New deployments can also use the canonical [`disagg-profile-handler`](../reference/heimdall/plugins.mdx#disagg-profile-handler) with the nested `profiles.*`/`deciders.*` schema.
+:::
 
 ### InferenceService configuration with presets
 

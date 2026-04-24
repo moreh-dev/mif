@@ -67,69 +67,95 @@ kubectl explain --api-version inference.networking.k8s.io/v1 inferencepools.spec
 
 ---
 
-## inference.networking.k8s-x.io/v1alpha1
+## inference.networking.x-k8s.io/v1alpha1
 
 - [EndpointPickerConfig](#endpointpickerconfig)
 
 ### EndpointPickerConfig
 
-| Field                | Type                                        | Description                                                                                              |
-| :------------------- | :------------------------------------------ | :------------------------------------------------------------------------------------------------------- |
-| `data`               | [`DataLayerConfig`](#datalayerconfig)       | Data configures the DataLayer. It is required if the new DataLayer is enabled.                           |
-| `featureGates`       | `[]string`                                  | FeatureGates is a set of flags that enable various experimental features with the EPP.                   |
-| `plugins`            | [`[]PluginSpec`](#pluginspec)               | Plugins is the list of plugins that will be instantiated. See [Plugins](./plugins.mdx) for more details. |
-| `saturationDetector` | [`SaturationDetector`](#saturationdetector) | SaturationDetector when present specifies the configuration of the Saturation detector.                  |
-| `schedulingProfiles` | [`[]SchedulingProfile`](#schedulingprofile) | SchedulingProfiles is the list of named SchedulingProfiles that will be created.                         |
+The Heimdall Endpoint Picker is configured with a YAML document that parses into the `EndpointPickerConfig` type. The configuration loader uses **strict decoding**, so unknown or misspelled fields cause startup to fail — copy exact field names from the tables below.
+
+| Field                | Type                                        | Required | Description                                                                                              |
+| :------------------- | :------------------------------------------ | :------: | :------------------------------------------------------------------------------------------------------- |
+| `plugins`            | [`[]PluginSpec`](#pluginspec)               | Yes      | List of plugins that will be instantiated. See [Plugins](./plugins.mdx) for more details.                |
+| `schedulingProfiles` | [`[]SchedulingProfile`](#schedulingprofile) | Yes      | Named `SchedulingProfile` entries created from the plugin list.                                           |
+| `featureGates`       | `[]string`                                  | No       | Set of flags that enable experimental features. When omitted, no experimental features are enabled.       |
+| `saturationDetector` | [`SaturationDetector`](#saturationdetector) | No       | Configuration of the saturation detector. When omitted, default values are used.                         |
+| `data`               | [`DataLayerConfig`](#datalayerconfig)       | No       | Configures the DataLayer. Required when the experimental DataLayer feature gate is enabled.               |
+| `flowControl`        | [`FlowControlConfig`](#flowcontrolconfig)   | No       | Configures the Flow Control layer. Only respected when the `flowControl` feature gate is enabled.         |
 
 #### PluginSpec
 
 For more details on available plugins, see [Plugins](./plugins.mdx).
 
-| Field        | Type     | Description                                                                                                          |
-| :----------- | :------- | :------------------------------------------------------------------------------------------------------------------- |
-| `name`       | `string` | Name provides a name for plugin entries to reference. If omitted, the value of the Plugin's Type field will be used. |
-| `parameters` | `object` | Parameters are the set of parameters to be passed to the plugin's factory function.                                  |
-| `type`       | `string` | Type specifies the plugin type to be instantiated.                                                                   |
+| Field        | Type     | Required | Description                                                                                                          |
+| :----------- | :------- | :------: | :------------------------------------------------------------------------------------------------------------------- |
+| `type`       | `string` | Yes      | Plugin type string (for example `"pd-profile-handler"`, `"queue-scorer"`).                                            |
+| `name`       | `string` | No       | Unique name for this plugin instance. When omitted, the value of `type` is used. Referenced by `pluginRef` elsewhere. |
+| `parameters` | `object` | No       | Parameters passed to the plugin's factory function. The schema is defined per plugin type.                            |
 
 #### SchedulingProfile
 
-A SchedulingProfile executes its plugins in order: Filters, Scorers, then Picker. Only plugins that implement the [Filter, Scorer, or Picker](./plugins.mdx) interface can be referenced here. [Profile handlers](./plugins.mdx#profile-handlers) operate at the top level and are not part of individual profiles.
+A `SchedulingProfile` executes its plugins in order: Filters, Scorers, then Picker. Only plugins that implement the [Filter, Scorer, or Picker](./plugins.mdx) interface can be referenced here. [Profile handlers](./plugins.mdx#profile-handlers) operate at the top level and are not part of individual profiles.
 
-| Field     | Type                                      | Description                                                                                                                  |
-| :-------- | :---------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------- |
-| `name`    | `string`                                  | Name specifies the name of this SchedulingProfile.                                                                           |
-| `plugins` | [`[]SchedulingPlugin`](#schedulingplugin) | Plugins is the list of plugins for this SchedulingProfile. They are assigned to the appropriate "slots" based on their type. |
+| Field     | Type                                      | Required | Description                                                                          |
+| :-------- | :---------------------------------------- | :------: | :----------------------------------------------------------------------------------- |
+| `name`    | `string`                                  | Yes      | Name of this `SchedulingProfile`.                                                     |
+| `plugins` | [`[]SchedulingPlugin`](#schedulingplugin) | Yes      | Ordered list of plugins. Slots (filter / scorer / picker) are assigned by plugin type. |
 
 #### SchedulingPlugin
 
-| Field       | Type      | Description                                                                                                                    |
-| :---------- | :-------- | :----------------------------------------------------------------------------------------------------------------------------- |
-| `pluginRef` | `string`  | References a plugin from the top-level `plugins` list. The plugin must implement Filter, Scorer, or Picker.                    |
-| `weight`    | `integer` | Optional weight for Scorer plugins, controlling relative influence when aggregating scores. Defaults to `1` if omitted. Ignored for Filters and Pickers. |
+| Field       | Type      | Required | Description                                                                                                                                                       |
+| :---------- | :-------- | :------: | :---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pluginRef` | `string`  | Yes      | Name of a plugin from the top-level `plugins` list. The plugin must implement Filter, Scorer, or Picker.                                                           |
+| `weight`    | `float`   | No       | Weight for Scorer plugins, controlling relative influence when aggregating scores. Omit (or leave unset) to use a weight of `1`. Ignored for Filters and Pickers. |
 
 #### SaturationDetector
 
-| Field                       | Type      | Description                                                                                                                                |
-| :-------------------------- | :-------- | :----------------------------------------------------------------------------------------------------------------------------------------- |
-| `kvCacheUtilThreshold`      | `float`   | KVCacheUtilThreshold defines the KV cache utilization (0.0 to 1.0) above which a pod is considered to have insufficient capacity.          |
-| `metricsStalenessThreshold` | `string`  | MetricsStalenessThreshold defines how old a pod's metrics can be.                                                                          |
-| `queueDepthThreshold`       | `integer` | QueueDepthThreshold defines the backend waiting queue size above which a pod is considered to have insufficient capacity for new requests. |
+Saturation detectors judge whether a pod has capacity for more requests. Two types are supported, selected via `type`. Fields below the `type` row apply only to the named detector.
+
+| Field                       | Type       | Applies to            | Description                                                                                                                                                           |
+| :-------------------------- | :--------- | :-------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `type`                      | `string`   | All                   | Detector implementation: `"utilization"` (default) or `"running-requests"`.                                                                                            |
+| `kvCacheUtilThreshold`      | `float`    | `utilization`         | KV cache utilization (0.0 to 1.0) above which a pod is considered saturated.                                                                                          |
+| `queueDepthThreshold`       | `integer`  | `utilization`         | Backend waiting-queue size above which a pod is considered saturated.                                                                                                 |
+| `metricsStalenessThreshold` | `string`   | `utilization`         | Go duration string. Pods whose metrics are older than this may be excluded from capacity decisions.                                                                   |
+| `maxConcurrencyPerPod`      | `integer`  | `running-requests`    | Ideal per-pod request concurrency target.                                                                                                                              |
+| `cacheTTL`                  | `string`   | `running-requests`    | Go duration string. How long to cache the computed saturation value before re-reading the Prometheus registry.                                                         |
 
 #### DataLayerConfig
 
-| Field     | Type                                    | Description                                                |
-| :-------- | :-------------------------------------- | :--------------------------------------------------------- |
-| `sources` | [`[]DataLayerSource`](#datalayersource) | Sources is the list of sources to define to the DataLayer. |
+| Field     | Type                                    | Required | Description                                                |
+| :-------- | :-------------------------------------- | :------: | :--------------------------------------------------------- |
+| `sources` | [`[]DataLayerSource`](#datalayersource) | Yes      | List of sources to feed the DataLayer.                      |
 
 #### DataLayerSource
 
-| Field        | Type                                          | Description                                                                          |
-| :----------- | :-------------------------------------------- | :----------------------------------------------------------------------------------- |
-| `extractors` | [`[]DataLayerExtractor`](#datalayerextractor) | Extractors specifies the list of Plugin instances to be associated with this Source. |
-| `pluginRef`  | `string`                                      | PluginRef specifies a partiular Plugin instance to be associated with this Source.   |
+| Field        | Type                                          | Required | Description                                                                           |
+| :----------- | :-------------------------------------------- | :------: | :------------------------------------------------------------------------------------ |
+| `pluginRef`  | `string`                                      | Yes      | Name of the source plugin (from the top-level `plugins` list).                        |
+| `extractors` | [`[]DataLayerExtractor`](#datalayerextractor) | Yes      | Extractor plugins attached to this source.                                             |
 
 #### DataLayerExtractor
 
-| Field       | Type     | Description                                                                           |
-| :---------- | :------- | :------------------------------------------------------------------------------------ |
-| `pluginRef` | `string` | PluginRef specifies a partiular Plugin instance to be associated with this Extractor. |
+| Field       | Type     | Required | Description                                                                              |
+| :---------- | :------- | :------: | :--------------------------------------------------------------------------------------- |
+| `pluginRef` | `string` | Yes      | Name of an extractor plugin (from the top-level `plugins` list).                         |
+
+#### FlowControlConfig
+
+Controls the Flow Control layer, which manages per-priority admission and global byte capacity. Only respected when the `flowControl` feature gate is enabled.
+
+| Field                 | Type                                          | Required | Description                                                                                                                                    |
+| :-------------------- | :-------------------------------------------- | :------: | :--------------------------------------------------------------------------------------------------------------------------------------------- |
+| `maxBytes`            | `integer`                                     | No       | Global byte capacity across all priority bands. Requests over this limit are rejected even if their band has capacity. Omit or set to `0` for unlimited. |
+| `defaultRequestTTL`   | `string`                                      | No       | Go duration string. Fallback TTL for requests that do not specify their own deadline. Omit to let requests wait until the client cancels.      |
+| `defaultPriorityBand` | [`PriorityBandConfig`](#prioritybandconfig)   | No       | Template policy applied to priority levels that are not explicitly listed in `priorityBands`. Omit to use system defaults.                     |
+| `priorityBands`       | [`[]PriorityBandConfig`](#prioritybandconfig) | No       | Explicit policies per priority level. Priorities not listed fall back to `defaultPriorityBand` (or the system template).                      |
+
+#### PriorityBandConfig
+
+| Field      | Type      | Required | Description                                                                                                 |
+| :--------- | :-------- | :------: | :---------------------------------------------------------------------------------------------------------- |
+| `priority` | `integer` | Yes      | Integer priority level. Higher values indicate higher priority.                                               |
+| `maxBytes` | `integer` | No       | Byte capacity for this band. Omit (or set to `0`) to use the system default of 1 GiB.                       |
