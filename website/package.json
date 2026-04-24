@@ -23,5 +23,11 @@
   "devDependencies": {
     "@docusaurus/module-type-aliases": "^3.10.0",
     "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "overrides": {
+    "serialize-javascript": "^7.0.5"
   }
 }
