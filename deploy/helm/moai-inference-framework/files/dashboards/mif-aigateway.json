@@ -1807,7 +1807,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "last_ttft (s)"
+              "options": "last_ttft"
             },
             "properties": [
               {
@@ -1819,7 +1819,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "last_itl (s)"
+              "options": "last_itl"
             },
             "properties": [
               {
@@ -1849,7 +1849,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "aigateway_endpoint_healthy{namespace=~\"$namespace\", endpoint=~\"$endpoint\"}",
+          "expr": "aigateway_endpoint_healthy{namespace=~\"$namespace\", exported_endpoint=~\"$endpoint\"}",
           "format": "table",
           "instant": true,
           "refId": "A"
@@ -1859,7 +1859,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "aigateway_endpoint_last_ttft_seconds{namespace=~\"$namespace\", endpoint=~\"$endpoint\"}",
+          "expr": "aigateway_endpoint_last_ttft_seconds{namespace=~\"$namespace\", exported_endpoint=~\"$endpoint\"}",
           "format": "table",
           "instant": true,
           "refId": "B"
@@ -1869,7 +1869,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "aigateway_endpoint_last_itl_seconds{namespace=~\"$namespace\", endpoint=~\"$endpoint\"}",
+          "expr": "aigateway_endpoint_last_itl_seconds{namespace=~\"$namespace\", exported_endpoint=~\"$endpoint\"}",
           "format": "table",
           "instant": true,
           "refId": "C"
@@ -1879,7 +1879,7 @@
         {
           "id": "joinByField",
           "options": {
-            "byField": "endpoint",
+            "byField": "exported_endpoint",
             "mode": "outer"
           }
         },
@@ -1888,7 +1888,7 @@
           "options": {
             "include": {
               "names": [
-                "endpoint",
+                "exported_endpoint",
                 "Value #A",
                 "Value #B",
                 "Value #C"
@@ -1901,15 +1901,16 @@
           "options": {
             "excludeByName": {},
             "indexByName": {
-              "endpoint": 0,
+              "exported_endpoint": 0,
               "Value #A": 1,
               "Value #B": 2,
               "Value #C": 3
             },
             "renameByName": {
+              "exported_endpoint": "endpoint",
               "Value #A": "healthy",
-              "Value #B": "last_ttft (s)",
-              "Value #C": "last_itl (s)"
+              "Value #B": "last_ttft",
+              "Value #C": "last_itl"
             }
           }
         }
@@ -1961,8 +1962,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "aigateway_endpoint_last_ttft_seconds{namespace=~\"$namespace\", endpoint=~\"$endpoint\"}",
-          "legendFormat": "{{endpoint}}",
+          "expr": "aigateway_endpoint_last_ttft_seconds{namespace=~\"$namespace\", exported_endpoint=~\"$endpoint\"}",
+          "legendFormat": "{{exported_endpoint}}",
           "refId": "A"
         }
       ],
@@ -2013,8 +2014,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "aigateway_endpoint_last_itl_seconds{namespace=~\"$namespace\", endpoint=~\"$endpoint\"}",
-          "legendFormat": "{{endpoint}}",
+          "expr": "aigateway_endpoint_last_itl_seconds{namespace=~\"$namespace\", exported_endpoint=~\"$endpoint\"}",
+          "legendFormat": "{{exported_endpoint}}",
           "refId": "A"
         }
       ],
@@ -2092,7 +2093,7 @@
           "type": "prometheus",
           "uid": "prometheus"
         },
-        "definition": "label_values(aigateway_endpoint_healthy{namespace=~\"$namespace\"}, endpoint)",
+        "definition": "label_values(aigateway_endpoint_healthy{namespace=~\"$namespace\"}, exported_endpoint)",
         "includeAll": true,
         "label": "endpoint",
         "multi": true,
@@ -2100,8 +2101,8 @@
         "options": [],
         "query": {
           "qryType": 0,
-          "query": "label_values(aigateway_endpoint_healthy{namespace=~\"$namespace\"}, endpoint)",
-          "refId": "label_values(aigateway_endpoint_healthy{namespace=~\"$namespace\"}, endpoint)"
+          "query": "label_values(aigateway_endpoint_healthy{namespace=~\"$namespace\"}, exported_endpoint)",
+          "refId": "label_values(aigateway_endpoint_healthy{namespace=~\"$namespace\"}, exported_endpoint)"
         },
         "refresh": 2,
         "regex": "",
