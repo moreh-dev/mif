@@ -1803,6 +1803,30 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "last_ttft (s)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "last_itl (s)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              }
+            ]
           }
         ]
       },
@@ -1853,23 +1877,29 @@
       ],
       "transformations": [
         {
-          "id": "merge",
-          "options": {}
+          "id": "joinByField",
+          "options": {
+            "byField": "endpoint",
+            "mode": "outer"
+          }
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "endpoint",
+                "Value #A",
+                "Value #B",
+                "Value #C"
+              ]
+            }
+          }
         },
         {
           "id": "organize",
           "options": {
-            "excludeByName": {
-              "Time": true,
-              "__name__": true,
-              "job": true,
-              "instance": true,
-              "container": true,
-              "pod": true,
-              "service": true,
-              "namespace": true,
-              "endpoint_namespace": true
-            },
+            "excludeByName": {},
             "indexByName": {
               "endpoint": 0,
               "Value #A": 1,
