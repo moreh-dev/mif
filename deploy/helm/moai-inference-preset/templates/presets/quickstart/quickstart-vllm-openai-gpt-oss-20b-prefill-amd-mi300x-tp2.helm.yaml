@@ -26,6 +26,9 @@ spec:
             - name: ISVC_EXTRA_ARGS
               value: >-
                 --trust-remote-code
+                --tool-call-parser openai
+                --enable-auto-tool-choice
+                --exclude-tools-when-tool-choice-none
                 --disable-uvicorn-access-log
                 --no-enable-log-requests
                 --max-model-len -1

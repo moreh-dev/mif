@@ -1,38 +1,38 @@
 apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceServiceTemplate
 metadata:
-  name: quickstart-vllm-openai-gpt-oss-20b-decode-amd-mi250-tp2
+  name: quickstart-vllm-qwen-qwen3.6-27b-amd-mi300x-tp2
   namespace: {{ include "common.names.namespace" . }}
   labels:
     {{- include "mif.preset.labels" . | nindent 4 }}
-    mif.moreh.io/model.org: openai
-    mif.moreh.io/model.name: gpt-oss-20b
-    mif.moreh.io/role: decode
+    mif.moreh.io/model.org: qwen
+    mif.moreh.io/model.name: qwen3.6-27b
+    mif.moreh.io/role: e2e
     mif.moreh.io/accelerator.vendor: amd
-    mif.moreh.io/accelerator.model: mi250
+    mif.moreh.io/accelerator.model: mi300x
     mif.moreh.io/parallelism: tp2
 spec:
   framework: vllm
   model:
-    name: openai/gpt-oss-20b
+    name: Qwen/Qwen3.6-27B
   parallelism:
     tensor: 2
   template:
     spec:
       containers:
         - name: main
-          image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/quickstart/moreh-vllm:v0.17.1.1
+          image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/quickstart/moreh-vllm:v0.19.1.0
           env:
             - name: ISVC_EXTRA_ARGS
               value: >-
-                --trust-remote-code
-                --tool-call-parser openai
-                --enable-auto-tool-choice
-                --exclude-tools-when-tool-choice-none
                 --disable-uvicorn-access-log
                 --no-enable-log-requests
                 --max-model-len -1
-                --kv-transfer-config '{"kv_connector":"NixlConnector","kv_role":"kv_consumer"}'
+                --trust-remote-code
+                --enable-auto-tool-choice
+                --tool-call-parser qwen3_coder
+                --reasoning-parser qwen3
+                --mm-encoder-tp-mode data
           resources:
             requests:
               amd.com/gpu: 2
@@ -40,7 +40,7 @@ spec:
               amd.com/gpu: 2
       nodeSelector:
         moai.moreh.io/accelerator.vendor: amd
-        moai.moreh.io/accelerator.model: mi250
+        moai.moreh.io/accelerator.model: mi300x
       tolerations:
         - key: amd.com/gpu
           operator: Exists
