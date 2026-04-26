@@ -29,7 +29,6 @@ spec:
                 --disable-uvicorn-access-log
                 --no-enable-log-requests
                 --max-model-len -1
-                --max-num-batched-tokens 8192
           resources:
             requests:
               amd.com/gpu: 2
