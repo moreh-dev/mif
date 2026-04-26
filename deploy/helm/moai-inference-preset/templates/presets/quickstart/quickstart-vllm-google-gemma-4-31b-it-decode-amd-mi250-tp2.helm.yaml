@@ -28,7 +28,6 @@ spec:
                 --disable-uvicorn-access-log
                 --no-enable-log-requests
                 --max-model-len -1
-                --max-num-batched-tokens 8192
                 --kv-transfer-config '{"kv_connector":"NixlConnector","kv_role":"kv_consumer"}'
           resources:
             requests:

@@ -26,10 +26,12 @@ spec:
             - name: ISVC_EXTRA_ARGS
               value: >-
                 --trust-remote-code
+                --tool-call-parser openai
+                --enable-auto-tool-choice
+                --exclude-tools-when-tool-choice-none
                 --disable-uvicorn-access-log
                 --no-enable-log-requests
                 --max-model-len -1
-                --max-num-batched-tokens 8192
                 --kv-transfer-config '{"kv_connector":"NixlConnector","kv_role":"kv_consumer"}'
           resources:
             requests:
