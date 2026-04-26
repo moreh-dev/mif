@@ -39,7 +39,7 @@ metadata:
 spec:
   replicas: 2
   inferencePoolRefs:
-    - name: heimdall
+    - name: heimdall-inference-scheduler
   templateRefs:
     - name: vllm
     - name: vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2
@@ -171,7 +171,7 @@ metadata:
 spec:
   replicas: 1
   inferencePoolRefs:
-    - name: heimdall
+    - name: heimdall-inference-scheduler
   templateRefs:
     - name: vllm-decode-dp # runtime-base only
   model:

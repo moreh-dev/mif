@@ -4,33 +4,137 @@ sidebar_label: Plugins
 sidebar_position: 2
 ---
 
-All plugins are declared in the top-level [`plugins`](./api-reference.mdx#pluginspec) list of `EndpointPickerConfig`. Heimdall assigns each plugin to the appropriate extension point based on the interfaces it implements. A single plugin can implement multiple interfaces (e.g., `context-length-aware` acts as both a Filter and a Scorer).
+All plugins are declared in the top-level [`plugins`](./api-reference.mdx#pluginspec) list of `EndpointPickerConfig`. Heimdall assigns each plugin to the appropriate extension point based on the interfaces it implements. A single plugin can implement multiple interfaces (for example, `context-length-aware` acts as both a Filter and a Scorer; `active-request-scorer` acts as both a Scorer and a response lifecycle hook).
 
 - **Profile handlers** manage the outer scheduling loop — selecting which profiles to run and aggregating results. They are **not** referenced from `schedulingProfiles`.
+- **Deciders** are helper plugins consumed by `disagg-profile-handler` (via its `deciders.*` parameters) or by the legacy `pd-profile-handler` (via its flat `deciderPluginName` parameter, prefill decider only). They are declared in the top-level `plugins` list but **not** referenced from `schedulingProfiles`.
 - **Filter, Scorer, and Picker** run within a [`SchedulingProfile`](./api-reference.mdx#schedulingprofile). Each profile executes them in order: Filters → Scorers → Picker. These are the only plugin types that can be referenced in `schedulingProfiles[].plugins[].pluginRef`.
-- **Response plugins** hook into the response lifecycle after scheduling. They are automatically activated when declared in the top-level `plugins` list and are **not** referenced from `schedulingProfiles`.
+- **Pre-request handlers** hook into the request path before the scheduler runs. They are activated automatically when declared in the top-level `plugins` list and are **not** referenced from `schedulingProfiles`.
+- **Prepare-data plugins** enrich the request with derived data (for example tokenized prompts) that downstream plugins can consume. They are activated automatically when declared in the top-level `plugins` list, provided the `prepareDataPlugins` feature gate is enabled.
+- **Response plugins** hook into the response lifecycle after scheduling. They are activated automatically when declared in the top-level `plugins` list and are **not** referenced from `schedulingProfiles`.
+- **Data layer plugins** (sources and extractors) feed pod metrics into the scheduler. They are referenced from the top-level [`data`](./api-reference.mdx#datalayerconfig) field, not from `schedulingProfiles`, and require the `dataLayer` feature gate to be enabled.
+- **Store plugins** manage multi-turn conversation state. They are activated automatically when declared in the top-level `plugins` list, provided the `prepareDataPlugins` feature gate is enabled.
 
 ## Profile handlers
 
 ### `single-profile-handler`
 
-Handles a single profile which is always the primary profile.
+Handles a single profile, which is treated as the primary profile. Suitable when you only need one scheduling profile per request.
 
 No parameters.
 
-### `pd-profile-handler`
+### `disagg-profile-handler`
 
-Handles scheduler profiles for Prefill-Decode (PD) disaggregation.
+Unified profile handler for disaggregated inference deployments. It orchestrates up to three stages — decode, prefill, and encode — and consults per-stage **decider** plugins to decide whether each stage should run for a given request.
 
-| Parameter          | Type     | Default                 | Description                                          |
-| :----------------- | :------- | :---------------------- | :--------------------------------------------------- |
-| `threshold`        | `int`    | `0`                     | Threshold for decoding operations.                   |
-| `decodeProfile`    | `string` | `"decode"`              | Name of the profile to use for decode operations.    |
-| `prefillProfile`   | `string` | `"prefill"`             | Name of the profile to use for prefill operations.   |
-| `prefixPluginType` | `string` | `"prefix-cache-scorer"` | Type of the prefix cache plugin to use.              |
-| `prefixPluginName` | `string` | `"prefix-cache-scorer"` | Name of the prefix cache plugin to use.              |
-| `hashBlockSize`    | `int`    | `64`                    | Block size used for hashing tokens.                  |
-| `primaryPort`      | `int`    | `0`                     | Port number of the primary container (0 to disable). |
+Stage pipeline:
+
+1. **Decode** always runs first and selects the primary endpoint.
+2. **Encode** (optional) runs next when the `deciders.encode` plugin decides the request benefits from a dedicated encode stage (for example, multimodal inputs).
+3. **Prefill** (optional) runs last when the `deciders.prefill` plugin decides the request has enough uncached tokens to justify dedicated prefill.
+
+When prefill or encode selects an endpoint, `disagg-headers-handler` (declared separately) writes the chosen endpoint(s) into request headers so the decode pod can reach them.
+
+Parameters use a nested format (preferred). A legacy flat format is still accepted for backward compatibility.
+
+| Parameter           | Type     | Default     | Description                                                                                                                           |
+| :------------------ | :------- | :---------- | :------------------------------------------------------------------------------------------------------------------------------------ |
+| `profiles.decode`   | `string` | `"decode"`  | Name of the `SchedulingProfile` to use for decode endpoints.                                                                           |
+| `profiles.prefill`  | `string` | `"prefill"` | Name of the `SchedulingProfile` to use for prefill endpoints.                                                                          |
+| `profiles.encode`   | `string` | `"encode"`  | Name of the `SchedulingProfile` to use for encode endpoints.                                                                           |
+| `deciders.prefill`  | `string` | (unset)     | Name of the decider plugin that decides whether prefill runs. Unset disables the prefill stage. Must be registered on the plugin list. |
+| `deciders.encode`   | `string` | (unset)     | Name of the decider plugin that decides whether encode runs. Unset disables the encode stage. Must be registered on the plugin list.   |
+
+**Legacy flat parameters** (deprecated, still accepted — each logs a deprecation warning and maps into the nested form):
+
+| Legacy parameter           | Maps to              |
+| :------------------------- | :------------------- |
+| `decodeProfile`            | `profiles.decode`    |
+| `prefillProfile`           | `profiles.prefill`   |
+| `encodeProfile`            | `profiles.encode`    |
+| `prefillDeciderPluginName` | `deciders.prefill`   |
+| `encodeDeciderPluginName`  | `deciders.encode`    |
+| `deciderPluginName`        | `deciders.prefill` (lower priority than `prefillDeciderPluginName`) |
+
+:::warning
+When `deciders.prefill` or `deciders.encode` is set, `disagg-profile-handler` requires [`disagg-headers-handler`](#disagg-headers-handler) to also be registered. The lookup happens at **initialization**, so both the referenced decider plugin and `disagg-headers-handler` must appear **earlier** in the top-level `plugins` list than `disagg-profile-handler` itself.
+:::
+
+Minimal canonical example enabling prefill disaggregation with the prefix-based decider:
+
+```yaml
+plugins:
+  - type: disagg-headers-handler
+  - type: prefix-based-pd-decider
+    parameters:
+      nonCachedTokens: 16
+  - type: prefill-filter
+  - type: decode-filter
+  - type: max-score-picker
+  - type: disagg-profile-handler
+    parameters:
+      deciders:
+        prefill: prefix-based-pd-decider
+schedulingProfiles:
+  - name: prefill
+    plugins:
+      - pluginRef: prefill-filter
+      - pluginRef: max-score-picker
+  - name: decode
+    plugins:
+      - pluginRef: decode-filter
+      - pluginRef: max-score-picker
+```
+
+For a full walkthrough, see [PD disaggregation](../../features/prefill-decode-disaggregation.mdx).
+
+### `pd-profile-handler` (legacy)
+
+Separate profile handler for Prefill-Decode (PD) disaggregation, predating `disagg-profile-handler`. Still registered in moreh-v0.7.x with its own factory (parameter struct is flat, not nested).
+
+| Parameter           | Type     | Default                     | Description                                                                                                                              |
+| :------------------ | :------- | :-------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------- |
+| `decodeProfile`     | `string` | `"decode"`                  | Name of the `SchedulingProfile` to use for decode endpoints.                                                                             |
+| `prefillProfile`    | `string` | `"prefill"`                 | Name of the `SchedulingProfile` to use for prefill endpoints.                                                                            |
+| `prefixPluginType`  | `string` | `"prefix-cache-scorer"`     | Plugin type of the prefix cache scorer the decider reads from. Must be the registered type string.                                       |
+| `prefixPluginName`  | `string` | (value of `prefixPluginType`) | Plugin name (instance name) of the prefix cache scorer.                                                                               |
+| `primaryPort`       | `int`    | `0`                         | When non-zero, rewrites the decode endpoint's port to this value (used with data parallelism). Must be between 1 and 65535 when set.     |
+| `deciderPluginName` | `string` | `"always-disagg-pd-decider"` | Name of the decider plugin. The referenced plugin must implement the PD decider interface.                                             |
+
+:::warning
+Like `disagg-profile-handler`, the decider plugin (and `disagg-headers-handler`) must appear **earlier** in the top-level `plugins` list than `pd-profile-handler`. New deployments should prefer `disagg-profile-handler` — `pd-profile-handler` is kept for backward compatibility with existing `heimdall-values.yaml` files.
+:::
+
+---
+
+## Deciders
+
+Decider plugins are consumed by [`disagg-profile-handler`](#disagg-profile-handler) through its nested `deciders.*` parameters, and by the legacy [`pd-profile-handler`](#pd-profile-handler-legacy) through its flat `deciderPluginName` parameter. `pd-profile-handler` only supports a prefill decider; encode deciders are exclusive to `disagg-profile-handler`. Each decider answers one of two questions:
+
+- **Prefill deciders** — "should this request run prefill?" Consumed via `disagg-profile-handler.deciders.prefill` or `pd-profile-handler.deciderPluginName`.
+- **Encode deciders** — "should this request run encode?" Consumed via `disagg-profile-handler.deciders.encode`.
+
+Declare the decider in the top-level `plugins` list (before the profile handler) and reference it by name.
+
+### `prefix-based-pd-decider`
+
+Runs prefill only when the request has enough **non-cached** tokens, based on how many prefix tokens already hit the cache. Prefill decider.
+
+| Parameter         | Type  | Default | Description                                                                                                                      |
+| :---------------- | :---- | :------ | :------------------------------------------------------------------------------------------------------------------------------- |
+| `nonCachedTokens` | `int` | `0`     | Minimum number of non-cached tokens required to trigger prefill. With the default `0`, prefill runs on every uncached token. |
+
+### `always-disagg-pd-decider`
+
+Always requests prefill. Equivalent to "PD disaggregation enabled for every request." Prefill decider.
+
+No parameters.
+
+### `always-disagg-multimodal-decider`
+
+Runs encode whenever the incoming request contains multimodal content (image, audio, or video blocks). Encode decider.
+
+No parameters.
 
 ---
 
@@ -59,7 +163,7 @@ Filters out pods that do not match the configured label selector criteria.
 
 ### `prefill-filter`
 
-Filters for pods designated with the `prefill` role. It retains pods that have the label `mif.moreh.io/role` set to `prefill`.
+Filters for pods designated with the `prefill` role. It retains pods whose label `mif.moreh.io/role` is set to `prefill`.
 
 No parameters.
 
@@ -72,9 +176,15 @@ Filters for pods designated with the `decode` role. It retains pods that satisfy
 
 No parameters.
 
+### `encode-filter`
+
+Filters for pods designated with an `encode` role. It retains pods whose `mif.moreh.io/role` label value is one of `encode`, `encode-prefill`, or `encode-prefill-decode`. Pods without the role label are rejected.
+
+No parameters.
+
 ### `context-length-aware` {#context-length-aware-filter}
 
-Also functions as a filter when `enableFiltering` is set to `true`. Pods whose label-defined range does not cover the estimated token count of the request are removed. See [scorer section](#context-length-aware) for parameters.
+Also functions as a filter when `enableFiltering` is set to `true`. Pods whose label-defined range does not cover the estimated token count of the request are removed. See the [scorer section](#context-length-aware) for parameters.
 
 ---
 
@@ -82,39 +192,41 @@ Also functions as a filter when `enableFiltering` is set to `true`. Pods whose l
 
 ### `active-request-scorer`
 
-Scores pods based on the number of active requests being served. Scores are normalized from 0 to 1.
+Scores pods based on the number of active (in-flight) requests being served. Scores are normalized from 0 to 1. Also hooks the request/response lifecycle to maintain its in-flight counter.
 
-| Parameter        | Type     | Default | Description                                                |
-| :--------------- | :------- | :------ | :--------------------------------------------------------- |
-| `requestTimeout` | `string` | `"2m"`  | Duration to consider a request active (e.g., "30s", "1m"). |
+| Parameter        | Type     | Default | Description                                                                                          |
+| :--------------- | :------- | :------ | :--------------------------------------------------------------------------------------------------- |
+| `requestTimeout` | `string` | `"2m"`  | Go duration string (for example `"30s"`, `"1m"`). A request older than this is treated as dropped. |
 
 ### `load-aware-scorer`
 
-Scores pods based on load (waiting queue size). Pods with empty queues get higher scores.
+Scores pods based on queue load. Pods with empty or lightly loaded queues receive higher scores.
 
-| Parameter   | Type  | Default | Description                       |
-| :---------- | :---- | :------ | :-------------------------------- |
-| `threshold` | `int` | `128`   | Queue size threshold for scoring. |
+| Parameter   | Type  | Default | Description                                     |
+| :---------- | :---- | :------ | :---------------------------------------------- |
+| `threshold` | `int` | `128`   | Queue-size threshold used when normalizing load. |
 
 ### `no-hit-lru-scorer`
 
-Favors pods that were least recently used for cold requests to distribute cache growth.
+Favors pods that were least recently used for **cold** requests (requests that missed the prefix cache). Spreads cache growth across pods instead of piling it onto a single pod.
 
-| Parameter          | Type     | Default                 | Description                      |
-| :----------------- | :------- | :---------------------- | :------------------------------- |
-| `prefixPluginType` | `string` | `"prefix-cache-scorer"` | Type of the prefix cache plugin. |
-| `prefixPluginName` | `string` | `"prefix-cache-scorer"` | Name of the prefix cache plugin. |
-| `lruSize`          | `int`    | `1024`                  | Size of the LRU cache.           |
+| Parameter          | Type     | Default                 | Description                                                              |
+| :----------------- | :------- | :---------------------- | :----------------------------------------------------------------------- |
+| `prefixPluginType` | `string` | `"prefix-cache-scorer"` | Plugin type of the prefix cache scorer whose hit/miss state is observed. |
+| `prefixPluginName` | `string` | `"prefix-cache-scorer"` | Plugin name (instance name) of that prefix cache scorer.                  |
+| `lruSize`          | `int`    | `1024`                  | Maximum number of endpoints tracked in the LRU window.                    |
 
 ### `precise-prefix-cache-scorer`
 
-Scores pods based on precise prefix-cache KV-block locality using an internal indexer.
+Scores pods based on **precise** prefix-cache KV-block locality, computed from real-time KV-cache events published by each pod. Requires a tokenizer for the target model.
 
-| Parameter              | Type                              | Default | Description                               |
-| :--------------------- | :-------------------------------- | :------ | :---------------------------------------- |
-| `tokenProcessorConfig` | [`Object`](#tokenprocessorconfig) | -       | Configuration for the token processor.    |
-| `indexerConfig`        | [`Object`](#indexerconfig)        | -       | Configuration for the KV cache indexer.   |
-| `kvEventsConfig`       | [`Object`](#kveventsconfig)       | -       | Configuration for KV events subscription. |
+| Parameter              | Type                              | Default                            | Description                                                                                                 |
+| :--------------------- | :-------------------------------- | :--------------------------------- | :---------------------------------------------------------------------------------------------------------- |
+| `tokenProcessorConfig` | [`Object`](#tokenprocessorconfig) | Library defaults (`vllm` scheme, block size `16`). | Configuration for the token processor.                                                                     |
+| `indexerConfig`        | [`Object`](#indexerconfig)        | Library defaults + `tokenizersPoolConfig.modelName` must be set. | Configuration for the KV cache indexer.                                                |
+| `kvEventsConfig`       | [`Object`](#kveventsconfig)       | Library defaults.                  | Configuration for KV events subscription.                                                                   |
+| `speculativeIndexing`  | `bool`                            | `false`                            | When `true`, proactively inserts predicted cache entries into the index right after a routing decision, closing the short window between the decision and KV-event arrival. |
+| `speculativeTTL`       | `string`                          | `"2s"`                             | Go duration string. TTL for speculative entries before they are evicted. Ignored when `speculativeIndexing` is `false`. |
 
 #### `tokenProcessorConfig`
 
@@ -125,14 +237,14 @@ Scores pods based on precise prefix-cache KV-block locality using an internal in
 
 #### `indexerConfig`
 
-| Parameter              | Type                              | Default | Description                                   |
-| :--------------------- | :-------------------------------- | :------ | :-------------------------------------------- |
-| `kvBlockIndexConfig`   | [`Object`](#kvblockindexconfig)   | -       | Configuration for the KV-block index backend. |
-| `tokenizersPoolConfig` | [`Object`](#tokenizerspoolconfig) | -       | Configuration for the tokenizers pool.        |
+| Parameter              | Type                              | Default | Description                                                   |
+| :--------------------- | :-------------------------------- | :------ | :------------------------------------------------------------ |
+| `kvBlockIndexConfig`   | [`Object`](#kvblockindexconfig)   | -       | Configuration for the KV-block index backend.                 |
+| `tokenizersPoolConfig` | [`Object`](#tokenizerspoolconfig) | -       | Configuration for the tokenizers pool. (Required; must set `modelName`.) |
 
 #### `kvBlockIndexConfig`
 
-Only one of the following backends should be configured.
+Configure exactly one backend.
 
 | Parameter                | Type                                   | Default | Description                                |
 | :----------------------- | :------------------------------------- | :------ | :----------------------------------------- |
@@ -141,7 +253,7 @@ Only one of the following backends should be configured.
 | `valkeyConfig`           | [`Object`](#redisconfig--valkeyconfig) | -       | Configuration for Valkey index.            |
 | `costAwareMemoryConfig`  | [`Object`](#costawarememoryconfig)     | -       | Configuration for cost-aware memory index. |
 | `enableMetrics`          | `bool`                                 | `false` | Whether to enable metrics for the indexer. |
-| `metricsLoggingInterval` | `string`                               | `0s`    | Interval for logging metrics (e.g., "10s").|
+| `metricsLoggingInterval` | `string`                               | `0s`    | Interval for logging metrics (for example, `"10s"`). |
 
 ##### `inMemoryConfig`
 
@@ -155,14 +267,14 @@ Only one of the following backends should be configured.
 | Parameter     | Type     | Default                    | Description                              |
 | :------------ | :------- | :------------------------- | :--------------------------------------- |
 | `address`     | `string` | `"redis://127.0.0.1:6379"` | Address of the Redis/Valkey server.      |
-| `backendType` | `string` | `"redis"`                  | Backend type ("redis" or "valkey").      |
+| `backendType` | `string` | `"redis"`                  | Backend type (`"redis"` or `"valkey"`).  |
 | `enableRDMA`  | `bool`   | `false`                    | Enable RDMA (experimental, Valkey only). |
 
 ##### `costAwareMemoryConfig`
 
 | Parameter | Type     | Default  | Description                                   |
 | :-------- | :------- | :------- | :-------------------------------------------- |
-| `size`    | `string` | `"2GiB"` | Maximum memory size (e.g., "2GiB", "500MiB"). |
+| `size`    | `string` | `"2GiB"` | Maximum memory size (for example `"2GiB"`, `"500MiB"`). |
 
 #### `tokenizersPoolConfig`
 
@@ -176,25 +288,25 @@ Only one of the following backends should be configured.
 
 ##### `hf` (HuggingFace Tokenizer)
 
-| Parameter            | Type     | Default  | Description                                         |
-| :------------------- | :------- | :------- | :-------------------------------------------------- |
-| `enabled`            | `bool`   | `true`   | Enable HuggingFace tokenizer.                       |
-| `huggingFaceToken`   | `string` | `""`     | HuggingFace API token.                              |
-| `tokenizersCacheDir` | `string` | `bin`    | Directory to cache downloaded tokenizers.           |
-| `tokenizer`          | `string` | `""`     | Specific tokenizer to use (defaults to model name). |
-| `tokenizerMode`      | `string` | `"auto"` | Tokenizer mode ("auto", "hf", "limit", "mistral").  |
-| `tokenizerRevision`  | `string` | `""`     | Revision of the tokenizer.                          |
+| Parameter            | Type     | Default  | Description                                                                                     |
+| :------------------- | :------- | :------- | :---------------------------------------------------------------------------------------------- |
+| `enabled`            | `bool`   | `true`   | Enable HuggingFace tokenizer.                                                                   |
+| `huggingFaceToken`   | `string` | `""`     | HuggingFace API token.                                                                          |
+| `tokenizersCacheDir` | `string` | `bin`    | Directory to cache downloaded tokenizers.                                                       |
+| `tokenizer`          | `string` | `""`     | Specific tokenizer to use (defaults to model name).                                             |
+| `tokenizerMode`      | `string` | `"auto"` | Tokenizer mode. One of `"auto"`, `"hf"`, `"slow"`, `"mistral"`, `"deepseek_v32"`.               |
+| `tokenizerRevision`  | `string` | `""`     | Revision of the tokenizer.                                                                      |
 
 ##### `local` (Local Tokenizer)
 
-| Parameter                        | Type                | Default          | Description                                                     |
-| :------------------------------- | :------------------ | :--------------- | :-------------------------------------------------------------- |
-| `autoDiscoveryDir`               | `string`            | `/mnt/models`    | Directory to search for tokenizers.                             |
-| `autoDiscoveryTokenizerFileName` | `string`            | `tokenizer.json` | Filename to search for.                                         |
-| `modelTokenizerMap`              | `map[string]string` | -                | Manual mapping of model names to tokenizer paths.               |
-| `tokenizer`                      | `string`            | `""`             | Specific tokenizer to use (defaults to model name).             |
-| `tokenizerMode`                  | `string`            | `"auto"`         | Tokenizer mode ("auto", "hf", "limit", "mistral").             |
-| `tokenizerRevision`              | `string`            | `""`             | Revision of the tokenizer.                                      |
+| Parameter                        | Type                | Default          | Description                                                                                     |
+| :------------------------------- | :------------------ | :--------------- | :---------------------------------------------------------------------------------------------- |
+| `autoDiscoveryDir`               | `string`            | `/mnt/models`    | Directory to search for tokenizers.                                                             |
+| `autoDiscoveryTokenizerFileName` | `string`            | `tokenizer.json` | Filename to search for.                                                                         |
+| `modelTokenizerMap`              | `map[string]string` | -                | Manual mapping of model names to tokenizer paths.                                               |
+| `tokenizer`                      | `string`            | `""`             | Specific tokenizer to use (defaults to model name).                                             |
+| `tokenizerMode`                  | `string`            | `"auto"`         | Tokenizer mode. One of `"auto"`, `"hf"`, `"slow"`, `"mistral"`, `"deepseek_v32"`.               |
+| `tokenizerRevision`              | `string`            | `""`             | Revision of the tokenizer.                                                                      |
 
 ##### `uds` (UDS Tokenizer)
 
@@ -208,7 +320,7 @@ Only one of the following backends should be configured.
 
 | Parameter            | Type                            | Default | Description                                              |
 | :------------------- | :------------------------------ | :------ | :------------------------------------------------------- |
-| `zmqEndpoint`        | `string`                        | -       | ZMQ endpoint to connect to (e.g., "tcp://indexer:5557"). |
+| `zmqEndpoint`        | `string`                        | -       | ZMQ endpoint to connect to (for example `tcp://indexer:5557`). |
 | `topicFilter`        | `string`                        | `"kv@"` | ZMQ topic filter subscription.                           |
 | `concurrency`        | `int`                           | `4`     | Number of event processing workers.                      |
 | `discoverPods`       | `bool`                          | `true`  | Enable automatic pod discovery.                          |
@@ -222,20 +334,30 @@ Only one of the following backends should be configured.
 | `podNamespace`     | `string` | `""`                               | Namespace to watch pods in (empty = all). |
 | `socketPort`       | `int`    | `5557`                             | Port where pods expose their ZMQ socket.  |
 
+### `prefix-cache-scorer`
+
+Scores pods based on the length of an approximate prefix match against recent requests, using an in-process LRU indexer. Lighter-weight than [`precise-prefix-cache-scorer`](#precise-prefix-cache-scorer) because it does not need a tokenizer or KV-cache event subscription.
+
+| Parameter                | Type   | Default | Description                                                                                                                                                                 |
+| :----------------------- | :----- | :------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `autoTune`               | `bool` | `true`  | Automatically tunes `blockSizeTokens`, `maxPrefixBlocksToMatch`, and `lruCapacityPerServer` based on observed model server metrics.                                         |
+| `blockSizeTokens`        | `int`  | `16`    | Number of tokens per hash block. Requests shorter than one block are ignored.                                                                                                 |
+| `blockSize`              | `int`  | `0`     | **Deprecated**. Legacy block size expressed in characters. Setting only `blockSize` (with `blockSizeTokens` left unset) fails initialization. Prefer `blockSizeTokens`.     |
+| `maxPrefixBlocksToMatch` | `int`  | `256`   | Maximum number of prefix blocks to match. Longer prefixes are truncated at this limit.                                                                                        |
+| `lruCapacityPerServer`   | `int`  | `31250` | LRU indexer capacity per model server (in blocks).                                                                                                                            |
+
 ### `session-affinity-scorer`
 
-Routes subsequent requests in a session to the same pod as the first request.
+Routes subsequent requests in a session to the same pod as the first request. Relies on the `x-session-token` HTTP header to maintain affinity:
 
-This scorer relies on the `x-session-token` HTTP header to maintain session affinity:
-
-1.  **Response:** When a request is served, the plugin sets the `x-session-token` header in the response with the Base64-encoded name of the serving pod.
-2.  **Request:** For subsequent requests, the client must include this `x-session-token` header. The scorer decodes it to identify the target pod and assigns it a high score.
+1. **Response:** When a request is served, the plugin sets the `x-session-token` header on the response. The value is the Base64-encoded name of the serving pod.
+2. **Request:** For subsequent requests, the client includes this `x-session-token` header. The scorer decodes it to identify the target pod and assigns it a high score.
 
 No parameters.
 
 ### `kv-cache-utilization-scorer`
 
-Scores pods based on their KV cache utilization (lower utilization = higher score).
+Scores pods based on their KV cache utilization (lower utilization yields a higher score).
 
 No parameters.
 
@@ -247,35 +369,32 @@ No parameters.
 
 ### `queue-scorer`
 
-Scores pods based on their waiting queue size (smaller queue = higher score).
+Scores pods based on their waiting queue size (smaller queue yields a higher score).
 
 No parameters.
 
 ### `running-requests-size-scorer`
 
-Scores pods based on their number of running requests.
+Scores pods based on the number of running requests.
 
 No parameters.
 
 ### `context-length-aware`
 
-Scores pods based on how well their context length range matches the estimated token count of the request. Pods with a matching range receive higher scores. Also functions as a [filter](#context-length-aware-filter) when `enableFiltering` is enabled.
+Scores pods based on how well their context-length range matches the estimated token count of the request. Pods with a matching range receive higher scores. Also functions as a [filter](#context-length-aware-filter) when `enableFiltering` is enabled.
 
 | Parameter         | Type     | Default                               | Description                                                                                                |
 | :---------------- | :------- | :------------------------------------ | :--------------------------------------------------------------------------------------------------------- |
 | `label`           | `string` | `"mif.moreh.io/context-length-range"` | Pod label whose value specifies context length ranges (format: `"min-max"`, comma-separated for multiple). |
 | `enableFiltering` | `bool`   | `false`                               | Whether to also filter out pods that do not match the request's context length.                            |
 
-### `prefix-cache-scorer`
+### `predicted-latency-scorer`
 
-Scores pods based on the length of the prefix match for the request prompt.
+Advanced scorer that predicts TTFT (time-to-first-token) and TPOT (time-per-output-token) per pod using an online running-request model, then scores pods so the request is routed to the pod most likely to meet its latency SLO. Emits per-pod latency metrics.
 
-| Parameter                | Type   | Default | Description                                                   |
-| :----------------------- | :----- | :------ | :------------------------------------------------------------ |
-| `autoTune`               | `bool` | `true`  | Whether to automatically tune configuration based on metrics. |
-| `blockSize`              | `int`  | `64`    | Size of a token block for hashing.                            |
-| `maxPrefixBlocksToMatch` | `int`  | `256`   | Maximum number of blocks to match for prefix caching.         |
-| `lruCapacityPerServer`   | `int`  | `31250` | Estimated LRU capacity per model server (in blocks).          |
+:::warning
+This scorer has a large parameter surface (20+ fields covering sampling, headroom weights, affinity gates, and selection strategies). Most deployments should leave every field at its default. For the complete parameter list, refer to `pkg/epp/framework/plugins/scheduling/scorer/predictedlatency/scorer.go` in the [`moreh-dev/heimdall-inference-extension`](https://github.com/moreh-dev/heimdall-inference-extension) repository, and tune only after establishing a baseline.
+:::
 
 ---
 
@@ -299,11 +418,54 @@ Picks random pod(s) from the candidates.
 
 ### `weighted-random-picker`
 
-Picks pod(s) based on weighted random sampling derived from their scores.
+Picks pod(s) based on weighted random sampling (A-Res algorithm) derived from their scores.
 
 | Parameter           | Type  | Default | Description                          |
 | :------------------ | :---- | :------ | :----------------------------------- |
 | `maxNumOfEndpoints` | `int` | `1`     | Maximum number of endpoints to pick. |
+
+---
+
+## Pre-request handlers
+
+### `disagg-headers-handler`
+
+Publishes the endpoints selected by `disagg-profile-handler` or the legacy `pd-profile-handler` as request headers, so the decode pod can reach prefill / encode pods:
+
+- `mif-prefill-endpoint` — host:port of the prefill endpoint, when prefill ran.
+- `mif-encode-endpoints` — comma-separated host:port list of the encode endpoints, when encode ran.
+
+| Parameter         | Type     | Default     | Description                                                                     |
+| :---------------- | :------- | :---------- | :------------------------------------------------------------------------------ |
+| `prefillProfile`  | `string` | `"prefill"` | Name of the `SchedulingProfile` whose result provides the prefill endpoint.     |
+| `encodeProfile`   | `string` | `"encode"`  | Name of the `SchedulingProfile` whose result provides the encode endpoint list. |
+
+:::info
+`prefill-header-handler` is kept as a legacy alias that resolves to this same plugin (both names share `DisaggHeadersHandlerFactory`). Existing `heimdall-values.yaml` files that reference `prefill-header-handler` continue to work.
+:::
+
+---
+
+## Prepare-data plugins
+
+### `tokenizer`
+
+Runs a tokenizer on each incoming request and stores the tokenized prompt on the request so downstream plugins (for example `precise-prefix-cache-scorer`, `disagg-profile-handler`'s deciders) can reuse it without re-tokenizing. Fails open: if tokenization errors, the request continues with no tokenized prompt attached.
+
+:::warning
+This plugin only activates when the `prepareDataPlugins` feature gate is enabled. Add `featureGates: [prepareDataPlugins]` to the top of your `EndpointPickerConfig`; otherwise the plugin registration is silently skipped.
+:::
+
+| Parameter            | Type     | Default | Description                                                                                              |
+| :------------------- | :------- | :------ | :------------------------------------------------------------------------------------------------------- |
+| `modelName`          | `string` | -       | Base model name for the tokenizer. (Required)                                                            |
+| `udsTokenizerConfig` | `Object` | (unset) | Unix domain socket tokenizer configuration. When unset, falls back to the in-process default tokenizer. |
+
+#### `udsTokenizerConfig`
+
+| Parameter    | Type     | Default                               | Description                                   |
+| :----------- | :------- | :------------------------------------ | :-------------------------------------------- |
+| `socketFile` | `string` | `/tmp/tokenizer/tokenizer-uds.socket` | Path to the tokenizer UDS socket. |
 
 ---
 
@@ -317,13 +479,55 @@ Response plugins hook into the response lifecycle. They are invoked by the reque
 
 ### `response-header-handler`
 
-Adds serving pod information to the response headers. Implements the ResponseReceived extension point.
+Adds serving-pod information to the response headers. Implements the ResponseReceived extension point.
 
 - `x-decoder-host-port`: Always set to the address and port of the pod that handled the decode phase (the primary target).
 - `x-prefiller-host-port`: Set to the address and port of the prefill pod, if a separate prefill pod was used (PD disaggregation).
 
-No configuration parameters.
+No parameters.
 
 :::info
 When heimdall-proxy is deployed with `--response-header`, the proxy natively sets the same headers. In that case, this plugin is not needed.
 :::
+
+---
+
+## Data layer plugins
+
+Data layer plugins feed pod-level signals (metrics, running model names, and so on) into the scheduler. They are declared in the top-level `plugins` list and wired together through the [`data`](./api-reference.mdx#datalayerconfig) field of `EndpointPickerConfig`: a `DataLayerSource` references a source plugin via `pluginRef` and attaches a list of extractor plugins.
+
+### `models` (data source)
+
+Polls each pod's `/v1/models` endpoint (or a configurable path) to discover which models are currently being served.
+
+| Parameter            | Type     | Default       | Description                                                |
+| :------------------- | :------- | :------------ | :--------------------------------------------------------- |
+| `scheme`             | `string` | `"http"`      | URL scheme used to reach the pod (`"http"` or `"https"`). |
+| `path`               | `string` | `"/v1/models"` | URL path of the models endpoint.                           |
+| `insecureSkipVerify` | `bool`   | `true`        | Skip TLS certificate verification on the pod connection.   |
+
+### `models-extractor`
+
+Extracts the list of running model identifiers from a `models` source and publishes them on the pod's data-layer record, where downstream plugins can read them.
+
+No parameters.
+
+---
+
+## Store plugins
+
+### `responses-store`
+
+Persists multi-turn conversation state for the OpenAI Responses API (`/v1/responses` with `previous_response_id`). Exposes `PrepareDataPlugin` (to look up prior responses on request), `ResponseStreaming` (to accumulate streamed chunks), and `ResponseComplete` (to commit the final response to the store).
+
+:::warning
+This plugin only activates when the `prepareDataPlugins` feature gate is enabled. Add `featureGates: [prepareDataPlugins]` to the top of your `EndpointPickerConfig`; otherwise the plugin registration is silently skipped.
+:::
+
+Supported backends: in-memory, Redis/Valkey, and MongoDB. Configure exactly one under `storeConfig`.
+
+| Parameter     | Type                | Default                    | Description                                                                                                     |
+| :------------ | :------------------ | :------------------------- | :-------------------------------------------------------------------------------------------------------------- |
+| `storeConfig` | `Object` (optional) | in-memory backend, `ttl: 24h` | Backend selection and configuration. When omitted, Heimdall uses an in-memory backend with a 24-hour TTL. |
+
+The `storeConfig` object supports a `ttl` string (Go duration, default `"24h"`) plus one of the following backend sub-objects: `inMemory`, `redis`/`valkey`, or `mongo`. Consult the operator documentation for backend-specific fields; use the in-memory backend for smoke testing and a shared backend (Redis/Valkey/MongoDB) for production.

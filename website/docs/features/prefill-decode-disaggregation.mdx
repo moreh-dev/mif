@@ -30,23 +30,37 @@ To enable PD disaggregation, you must configure both **Heimdall** (to route requ
 
 ### Heimdall configuration
 
-In the Heimdall configuration, you need to enable the [`pd-profile-handler`](../reference/heimdall/plugins.mdx#pd-profile-handler) plugin. This plugin selects the appropriate prefill or decode pod using the `prefill` and `decode` scheduling profiles. The [`prefill-filter`](../reference/heimdall/plugins.mdx#prefill-filter) and [`decode-filter`](../reference/heimdall/plugins.mdx#decode-filter) plugins filter pods by the `mif.moreh.io/role` label within their respective profiles. The configuration is part of the [`EndpointPickerConfig`](../reference/heimdall/api-reference.mdx#endpointpickerconfig).
+:::warning
+`pd-profile-handler` is legacy and has been replaced by [`disagg-profile-handler`](../reference/heimdall/plugins.mdx#disagg-profile-handler).
+:::
 
-Consider the following `heimdall-values.yaml` example:
+In the Heimdall configuration, enable [`disagg-profile-handler`](../reference/heimdall/plugins.mdx#disagg-profile-handler) together with a [PD decider](../reference/heimdall/plugins.mdx#deciders) and [`disagg-headers-handler`](../reference/heimdall/plugins.mdx#disagg-headers-handler). The profile handler runs the `decode` profile first and then consults the configured decider to decide whether to also run `prefill`; when prefill is selected, `disagg-headers-handler` writes the prefill endpoint into a request header so the decode pod can reach it. The [`prefill-filter`](../reference/heimdall/plugins.mdx#prefill-filter) and [`decode-filter`](../reference/heimdall/plugins.mdx#decode-filter) plugins filter pods by the `mif.moreh.io/role` label within their respective profiles. The configuration is part of the [`EndpointPickerConfig`](../reference/heimdall/api-reference.mdx#endpointpickerconfig).
+
+Consider the following `heimdall-values.yaml` example, which uses [`prefix-based-pd-decider`](../reference/heimdall/plugins.mdx#prefix-based-pd-decider) so prefill only runs when the request exceeds a non-cached-token budget. Swap it for [`always-disagg-pd-decider`](../reference/heimdall/plugins.mdx#always-disagg-pd-decider) if every request should run prefill.
 
 ```yaml title="heimdall-values.yaml"
 # ... (other values)
 
 config:
   plugins:
-    # 1. Enable PD profile handler
-    - type: pd-profile-handler
+    # 1. Declare the decider and header handler before the profile handler so
+    #    `disagg-profile-handler`'s factory can resolve them at init time.
+    - type: disagg-headers-handler
+    - type: prefix-based-pd-decider
+      parameters:
+        nonCachedTokens: 16
     - type: prefill-filter
     - type: decode-filter
-    # 2. Add other necessary plugins
     - type: queue-scorer
     - type: max-score-picker
-  # 3. Define scheduling profiles for prefill and decode
+    # 2. Wire the deciders via the nested parameter schema.
+    - type: disagg-profile-handler
+      parameters:
+        profiles:
+          prefill: prefill
+          decode: decode
+        deciders:
+          prefill: prefix-based-pd-decider
   schedulingProfiles:
     - name: prefill
       plugins:
@@ -108,7 +122,7 @@ metadata:
   name: deepseek-r1-prefill
 spec:
   inferencePoolRefs:
-    - name: heimdall
+    - name: heimdall-inference-scheduler
   templateRefs:
     # 1. Runtime base for data-parallel prefill
     - name: vllm-prefill-dp
@@ -138,7 +152,7 @@ metadata:
   name: deepseek-r1-decode
 spec:
   inferencePoolRefs:
-    - name: heimdall
+    - name: heimdall-inference-scheduler
   templateRefs:
     # 1. Runtime base for data-parallel decode
     - name: vllm-decode-dp

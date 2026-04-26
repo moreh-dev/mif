@@ -24,7 +24,7 @@ metadata:
 spec:
   replicas: 2
   inferencePoolRefs:
-    - name: heimdall
+    - name: heimdall-inference-scheduler
   templateRefs:
     - name: vllm
     - name: vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2
@@ -56,7 +56,7 @@ metadata:
 spec:
   replicas: 1
   inferencePoolRefs:
-    - name: heimdall
+    - name: heimdall-inference-scheduler
   templateRefs:
     - name: vllm-decode-dp
   model:
@@ -109,7 +109,7 @@ metadata:
 spec:
   replicas: <prefillReplicas>
   inferencePoolRefs:
-    - name: heimdall
+    - name: heimdall-inference-scheduler
   templateRefs:
     - name: vllm-prefill-dp        # or vllm-prefill for non-DP
     - name: <prefillPreset>
@@ -134,7 +134,7 @@ metadata:
 spec:
   replicas: <decodeReplicas>
   inferencePoolRefs:
-    - name: heimdall
+    - name: heimdall-inference-scheduler
   templateRefs:
     - name: vllm-decode-dp          # or vllm-decode for non-DP
     - name: <decodePreset>
@@ -169,7 +169,7 @@ metadata:
 spec:
   replicas: 2
   inferencePoolRefs:
-    - name: heimdall
+    - name: heimdall-inference-scheduler
   templateRefs:
     - name: vllm
     - name: <preset>
@@ -242,7 +242,7 @@ metadata:
 spec:
   replicas: 1
   inferencePoolRefs:
-    - name: heimdall
+    - name: heimdall-inference-scheduler
   templateRefs:
     - name: vllm-prefill-dp
     - name: custom-prefill-dp16ep
@@ -271,7 +271,7 @@ metadata:
 spec:
   replicas: 1
   inferencePoolRefs:
-    - name: heimdall
+    - name: heimdall-inference-scheduler
   templateRefs:
     - name: vllm-pp
   model:
