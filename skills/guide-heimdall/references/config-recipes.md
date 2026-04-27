@@ -50,7 +50,7 @@ inferencePool:
 Source: `test/e2e/performance/config/heimdall-values.yaml.tmpl`
 
 Separate prefill and decode pods. Each phase gets its own scheduling profile.
-Pods must have label `mif.moreh.io/role` set to `prefill`, `decode`, or `both`.
+Pods must have label `mif.moreh.io/role` set to `prefill`, `decode`, `prefill-decode`, `both`, or another accepted role value.
 Use for: large-scale deployments with distinct prefill/decode resource profiles.
 
 ```yaml
@@ -62,13 +62,16 @@ config:
   apiVersion: inference.networking.x-k8s.io/v1alpha1
   kind: EndpointPickerConfig
   plugins:
-    - type: always-disagg-pd-decider  # must precede pd-profile-handler (factory-time lookup)
-    - type: disagg-headers-handler    # must precede pd-profile-handler (factory-time lookup)
-    - type: pd-profile-handler
+    - type: disagg-headers-handler    # must precede disagg-profile-handler (factory-time lookup)
+    - type: always-disagg-pd-decider  # must precede disagg-profile-handler (factory-time lookup)
     - type: prefill-filter
     - type: decode-filter
     - type: queue-scorer
     - type: max-score-picker
+    - type: disagg-profile-handler
+      parameters:
+        deciders:
+          prefill: always-disagg-pd-decider
   schedulingProfiles:
     - name: prefill
       plugins:
@@ -109,14 +112,17 @@ config:
   apiVersion: inference.networking.x-k8s.io/v1alpha1
   kind: EndpointPickerConfig
   plugins:
-    - type: always-disagg-pd-decider  # must precede pd-profile-handler (factory-time lookup)
-    - type: disagg-headers-handler    # must precede pd-profile-handler (factory-time lookup)
-    - type: pd-profile-handler
+    - type: disagg-headers-handler    # must precede disagg-profile-handler (factory-time lookup)
+    - type: always-disagg-pd-decider  # must precede disagg-profile-handler (factory-time lookup)
     - type: prefill-filter
     - type: decode-filter
     - type: queue-scorer
     - type: kv-cache-utilization-scorer
     - type: max-score-picker
+    - type: disagg-profile-handler
+      parameters:
+        deciders:
+          prefill: always-disagg-pd-decider
   schedulingProfiles:
     - name: prefill
       plugins:

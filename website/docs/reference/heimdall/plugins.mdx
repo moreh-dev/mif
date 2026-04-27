@@ -163,7 +163,7 @@ Filters out pods that do not match the configured label selector criteria.
 
 ### `prefill-filter`
 
-Filters for pods designated with the `prefill` role. It retains pods whose label `mif.moreh.io/role` is set to `prefill`.
+Filters for pods designated with the `prefill` role. It retains pods whose `mif.moreh.io/role` label value is one of `prefill`, `encode-prefill`, `prefill-decode`, `both`, or `encode-prefill-decode`. Pods without the role label are rejected.
 
 No parameters.
 
@@ -171,7 +171,7 @@ No parameters.
 
 Filters for pods designated with the `decode` role. It retains pods that satisfy one of the following conditions:
 
-- The label `mif.moreh.io/role` is set to `decode` or `both`.
+- The label `mif.moreh.io/role` is set to `decode`, `prefill-decode`, `both`, or `encode-prefill-decode`.
 - The label `mif.moreh.io/role` is not set.
 
 No parameters.
@@ -194,9 +194,11 @@ Also functions as a filter when `enableFiltering` is set to `true`. Pods whose l
 
 Scores pods based on the number of active (in-flight) requests being served. Scores are normalized from 0 to 1. Also hooks the request/response lifecycle to maintain its in-flight counter.
 
-| Parameter        | Type     | Default | Description                                                                                          |
-| :--------------- | :------- | :------ | :--------------------------------------------------------------------------------------------------- |
-| `requestTimeout` | `string` | `"2m"`  | Go duration string (for example `"30s"`, `"1m"`). A request older than this is treated as dropped. |
+| Parameter        | Type      | Default | Description                                                                                          |
+| :--------------- | :-------- | :------ | :--------------------------------------------------------------------------------------------------- |
+| `requestTimeout` | `string`  | `"2m"`  | Go duration string (for example `"30s"`, `"1m"`). A request older than this is treated as dropped. |
+| `idleThreshold`  | `int`     | `0`     | Maximum number of active requests for a pod to be considered idle. Pods at or below this count receive a score of `1.0`. |
+| `maxBusyScore`   | `float64` | `1.0`   | Maximum score assigned to busy pods (those above `idleThreshold`). Setting below `1.0` creates a scoring gap between idle and busy pods; range `0.0`–`1.0`. |
 
 ### `load-aware-scorer`
 
