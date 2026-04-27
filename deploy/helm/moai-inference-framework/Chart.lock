@@ -29,8 +29,11 @@ dependencies:
 - name: loki
   repository: https://grafana.github.io/helm-charts
   version: 6.30.0
+- name: redis-operator
+  repository: https://spotahome.github.io/redis-operator
+  version: 3.3.0
 - name: vector
   repository: https://helm.vector.dev
   version: 0.39.0
-digest: sha256:38dcfcf610839b5fd0cf0d4e48c3592ca9fd5fd9ff833470333f943e6c6d62b6
-generated: "2026-03-23T21:14:54.760708118+09:00"
+digest: sha256:ab971d169d8743ba249511b76f2bb7d04543051d77b1f3c10f6152774bf8e852
+generated: "2026-04-28T00:20:27.041591+09:00"

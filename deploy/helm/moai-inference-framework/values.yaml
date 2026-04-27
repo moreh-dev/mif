@@ -245,6 +245,11 @@ loki:
     persistence:
       volumeClaimsEnabled: false
 
+redis-operator:
+  # -- Enable spotahome/redis-operator. Required by heimdall-inference-scheduler's
+  # redis-sentinel chart (RedisFailover CR). Set to false if already deployed.
+  enabled: true
+
 vector:
   # -- Enable vector/vector as a DaemonSet log collector.
   enabled: true
