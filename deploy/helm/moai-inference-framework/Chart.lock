@@ -30,10 +30,10 @@ dependencies:
   repository: https://grafana.github.io/helm-charts
   version: 6.30.0
 - name: redis-operator
-  repository: https://spotahome.github.io/redis-operator
-  version: 3.2.9
+  repository: https://ot-container-kit.github.io/helm-charts
+  version: 0.24.0
 - name: vector
   repository: https://helm.vector.dev
   version: 0.39.0
-digest: sha256:e5028bc91efde6937c0a21594f04e03431f2fbef8953f9a5fd1ebc7e9a6a9a03
-generated: "2026-04-28T00:27:53.71497+09:00"
+digest: sha256:9a0c81f2399ae6682ffc48332967214a32aee9eb0d8ec4cdb9298fe39f37cd31
+generated: "2026-04-28T01:43:05.676045+09:00"

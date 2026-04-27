@@ -246,8 +246,8 @@ loki:
       volumeClaimsEnabled: false
 
 redis-operator:
-  # -- Enable spotahome/redis-operator. Required by heimdall-inference-scheduler's
-  # redis-sentinel chart (RedisFailover CR). Set to false if already deployed.
+  # -- Enable OT-CONTAINER-KIT/redis-operator. Manages Redis Sentinel/Replication/Cluster
+  # CRs used by heimdall-inference-scheduler. Set to false if already deployed.
   enabled: true
 
 vector:

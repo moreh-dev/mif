@@ -24,8 +24,8 @@ Moreh Inference Framework
 | https://kedacore.github.io/charts | keda | 2.18.0 |
 | https://moreh-dev.github.io/helm-charts | odin | v0.8.0 |
 | https://moreh-dev.github.io/helm-charts | odin-crd | v0.8.0 |
+| https://ot-container-kit.github.io/helm-charts | redis-operator | 0.24.0 |
 | https://prometheus-community.github.io/helm-charts | prometheus-stack(kube-prometheus-stack) | 80.7.0 |
-| https://spotahome.github.io/redis-operator | redis-operator | 3.2.9 |
 | oci://registry-1.docker.io/bitnamicharts | common | 2.31.4 |
 | oci://registry.k8s.io/lws/charts | lws | 0.8.0 |
 | oci://registry.k8s.io/nfd/charts | nfd(node-feature-discovery) | 0.18.3 |
@@ -147,7 +147,7 @@ Moreh Inference Framework
 | prometheus-stack.prometheusOperator.enabled | bool | `true` |  |
 | prometheus-stack.thanosRuler.enabled | bool | `false` |  |
 | prometheus-stack.windowsMonitoring.enabled | bool | `false` |  |
-| redis-operator.enabled | bool | `true` | Enable spotahome/redis-operator. Required by heimdall-inference-scheduler's redis-sentinel chart (RedisFailover CR). Set to false if already deployed. |
+| redis-operator.enabled | bool | `true` | Enable OT-CONTAINER-KIT/redis-operator. Manages Redis Sentinel/Replication/Cluster CRs used by heimdall-inference-scheduler. Set to false if already deployed. |
 | replicator.enabled | bool | `true` | Enable mittwald/kubernetes-replicator. Set to false if already deployed. |
 | vector.customConfig.api.address | string | `"0.0.0.0:8686"` |  |
 | vector.customConfig.api.enabled | bool | `true` |  |
