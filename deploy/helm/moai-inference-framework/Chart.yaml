@@ -51,7 +51,7 @@ dependencies:
     repository: https://grafana.github.io/helm-charts
     condition: loki.enabled
   - name: redis-operator
-    version: 3.3.0
+    version: 3.2.9
     repository: https://spotahome.github.io/redis-operator
     condition: redis-operator.enabled
   - name: vector

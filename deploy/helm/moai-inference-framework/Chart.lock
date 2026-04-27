@@ -31,9 +31,9 @@ dependencies:
   version: 6.30.0
 - name: redis-operator
   repository: https://spotahome.github.io/redis-operator
-  version: 3.3.0
+  version: 3.2.9
 - name: vector
   repository: https://helm.vector.dev
   version: 0.39.0
-digest: sha256:ab971d169d8743ba249511b76f2bb7d04543051d77b1f3c10f6152774bf8e852
-generated: "2026-04-28T00:20:27.041591+09:00"
+digest: sha256:e5028bc91efde6937c0a21594f04e03431f2fbef8953f9a5fd1ebc7e9a6a9a03
+generated: "2026-04-28T00:27:53.71497+09:00"
