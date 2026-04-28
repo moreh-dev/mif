@@ -99,7 +99,7 @@ Separate profile handler for Prefill-Decode (PD) disaggregation, predating `disa
 | `prefixPluginType`  | `string` | `"prefix-cache-scorer"`     | Plugin type of the prefix cache scorer the decider reads from. Must be the registered type string.                                       |
 | `prefixPluginName`  | `string` | (value of `prefixPluginType`) | Plugin name (instance name) of the prefix cache scorer.                                                                               |
 | `primaryPort`       | `int`    | `0`                         | When non-zero, rewrites the decode endpoint's port to this value (used with data parallelism). Must be between 1 and 65535 when set.     |
-| `deciderPluginName` | `string` | `"always-disagg-pd-decider"` | Name of the decider plugin. The referenced plugin must implement the PD decider interface.                                             |
+| `deciderPluginName` | `string` | `"prefix-based-pd-decider"` | Name of the decider plugin. The referenced plugin must implement the PD decider interface.                                              |
 
 :::warning
 Like `disagg-profile-handler`, the decider plugin (and `disagg-headers-handler`) must appear **earlier** in the top-level `plugins` list than `pd-profile-handler`. New deployments should prefer `disagg-profile-handler` — `pd-profile-handler` is kept for backward compatibility with existing `heimdall-values.yaml` files.
