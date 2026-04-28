@@ -105,6 +105,18 @@ Separate profile handler for Prefill-Decode (PD) disaggregation, predating `disa
 Like `disagg-profile-handler`, the decider plugin (and `disagg-headers-handler`) must appear **earlier** in the top-level `plugins` list than `pd-profile-handler`. New deployments should prefer `disagg-profile-handler` — `pd-profile-handler` is kept for backward compatibility with existing `heimdall-values.yaml` files.
 :::
 
+### `data-parallel-profile-handler`
+
+Profile handler for data-parallel deployments. Expects exactly one `SchedulingProfile`; when configured with anything other than one, the handler returns an empty selection. After picking the primary endpoint, the handler optionally rewrites the endpoint's port to `primaryPort`, which is useful when a sidecar (such as Istio) terminates the data-parallel split on a different port from the model server.
+
+| Parameter     | Type  | Default | Description                                                                                                                                       |
+| :------------ | :---- | :------ | :------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `primaryPort` | `int` | `8000`  | Port to substitute on the selected endpoint. Set to `0` to keep the endpoint's original port. Must be between `1` and `65535` when non-zero.       |
+
+:::info
+On startup, this handler logs a deprecation notice recommending `single-profile-handler` paired with Istio 1.28.1 or newer. New deployments should follow that recommendation; this handler is retained for clusters that cannot run a recent enough Istio.
+:::
+
 ---
 
 ## Deciders
