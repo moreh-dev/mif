@@ -182,6 +182,17 @@ Filters for pods designated with an `encode` role. It retains pods whose `mif.mo
 
 No parameters.
 
+### `prefill-weight-filter` / `decode-weight-filter`
+
+Splits candidate endpoints between the prefill and decode phases according to a configured worker-weight ratio. Both filters share the same factory and parameters; the type name (`prefill-weight-filter` vs `decode-weight-filter`) determines which side of the split each instance keeps.
+
+| Parameter  | Type      | Default | Description                                                                                                                                                                                                       |
+| :--------- | :-------- | :------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `weight`   | `float64` | `1.0`   | Worker weight assigned to this side of the split. Must be greater than `0`. The prefill/decode counts are derived from the ratio of the two filters' weights. Initialization fails if `weight` is `0` or negative. |
+| `precise`  | `bool`    | `false` | When `false`, the filter splits the candidate list by ratio (the first N go to prefill, the rest to decode). When `true`, endpoints are bucketed per role using a shared worker cache.                              |
+
+Both filters must be instantiated together (one of each type) for the split to work; using only one yields no candidates for the other phase.
+
 ### `context-length-aware` {#context-length-aware-filter}
 
 Also functions as a filter when `enableFiltering` is set to `true`. Pods whose label-defined range does not cover the estimated token count of the request are removed. See the [scorer section](#context-length-aware) for parameters.
