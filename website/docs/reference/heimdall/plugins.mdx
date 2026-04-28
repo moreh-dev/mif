@@ -555,4 +555,9 @@ Supported backends: an in-memory store, or a tiered store with a hot Redis tier 
 | :------------ | :------------------ | :------------------------- | :-------------------------------------------------------------------------------------------------------------- |
 | `storeConfig` | `Object` (optional) | in-memory backend, `ttl: 24h` | Backend selection and configuration. When omitted, Heimdall uses an in-memory backend with a 24-hour TTL. |
 
-The `storeConfig` object supports a `ttl` string (Go duration, default `"24h"`) plus one of the following backend sub-objects: `inMemory`, `redis`/`valkey`, or `mongo`. Consult the operator documentation for backend-specific fields; use the in-memory backend for smoke testing and a shared backend (Redis/Valkey/MongoDB) for production.
+The `storeConfig` object exposes two backend sub-objects:
+
+- `inMemoryConfig` — process-local store with `ttl` (Go duration, default `"24h"`), `maxEntries`, and `maxEntryBytes`.
+- `tieredConfig` — a hot Redis tier with an optional cold MongoDB tier, configured under `tieredConfig.redis` and `tieredConfig.mongo`. When `mongo` is omitted, the store runs in Redis-only (tier-1) mode. An optional `tieredConfig.stream` block tunes the Redis Streams consumer that replicates entries from Redis to MongoDB. Each backend tier carries its own TTL on its config block (for example, `tieredConfig.redis.ttl`).
+
+Use the in-memory backend for smoke testing and the tiered backend for production. Standalone Valkey configuration was removed; deploy a Valkey-compatible service through `tieredConfig.redis` instead.
