@@ -217,9 +217,11 @@ Also functions as a filter when `enableFiltering` is set to `true`. Pods whose l
 
 Scores pods based on the number of active (in-flight) requests being served. Scores are normalized from 0 to 1. Also hooks the request/response lifecycle to maintain its in-flight counter.
 
-| Parameter        | Type     | Default | Description                                                                                          |
-| :--------------- | :------- | :------ | :--------------------------------------------------------------------------------------------------- |
-| `requestTimeout` | `string` | `"2m"`  | Go duration string (for example `"30s"`, `"1m"`). A request older than this is treated as dropped. |
+| Parameter        | Type      | Default | Description                                                                                                                                                                                                                                |
+| :--------------- | :-------- | :------ | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `requestTimeout` | `string`  | `"2m"`  | Go duration string (for example `"30s"`, `"1m"`). A request older than this is treated as dropped.                                                                                                                                          |
+| `idleThreshold`  | `int`     | `0`     | Maximum active-request count at which a pod is still considered idle. Idle pods receive a score of `1.0`. With the default `0`, only pods with zero in-flight requests are idle.                                                            |
+| `maxBusyScore`   | `float64` | `1.0`   | Cap on the score assigned to busy pods (those above `idleThreshold`). Lowering this value widens the gap between idle and busy pods. With the default `1.0`, busy pods can score up to `1.0`; with `0.5`, the busiest pod scores `0.0` and the least busy busy pod scores `0.5`. |
 
 ### `load-aware-scorer`
 
