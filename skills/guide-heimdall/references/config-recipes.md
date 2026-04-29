@@ -3,6 +3,10 @@
 Complete `heimdall-values.yaml` examples for common deployment patterns.
 Copy a recipe, replace `<...>` placeholders, and save as your `heimdall-values.yaml`.
 
+:::warning
+`pd-profile-handler` is legacy and has been replaced by [`disagg-profile-handler`](https://test-docs.moreh.io/dev/reference/heimdall/plugins/#disagg-profile-handler).
+:::
+
 **Verification status:**
 - **[verified]** — Directly sourced from docs, test configs, or chart defaults
 - **[unverified]** — Constructed from plugin specs; functionally valid but not tested in production
@@ -62,9 +66,12 @@ config:
   apiVersion: inference.networking.x-k8s.io/v1alpha1
   kind: EndpointPickerConfig
   plugins:
-    - type: always-disagg-pd-decider  # must precede pd-profile-handler (factory-time lookup)
-    - type: disagg-headers-handler    # must precede pd-profile-handler (factory-time lookup)
-    - type: pd-profile-handler
+    - type: disagg-headers-handler
+    - type: always-disagg-pd-decider
+    - type: disagg-profile-handler
+      parameters:
+        deciders:
+          prefill: always-disagg-pd-decider
     - type: prefill-filter
     - type: decode-filter
     - type: queue-scorer
@@ -109,9 +116,12 @@ config:
   apiVersion: inference.networking.x-k8s.io/v1alpha1
   kind: EndpointPickerConfig
   plugins:
-    - type: always-disagg-pd-decider  # must precede pd-profile-handler (factory-time lookup)
-    - type: disagg-headers-handler    # must precede pd-profile-handler (factory-time lookup)
-    - type: pd-profile-handler
+    - type: disagg-headers-handler
+    - type: always-disagg-pd-decider
+    - type: disagg-profile-handler
+      parameters:
+        deciders:
+          prefill: always-disagg-pd-decider
     - type: prefill-filter
     - type: decode-filter
     - type: queue-scorer

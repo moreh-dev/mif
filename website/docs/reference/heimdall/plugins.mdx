@@ -99,7 +99,7 @@ Separate profile handler for Prefill-Decode (PD) disaggregation, predating `disa
 | `prefixPluginType`  | `string` | `"prefix-cache-scorer"`     | Plugin type of the prefix cache scorer the decider reads from. Must be the registered type string.                                       |
 | `prefixPluginName`  | `string` | (value of `prefixPluginType`) | Plugin name (instance name) of the prefix cache scorer.                                                                               |
 | `primaryPort`       | `int`    | `0`                         | When non-zero, rewrites the decode endpoint's port to this value (used with data parallelism). Must be between 1 and 65535 when set.     |
-| `deciderPluginName` | `string` | `"always-disagg-pd-decider"` | Name of the decider plugin. The referenced plugin must implement the PD decider interface.                                             |
+| `deciderPluginName` | `string` | `"prefix-based-pd-decider"` | Name of the decider plugin. The referenced plugin must implement the PD decider interface.                                             |
 
 :::warning
 Like `disagg-profile-handler`, the decider plugin (and `disagg-headers-handler`) must appear **earlier** in the top-level `plugins` list than `pd-profile-handler`. New deployments should prefer `disagg-profile-handler` — `pd-profile-handler` is kept for backward compatibility with existing `heimdall-values.yaml` files.
@@ -230,10 +230,9 @@ Scores pods based on **precise** prefix-cache KV-block locality, computed from r
 
 #### `tokenProcessorConfig`
 
-| Parameter   | Type     | Default | Description                                                     |
-| :---------- | :------- | :------ | :-------------------------------------------------------------- |
-| `blockSize` | `int`    | `16`    | Number of tokens per block.                                     |
-| `hashSeed`  | `string` | `""`    | Seed for computing block hashes. Should match `PYTHONHASHSEED`. |
+| Parameter   | Type     | Default | Description                                                                                                                            |
+| :---------- | :------- | :------ | :------------------------------------------------------------------------------------------------------------------------------------- |
+| `blockSize` | `int`    | `16`    | Number of tokens per block. Must match the InferenceService's `--block-size` (the value vLLM is started with on the inference pods).   |
 
 #### `indexerConfig`
 
@@ -328,11 +327,10 @@ Configure exactly one backend.
 
 ##### `podDiscoveryConfig`
 
-| Parameter          | Type     | Default                            | Description                               |
-| :----------------- | :------- | :--------------------------------- | :---------------------------------------- |
-| `podLabelSelector` | `string` | `"llm-d.ai/inferenceServing=true"` | Label selector to find pods.              |
-| `podNamespace`     | `string` | `""`                               | Namespace to watch pods in (empty = all). |
-| `socketPort`       | `int`    | `5557`                             | Port where pods expose their ZMQ socket.  |
+| Parameter      | Type     | Default | Description                               |
+| :------------- | :------- | :------ | :---------------------------------------- |
+| `podNamespace` | `string` | `""`    | Namespace to watch pods in (empty = all). |
+| `socketPort`   | `int`    | `5557`  | Port where pods expose their ZMQ socket.  |
 
 ### `prefix-cache-scorer`
 
@@ -440,9 +438,9 @@ Publishes the endpoints selected by `disagg-profile-handler` or the legacy `pd-p
 | `prefillProfile`  | `string` | `"prefill"` | Name of the `SchedulingProfile` whose result provides the prefill endpoint.     |
 | `encodeProfile`   | `string` | `"encode"`  | Name of the `SchedulingProfile` whose result provides the encode endpoint list. |
 
-:::info
-`prefill-header-handler` is kept as a legacy alias that resolves to this same plugin (both names share `DisaggHeadersHandlerFactory`). Existing `heimdall-values.yaml` files that reference `prefill-header-handler` continue to work.
-:::
+### `prefill-header-handler` (legacy)
+
+Legacy alias for [`disagg-headers-handler`](#disagg-headers-handler) (both names share the same factory). Existing `heimdall-values.yaml` files that reference `prefill-header-handler` continue to work; new deployments should use `disagg-headers-handler`.
 
 ---
 
@@ -496,7 +494,7 @@ When heimdall-proxy is deployed with `--response-header`, the proxy natively set
 
 Data layer plugins feed pod-level signals (metrics, running model names, and so on) into the scheduler. They are declared in the top-level `plugins` list and wired together through the [`data`](./api-reference.mdx#datalayerconfig) field of `EndpointPickerConfig`: a `DataLayerSource` references a source plugin via `pluginRef` and attaches a list of extractor plugins.
 
-### `models` (data source)
+### `models-data-source`
 
 Polls each pod's `/v1/models` endpoint (or a configurable path) to discover which models are currently being served.
 
@@ -506,9 +504,9 @@ Polls each pod's `/v1/models` endpoint (or a configurable path) to discover whic
 | `path`               | `string` | `"/v1/models"` | URL path of the models endpoint.                           |
 | `insecureSkipVerify` | `bool`   | `true`        | Skip TLS certificate verification on the pod connection.   |
 
-### `models-extractor`
+### `model-server-protocol-models`
 
-Extracts the list of running model identifiers from a `models` source and publishes them on the pod's data-layer record, where downstream plugins can read them.
+Extracts the list of running model identifiers from a `models-data-source` and publishes them on the pod's data-layer record, where downstream plugins can read them.
 
 No parameters.
 
