@@ -47,6 +47,10 @@ inferencePool:
 
 ## Recipe 2: PD-disaggregated with queue scoring [verified]
 
+:::warning
+`pd-profile-handler` is legacy and has been replaced by [`disagg-profile-handler`](../../../website/docs/reference/heimdall/plugins.mdx#disagg-profile-handler). Recipes 2 and 3 below use the canonical `disagg-profile-handler` with the nested `profiles.*` / `deciders.*` schema.
+:::
+
 Source: `test/e2e/performance/config/heimdall-values.yaml.tmpl`
 
 Separate prefill and decode pods. Each phase gets its own scheduling profile.
@@ -62,13 +66,19 @@ config:
   apiVersion: inference.networking.x-k8s.io/v1alpha1
   kind: EndpointPickerConfig
   plugins:
-    - type: always-disagg-pd-decider  # must precede pd-profile-handler (factory-time lookup)
-    - type: disagg-headers-handler    # must precede pd-profile-handler (factory-time lookup)
-    - type: pd-profile-handler
+    - type: always-disagg-pd-decider  # must precede disagg-profile-handler (factory-time lookup)
+    - type: disagg-headers-handler    # must precede disagg-profile-handler (factory-time lookup)
     - type: prefill-filter
     - type: decode-filter
     - type: queue-scorer
     - type: max-score-picker
+    - type: disagg-profile-handler
+      parameters:
+        profiles:
+          prefill: prefill
+          decode: decode
+        deciders:
+          prefill: always-disagg-pd-decider
   schedulingProfiles:
     - name: prefill
       plugins:
@@ -109,14 +119,20 @@ config:
   apiVersion: inference.networking.x-k8s.io/v1alpha1
   kind: EndpointPickerConfig
   plugins:
-    - type: always-disagg-pd-decider  # must precede pd-profile-handler (factory-time lookup)
-    - type: disagg-headers-handler    # must precede pd-profile-handler (factory-time lookup)
-    - type: pd-profile-handler
+    - type: always-disagg-pd-decider  # must precede disagg-profile-handler (factory-time lookup)
+    - type: disagg-headers-handler    # must precede disagg-profile-handler (factory-time lookup)
     - type: prefill-filter
     - type: decode-filter
     - type: queue-scorer
     - type: kv-cache-utilization-scorer
     - type: max-score-picker
+    - type: disagg-profile-handler
+      parameters:
+        profiles:
+          prefill: prefill
+          decode: decode
+        deciders:
+          prefill: always-disagg-pd-decider
   schedulingProfiles:
     - name: prefill
       plugins:

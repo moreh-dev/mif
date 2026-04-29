@@ -97,9 +97,9 @@ Separate profile handler for Prefill-Decode (PD) disaggregation, predating `disa
 | `decodeProfile`     | `string` | `"decode"`                  | Name of the `SchedulingProfile` to use for decode endpoints.                                                                             |
 | `prefillProfile`    | `string` | `"prefill"`                 | Name of the `SchedulingProfile` to use for prefill endpoints.                                                                            |
 | `prefixPluginType`  | `string` | `"prefix-cache-scorer"`     | Plugin type of the prefix cache scorer the decider reads from. Must be the registered type string.                                       |
-| `prefixPluginName`  | `string` | (value of `prefixPluginType`) | Plugin name (instance name) of the prefix cache scorer.                                                                               |
+| `prefixPluginName`  | `string` | `""`                        | Plugin name (instance name) of the prefix cache scorer.                                                                                  |
 | `primaryPort`       | `int`    | `0`                         | When non-zero, rewrites the decode endpoint's port to this value (used with data parallelism). Must be between 1 and 65535 when set.     |
-| `deciderPluginName` | `string` | `"always-disagg-pd-decider"` | Name of the decider plugin. The referenced plugin must implement the PD decider interface.                                             |
+| `deciderPluginName` | `string` | `"prefix-based-pd-decider"` | Name of the decider plugin. The referenced plugin must implement the PD decider interface.                                               |
 
 :::warning
 Like `disagg-profile-handler`, the decider plugin (and `disagg-headers-handler`) must appear **earlier** in the top-level `plugins` list than `pd-profile-handler`. New deployments should prefer `disagg-profile-handler` — `pd-profile-handler` is kept for backward compatibility with existing `heimdall-values.yaml` files.
@@ -194,9 +194,11 @@ Also functions as a filter when `enableFiltering` is set to `true`. Pods whose l
 
 Scores pods based on the number of active (in-flight) requests being served. Scores are normalized from 0 to 1. Also hooks the request/response lifecycle to maintain its in-flight counter.
 
-| Parameter        | Type     | Default | Description                                                                                          |
-| :--------------- | :------- | :------ | :--------------------------------------------------------------------------------------------------- |
-| `requestTimeout` | `string` | `"2m"`  | Go duration string (for example `"30s"`, `"1m"`). A request older than this is treated as dropped. |
+| Parameter        | Type      | Default | Description                                                                                                                                |
+| :--------------- | :-------- | :------ | :----------------------------------------------------------------------------------------------------------------------------------------- |
+| `requestTimeout` | `string`  | `"2m"`  | Go duration string (for example `"30s"`, `"1m"`). A request older than this is treated as dropped.                                         |
+| `idleThreshold`  | `int`     | `0`     | Active-request count at or below which a pod is treated as idle and receives the maximum score.                                            |
+| `maxBusyScore`   | `float64` | `1.0`   | Upper bound used when normalizing scores for non-idle pods. Pods at or above this load receive `0`; idle pods receive `1`.                  |
 
 ### `load-aware-scorer`
 
@@ -328,11 +330,10 @@ Configure exactly one backend.
 
 ##### `podDiscoveryConfig`
 
-| Parameter          | Type     | Default                            | Description                               |
-| :----------------- | :------- | :--------------------------------- | :---------------------------------------- |
-| `podLabelSelector` | `string` | `"llm-d.ai/inferenceServing=true"` | Label selector to find pods.              |
-| `podNamespace`     | `string` | `""`                               | Namespace to watch pods in (empty = all). |
-| `socketPort`       | `int`    | `5557`                             | Port where pods expose their ZMQ socket.  |
+| Parameter      | Type     | Default | Description                               |
+| :------------- | :------- | :------ | :---------------------------------------- |
+| `podNamespace` | `string` | `""`    | Namespace to watch pods in (empty = all). |
+| `socketPort`   | `int`    | `5557`  | Port where pods expose their ZMQ socket.  |
 
 ### `prefix-cache-scorer`
 
@@ -506,7 +507,7 @@ Polls each pod's `/v1/models` endpoint (or a configurable path) to discover whic
 | `path`               | `string` | `"/v1/models"` | URL path of the models endpoint.                           |
 | `insecureSkipVerify` | `bool`   | `true`        | Skip TLS certificate verification on the pod connection.   |
 
-### `models-extractor`
+### `model-server-protocol-models`
 
 Extracts the list of running model identifiers from a `models` source and publishes them on the pod's data-layer record, where downstream plugins can read them.
 

@@ -90,7 +90,7 @@ For more details on available plugins, see [Plugins](./plugins.mdx).
 
 | Field        | Type     | Required | Description                                                                                                          |
 | :----------- | :------- | :------: | :------------------------------------------------------------------------------------------------------------------- |
-| `type`       | `string` | Yes      | Plugin type string (for example `"pd-profile-handler"`, `"queue-scorer"`).                                            |
+| `type`       | `string` | Yes      | Plugin type string (for example `"disagg-profile-handler"`, `"queue-scorer"`).                                        |
 | `name`       | `string` | No       | Unique name for this plugin instance. When omitted, the value of `type` is used. Referenced by `pluginRef` elsewhere. |
 | `parameters` | `object` | No       | Parameters passed to the plugin's factory function. The schema is defined per plugin type.                            |
 
@@ -166,6 +166,6 @@ Set the experimental features to enable through the top-level `featureGates` lis
 
 | Gate                   | What it enables                                                                                                                                       |
 | :--------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `dataLayer`            | Activates the DataLayer subsystem. Required for the `data:` section to have any effect and for the `models` / `models-extractor` plugins to run.     |
+| `dataLayer`            | Activates the DataLayer subsystem. Required for the `data:` section to have any effect and for the `models` / `model-server-protocol-models` plugins to run. |
 | `prepareDataPlugins`   | Activates the `PrepareDataPlugin` interface. Required by the [`tokenizer`](./plugins.mdx#tokenizer) and [`responses-store`](./plugins.mdx#responses-store) plugins. |
 | `flowControl`          | Activates the Flow Control subsystem. Required for the `flowControl:` section to have any effect.                                                    |
