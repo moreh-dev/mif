@@ -2262,7 +2262,7 @@
           "type": "prometheus",
           "uid": "prometheus"
         },
-        "definition": "label_values(aigateway_requests_total, namespace)",
+        "definition": "label_values(aigateway_endpoints_healthy, namespace)",
         "includeAll": true,
         "label": "namespace",
         "multi": true,
@@ -2270,8 +2270,8 @@
         "options": [],
         "query": {
           "qryType": 0,
-          "query": "label_values(aigateway_requests_total, namespace)",
-          "refId": "label_values(aigateway_requests_total, namespace)"
+          "query": "label_values(aigateway_endpoints_healthy, namespace)",
+          "refId": "label_values(aigateway_endpoints_healthy, namespace)"
         },
         "refresh": 2,
         "regex": "",
@@ -2288,7 +2288,7 @@
           "type": "prometheus",
           "uid": "prometheus"
         },
-        "definition": "label_values(aigateway_requests_total{namespace=~\"$namespace\"}, aigateway)",
+        "definition": "label_values(aigateway_endpoints_healthy{namespace=~\"$namespace\"}, aigateway)",
         "includeAll": true,
         "label": "aigateway",
         "multi": true,
@@ -2296,8 +2296,8 @@
         "options": [],
         "query": {
           "qryType": 0,
-          "query": "label_values(aigateway_requests_total{namespace=~\"$namespace\"}, aigateway)",
-          "refId": "label_values(aigateway_requests_total{namespace=~\"$namespace\"}, aigateway)"
+          "query": "label_values(aigateway_endpoints_healthy{namespace=~\"$namespace\"}, aigateway)",
+          "refId": "label_values(aigateway_endpoints_healthy{namespace=~\"$namespace\"}, aigateway)"
         },
         "refresh": 2,
         "regex": "",
@@ -2362,19 +2362,19 @@
           "type": "prometheus",
           "uid": "prometheus"
         },
-        "definition": "query_result(group by (hostname) (gpu_gfx_activity or label_replace(DCGM_FI_DEV_GPU_UTIL, \"hostname\", \"$1\", \"Hostname\", \"(.+)\")))",
+        "definition": "label_values(inference_service_waiting_requests, hostname)",
         "includeAll": true,
         "label": "hostname",
         "multi": true,
         "name": "hostname",
         "options": [],
         "query": {
-          "qryType": 1,
-          "query": "query_result(group by (hostname) (gpu_gfx_activity or label_replace(DCGM_FI_DEV_GPU_UTIL, \"hostname\", \"$1\", \"Hostname\", \"(.+)\")))",
+          "qryType": 0,
+          "query": "label_values(inference_service_waiting_requests, hostname)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 2,
-        "regex": "/hostname=\"([^\"]+)\"/",
+        "regex": "",
         "type": "query"
       },
       {
