@@ -7,6 +7,10 @@ Copy a recipe, replace `<...>` placeholders, and save as your `heimdall-values.y
 - **[verified]** — Directly sourced from docs, test configs, or chart defaults
 - **[unverified]** — Constructed from plugin specs; functionally valid but not tested in production
 
+:::warning
+`pd-profile-handler` is legacy and has been replaced by [`disagg-profile-handler`](../../../website/docs/reference/heimdall/plugins.mdx#disagg-profile-handler). The PD recipes below use the canonical handler. Existing deployments that still reference the legacy handler should migrate.
+:::
+
 ---
 
 ## Recipe 1: Basic aggregate (quickstart) [verified]
@@ -62,13 +66,19 @@ config:
   apiVersion: inference.networking.x-k8s.io/v1alpha1
   kind: EndpointPickerConfig
   plugins:
-    - type: always-disagg-pd-decider  # must precede pd-profile-handler (factory-time lookup)
-    - type: disagg-headers-handler    # must precede pd-profile-handler (factory-time lookup)
-    - type: pd-profile-handler
+    - type: disagg-headers-handler    # must precede disagg-profile-handler (factory-time lookup)
+    - type: always-disagg-pd-decider  # must precede disagg-profile-handler (factory-time lookup)
     - type: prefill-filter
     - type: decode-filter
     - type: queue-scorer
     - type: max-score-picker
+    - type: disagg-profile-handler
+      parameters:
+        profiles:
+          prefill: prefill
+          decode: decode
+        deciders:
+          prefill: always-disagg-pd-decider
   schedulingProfiles:
     - name: prefill
       plugins:
@@ -109,14 +119,20 @@ config:
   apiVersion: inference.networking.x-k8s.io/v1alpha1
   kind: EndpointPickerConfig
   plugins:
-    - type: always-disagg-pd-decider  # must precede pd-profile-handler (factory-time lookup)
-    - type: disagg-headers-handler    # must precede pd-profile-handler (factory-time lookup)
-    - type: pd-profile-handler
+    - type: disagg-headers-handler    # must precede disagg-profile-handler (factory-time lookup)
+    - type: always-disagg-pd-decider  # must precede disagg-profile-handler (factory-time lookup)
     - type: prefill-filter
     - type: decode-filter
     - type: queue-scorer
     - type: kv-cache-utilization-scorer
     - type: max-score-picker
+    - type: disagg-profile-handler
+      parameters:
+        profiles:
+          prefill: prefill
+          decode: decode
+        deciders:
+          prefill: always-disagg-pd-decider
   schedulingProfiles:
     - name: prefill
       plugins:

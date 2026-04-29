@@ -9,7 +9,7 @@ description: Expert guide for configuring and deploying Heimdall, the MoAI Infer
 
 Heimdall is the request-routing and scheduling component of the MoAI Inference Framework (MIF). It implements the Kubernetes [Gateway API Inference Extension](https://gateway-api-inference-extension.sigs.k8s.io/) Endpoint Picker Protocol (EPP), deciding which inference pod each incoming request should be sent to.
 
-Heimdall is Moreh's implementation of the EPP within the broader Kubernetes inference ecosystem. The Gateway API Inference Extension defines standard CRDs (`InferencePool`, `EndpointPickerConfig`) that decouple scheduling logic from the gateway controller (Istio, Kgateway, etc.). The open-source [llm-d](https://github.com/llm-d/llm-d) project provides a reference EPP implementation; Heimdall is a production-grade alternative that extends the standard with MIF-specific features such as the `pd-profile-handler` for prefill-decode disaggregation, `lora-affinity-scorer`, and deep integration with Odin's InferenceService operator. While the core plugin types (filters, scorers, pickers) follow the Gateway API Inference Extension specification, Heimdall's plugin set and configuration options are a superset of what the upstream standard defines.
+Heimdall is Moreh's implementation of the EPP within the broader Kubernetes inference ecosystem. The Gateway API Inference Extension defines standard CRDs (`InferencePool`, `EndpointPickerConfig`) that decouple scheduling logic from the gateway controller (Istio, Kgateway, etc.). The open-source [llm-d](https://github.com/llm-d/llm-d) project provides a reference EPP implementation; Heimdall is a production-grade alternative that extends the standard with MIF-specific features such as the `disagg-profile-handler` for prefill-decode disaggregation, `lora-affinity-scorer`, and deep integration with Odin's InferenceService operator. While the core plugin types (filters, scorers, pickers) follow the Gateway API Inference Extension specification, Heimdall's plugin set and configuration options are a superset of what the upstream standard defines.
 
 **This skill covers:**
 - Heimdall plugin selection and configuration
@@ -219,9 +219,13 @@ Use this decision tree to choose the right plugins for your deployment.
 | Deployment type | Profile handler | Profiles created |
 | --- | --- | --- |
 | **Aggregate** — all pods serve both prefill and decode | `single-profile-handler` | `default` |
-| **PD-disaggregated** — separate prefill and decode pod pools | `pd-profile-handler` | `prefill`, `decode` |
+| **PD-disaggregated** — separate prefill and decode pod pools | `disagg-profile-handler` | `prefill`, `decode` |
 
-- If using `pd-profile-handler` (or the newer `disagg-profile-handler`), you **must** also instantiate `prefill-filter`, `decode-filter`, one PD decider plugin (`always-disagg-pd-decider` by default, or `prefix-based-pd-decider` for cache-aware PD), and `disagg-headers-handler` (or its legacy alias `prefill-header-handler`). The filters must be present in the top-level `plugins` list because `schedulingProfiles[].plugins[].pluginRef` resolves against that list. The ordering requirement is specific to the decider and `disagg-headers-handler`: both must appear **before** the profile handler in the top-level `plugins` list, because the profile handler's factory looks them up during initialization.
+:::warning
+`pd-profile-handler` is legacy and has been replaced by [`disagg-profile-handler`](../../website/docs/reference/heimdall/plugins.mdx#disagg-profile-handler). Existing deployments may still reference the legacy handler; new configurations should use the canonical one.
+:::
+
+- If using `disagg-profile-handler`, you **must** also instantiate `prefill-filter`, `decode-filter`, one PD decider plugin (`prefix-based-pd-decider` for cache-aware PD, or `always-disagg-pd-decider` to always run prefill), and `disagg-headers-handler`. The filters must be present in the top-level `plugins` list because `schedulingProfiles[].plugins[].pluginRef` resolves against that list. The ordering requirement is specific to the decider and `disagg-headers-handler`: both must appear **before** the profile handler in the top-level `plugins` list, because the profile handler's factory looks them up during initialization.
 - Prefill pods must be labeled with `mif.moreh.io/role: prefill`. Decode pods can be labeled `mif.moreh.io/role: decode` or `both`, and `decode-filter` also treats pods with no `mif.moreh.io/role` label as decode.
 
 ### Step 2: Choose scorer(s)
@@ -259,8 +263,8 @@ All pickers support a `maxNumOfEndpoints` parameter (default: `1`, type: `int`) 
 
 | Filter | Purpose |
 | --- | --- |
-| `prefill-filter` | Required with `pd-profile-handler` — keeps `mif.moreh.io/role: prefill` pods |
-| `decode-filter` | Required with `pd-profile-handler` — keeps `role: decode`, `both`, or unlabeled |
+| `prefill-filter` | Required with `disagg-profile-handler` — keeps `mif.moreh.io/role: prefill` pods |
+| `decode-filter` | Required with `disagg-profile-handler` — keeps `role: decode`, `both`, or unlabeled |
 | `by-label` | Custom filtering by any label key/values |
 | `by-label-selector` | Custom filtering by `matchLabels` map |
 
@@ -310,13 +314,19 @@ config:
   apiVersion: inference.networking.x-k8s.io/v1alpha1
   kind: EndpointPickerConfig
   plugins:
-    - type: always-disagg-pd-decider  # must precede pd-profile-handler (factory-time lookup)
-    - type: disagg-headers-handler    # must precede pd-profile-handler (factory-time lookup)
-    - type: pd-profile-handler
+    - type: disagg-headers-handler    # must precede disagg-profile-handler (factory-time lookup)
+    - type: always-disagg-pd-decider  # must precede disagg-profile-handler (factory-time lookup)
     - type: prefill-filter
     - type: decode-filter
     - type: queue-scorer
     - type: max-score-picker
+    - type: disagg-profile-handler
+      parameters:
+        profiles:
+          prefill: prefill
+          decode: decode
+        deciders:
+          prefill: always-disagg-pd-decider
   schedulingProfiles:
     - name: prefill
       plugins:
@@ -487,7 +497,7 @@ The MIF Grafana dashboard includes these Heimdall-specific panels:
 ### PD-disaggregation pods not being selected
 
 1. **Missing role labels:** Ensure pods have `mif.moreh.io/role` set to `prefill`, `decode`, or `both`.
-2. **Wrong profile handler:** Verify `pd-profile-handler` (not `single-profile-handler`) is instantiated.
+2. **Wrong profile handler:** Verify `disagg-profile-handler` (not `single-profile-handler`) is instantiated.
 3. **Filters not in profile:** Both `prefill-filter` and `decode-filter` must be in their respective scheduling profiles.
 
 ---
@@ -495,8 +505,8 @@ The MIF Grafana dashboard includes these Heimdall-specific panels:
 ## Best Practices
 
 1. **Start simple.** Begin with `queue-scorer` + `max-score-picker`. Add scorers only when metrics show a need.
-2. **One profile handler.** Exactly one profile handler must be instantiated. Using both `single-profile-handler` and `pd-profile-handler` is invalid.
-3. **PD filters, decider, and header handler are mandatory.** When using `pd-profile-handler` (or `disagg-profile-handler`), always pair with `prefill-filter` (in the prefill profile), `decode-filter` (in the decode profile), a PD decider plugin (`always-disagg-pd-decider` or `prefix-based-pd-decider`), and `disagg-headers-handler` in the top-level `plugins` list.
+2. **One profile handler.** Exactly one profile handler must be instantiated. Using both `single-profile-handler` and `disagg-profile-handler` is invalid.
+3. **PD filters, decider, and header handler are mandatory.** When using `disagg-profile-handler`, always pair with `prefill-filter` (in the prefill profile), `decode-filter` (in the decode profile), a PD decider plugin (`prefix-based-pd-decider` or `always-disagg-pd-decider`), and `disagg-headers-handler` in the top-level `plugins` list.
 4. **Set scorer weights explicitly** when combining multiple scorers. Default weight of 1 for all scorers may not reflect your routing priorities.
 5. **Enable ServiceMonitor** in all non-development deployments for observability.
 6. **Use `saturationDetector`** in production to reject requests to overloaded pods rather than queueing indefinitely.
