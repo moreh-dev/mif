@@ -7,6 +7,10 @@ Copy a recipe, replace `<...>` placeholders, and save as your `heimdall-values.y
 - **[verified]** — Directly sourced from docs, test configs, or chart defaults
 - **[unverified]** — Constructed from plugin specs; functionally valid but not tested in production
 
+:::warning
+`pd-profile-handler` is legacy and has been replaced by [`disagg-profile-handler`](../../../website/docs/reference/heimdall/plugins.mdx#disagg-profile-handler). The recipes below use the canonical handler; the legacy entry exists only so existing `heimdall-values.yaml` files continue to work.
+:::
+
 ---
 
 ## Recipe 1: Basic aggregate (quickstart) [verified]
@@ -62,9 +66,12 @@ config:
   apiVersion: inference.networking.x-k8s.io/v1alpha1
   kind: EndpointPickerConfig
   plugins:
-    - type: always-disagg-pd-decider  # must precede pd-profile-handler (factory-time lookup)
-    - type: disagg-headers-handler    # must precede pd-profile-handler (factory-time lookup)
-    - type: pd-profile-handler
+    - type: always-disagg-pd-decider  # must precede disagg-profile-handler (factory-time lookup)
+    - type: disagg-headers-handler    # must precede disagg-profile-handler (factory-time lookup)
+    - type: disagg-profile-handler
+      parameters:
+        deciders:
+          prefill: always-disagg-pd-decider
     - type: prefill-filter
     - type: decode-filter
     - type: queue-scorer
@@ -109,9 +116,12 @@ config:
   apiVersion: inference.networking.x-k8s.io/v1alpha1
   kind: EndpointPickerConfig
   plugins:
-    - type: always-disagg-pd-decider  # must precede pd-profile-handler (factory-time lookup)
-    - type: disagg-headers-handler    # must precede pd-profile-handler (factory-time lookup)
-    - type: pd-profile-handler
+    - type: always-disagg-pd-decider  # must precede disagg-profile-handler (factory-time lookup)
+    - type: disagg-headers-handler    # must precede disagg-profile-handler (factory-time lookup)
+    - type: disagg-profile-handler
+      parameters:
+        deciders:
+          prefill: always-disagg-pd-decider
     - type: prefill-filter
     - type: decode-filter
     - type: queue-scorer
