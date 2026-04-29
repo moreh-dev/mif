@@ -6,7 +6,6 @@ metadata:
   labels:
     {{- include "mif.runtimeBase.labels" . | nindent 4 }}
     mif.moreh.io/role: e2e
-    mif.moreh.io/parallelism: pp
 spec:
   framework: vllm
   template:

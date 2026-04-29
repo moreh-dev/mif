@@ -5,7 +5,6 @@ metadata:
   namespace: {{ include "common.names.namespace" . }}
   labels:
     {{- include "mif.utils.labels" . | nindent 4 }}
-    mif.moreh.io/parallelism: pp
 spec:
   template:
     spec:
