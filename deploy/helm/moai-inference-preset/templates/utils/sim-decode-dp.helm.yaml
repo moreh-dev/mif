@@ -6,7 +6,6 @@ metadata:
   labels:
     {{- include "mif.utils.labels" . | nindent 4 }}
     mif.moreh.io/role: decode
-    mif.moreh.io/parallelism: dp
 spec:
   framework: vllm
   workerTemplate:
