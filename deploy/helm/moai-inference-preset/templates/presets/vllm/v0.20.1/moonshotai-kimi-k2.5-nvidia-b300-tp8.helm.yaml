@@ -22,9 +22,10 @@ spec:
       containers:
         - name: main
           # v0.20.1 includes CUDA 13.0.2 official wheel (SM103 supported).
-          # Image input supported. Video input NOT supported in vLLM (Moonshot's official
-          # API only — vLLM kimi_k2 modeling code does not register a video processor).
-          # → --limit-mm-per-prompt video=0 to prevent video_url errors.
+          # Multimodal: image + video (vLLM kimi_k25 modeling code registers VisionChunkVideo,
+          # video_chunk modality, and <|kimi_k25_video_placeholder|> token).
+          # Note: Moonshot HF model card states video is "experimental, only supported in our
+          # official API for now" — actual behavior in vLLM should be tested.
           image: vllm/vllm-openai:v0.20.1
           env:
             - name: ISVC_EXTRA_ARGS
@@ -34,10 +35,11 @@ spec:
                 --gpu-memory-utilization 0.92
                 --mm-encoder-tp-mode data
                 --mm-processor-cache-type shm
-                --limit-mm-per-prompt '{"image":4,"video":0}'
+                --limit-mm-per-prompt '{"image":4,"video":1}'
                 --tool-call-parser kimi_k2
                 --reasoning-parser kimi_k2
                 --enable-auto-tool-choice
+                --speculative-config '{"model":"lightseekorg/kimi-k2.5-eagle3","method":"eagle3","num_speculative_tokens":3}'
                 --disable-uvicorn-access-log
                 --no-enable-log-requests
           resources:

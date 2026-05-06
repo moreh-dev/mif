@@ -1,12 +1,13 @@
 apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceServiceTemplate
 metadata:
-  name: vllm-v0.20.1-deepseek-ai-deepseek-v3.2-nvidia-h200-sxm-dp8-moe-ep8
+  name: vllm-v0.20.1-deepseek-ai-deepseek-v3.2-mtp-nvidia-h200-sxm-dp8-moe-ep8
   namespace: {{ include "common.names.namespace" . }}
   labels:
     {{- include "mif.preset.labels" . | nindent 4 }}
     mif.moreh.io/model.org: deepseek-ai
     mif.moreh.io/model.name: deepseek-v3.2
+    mif.moreh.io/model.mtp: "true"
     mif.moreh.io/role: e2e
     mif.moreh.io/accelerator.vendor: nvidia
     mif.moreh.io/accelerator.model: h200-sxm
@@ -38,6 +39,7 @@ spec:
                 --enable-auto-tool-choice
                 --max-model-len -1
                 --gpu-memory-utilization 0.92
+                --speculative-config '{"method":"deepseek_mtp","num_speculative_tokens":3}'
                 --disable-uvicorn-access-log
                 --no-enable-log-requests
           resources:
