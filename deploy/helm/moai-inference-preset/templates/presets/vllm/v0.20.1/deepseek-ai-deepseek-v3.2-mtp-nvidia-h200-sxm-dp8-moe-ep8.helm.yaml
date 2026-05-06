@@ -1,0 +1,56 @@
+apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceServiceTemplate
+metadata:
+  name: vllm-v0.20.1-deepseek-ai-deepseek-v3.2-mtp-nvidia-h200-sxm-dp8-moe-ep8
+  namespace: {{ include "common.names.namespace" . }}
+  labels:
+    {{- include "mif.preset.labels" . | nindent 4 }}
+    mif.moreh.io/model.org: deepseek-ai
+    mif.moreh.io/model.name: deepseek-v3.2
+    mif.moreh.io/model.mtp: "true"
+    mif.moreh.io/role: e2e
+    mif.moreh.io/accelerator.vendor: nvidia
+    mif.moreh.io/accelerator.model: h200-sxm
+    mif.moreh.io/parallelism: "dp8-moe-ep8"
+spec:
+  framework: vllm
+  model:
+    name: deepseek-ai/DeepSeek-V3.2
+  parallelism:
+    data: 8
+    expert: true
+  template:
+    spec:
+      containers:
+        - name: main
+          # v0.20.1 includes WideEP all2all replacement, EPLB refactor, DSV3.2 token leakage fix,
+          # FlashAttention 4 default MLA prefill backend (head-dim 512 + paged-KV).
+          # Retest DP8+EP after v0.19.0 crash (vllm#27259) — multiple indirect fixes included.
+          image: vllm/vllm-openai:v0.20.1
+          env:
+            - name: TRITON_PTXAS_PATH
+              value: /usr/local/cuda/bin/ptxas
+            - name: ISVC_EXTRA_ARGS
+              value: >-
+                --trust-remote-code
+                --tokenizer-mode deepseek_v32
+                --tool-call-parser deepseek_v32
+                --reasoning-parser deepseek_v3
+                --enable-auto-tool-choice
+                --max-model-len -1
+                --gpu-memory-utilization 0.92
+                --speculative-config '{"method":"deepseek_mtp","num_speculative_tokens":3}'
+                --disable-uvicorn-access-log
+                --no-enable-log-requests
+          resources:
+            requests:
+              nvidia.com/gpu: "8"
+            limits:
+              nvidia.com/gpu: "8"
+      nodeSelector:
+        moai.moreh.io/accelerator.vendor: nvidia
+        moai.moreh.io/accelerator.model: h200-sxm
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule

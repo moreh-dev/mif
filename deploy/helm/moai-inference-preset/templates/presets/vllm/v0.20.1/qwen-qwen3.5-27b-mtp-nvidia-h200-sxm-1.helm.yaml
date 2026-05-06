@@ -1,0 +1,53 @@
+apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceServiceTemplate
+metadata:
+  name: vllm-v0.20.1-qwen-qwen3.5-27b-mtp-nvidia-h200-sxm-1
+  namespace: {{ include "common.names.namespace" . }}
+  labels:
+    {{- include "mif.preset.labels" . | nindent 4 }}
+    mif.moreh.io/model.org: qwen
+    mif.moreh.io/model.name: qwen3.5-27b
+    mif.moreh.io/model.mtp: "true"
+    mif.moreh.io/role: e2e
+    mif.moreh.io/accelerator.vendor: nvidia
+    mif.moreh.io/accelerator.model: h200-sxm
+    mif.moreh.io/parallelism: "tp1"
+spec:
+  framework: vllm
+  model:
+    name: Qwen/Qwen3.5-27B
+  parallelism:
+    tensor: 1
+  template:
+    spec:
+      containers:
+        - name: main
+          image: vllm/vllm-openai:v0.20.1
+          env:
+            - name: ISVC_EXTRA_ARGS
+              value: >-
+                --trust-remote-code
+                --max-model-len 262144
+                --gpu-memory-utilization 0.92
+                --reasoning-parser qwen3
+                --tool-call-parser qwen3_coder
+                --enable-auto-tool-choice
+                --enable-prefix-caching
+                --speculative-config '{"method":"qwen3_next_mtp","num_speculative_tokens":3}'
+                --limit-mm-per-prompt '{"image":4,"video":1}'
+                --mm-encoder-tp-mode data
+                --mm-processor-cache-type shm
+                --disable-uvicorn-access-log
+                --no-enable-log-requests
+          resources:
+            requests:
+              nvidia.com/gpu: "1"
+            limits:
+              nvidia.com/gpu: "1"
+      nodeSelector:
+        moai.moreh.io/accelerator.vendor: nvidia
+        moai.moreh.io/accelerator.model: h200-sxm
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
