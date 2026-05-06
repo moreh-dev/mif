@@ -198,7 +198,7 @@ Scores pods based on the number of active (in-flight) requests being served. Sco
 | :--------------- | :-------- | :------ | :--------------------------------------------------------------------------------------------------- |
 | `requestTimeout` | `string`  | `"2m"`  | Go duration string (for example `"30s"`, `"1m"`). A request older than this is treated as dropped.   |
 | `idleThreshold`  | `int`     | `0`     | Maximum active-request count for a pod to be treated as idle. Idle pods score `1.0`.                  |
-| `maxBusyScore`   | `float64` | `1.0`   | Upper bound on the score assigned to busy pods (range `0.0`-`1.0`). Lower values widen the gap between idle and busy. |
+| `maxBusyScore`   | `float`   | `1.0`   | Upper bound on the score assigned to busy pods (range `0.0`-`1.0`). Lower values widen the gap between idle and busy. |
 
 ### `load-aware-scorer`
 
@@ -579,8 +579,8 @@ Example (tiered Redis + MongoDB backend):
 
 | Parameter        | Type                            | Default | Description                                                              |
 | :--------------- | :------------------------------ | :------ | :----------------------------------------------------------------------- |
-| `inMemoryConfig` | [`Object`](#inmemoryconfig-1)   | -       | Configuration for the in-memory backend. Mutually exclusive with `tieredConfig`. |
-| `tieredConfig`   | [`Object`](#tieredconfig)       | -       | Configuration for the Redis/Valkey + optional MongoDB tiered backend. Wins over `inMemoryConfig` when both are set. |
+| `inMemoryConfig` | [`Object`](#inmemoryconfig-1)   | -       | Configuration for the in-memory backend. Used when `tieredConfig` is not set; if both are configured, `tieredConfig` takes precedence. |
+| `tieredConfig`   | [`Object`](#tieredconfig)       | -       | Configuration for the Redis/Valkey + optional MongoDB tiered backend. Takes precedence over `inMemoryConfig` when both are configured. At least one of the two backends must be set. |
 
 ##### `inMemoryConfig`
 
