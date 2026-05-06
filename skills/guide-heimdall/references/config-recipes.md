@@ -45,7 +45,11 @@ inferencePool:
 
 ---
 
-## Recipe 2: PD-disaggregated with queue scoring [verified]
+:::warning
+`pd-profile-handler` is legacy and has been replaced by [`disagg-profile-handler`](../../../website/docs/reference/heimdall/plugins.mdx#disagg-profile-handler).
+:::
+
+## Recipe 2: Disaggregated with queue scoring [verified]
 
 Source: `test/e2e/performance/config/heimdall-values.yaml.tmpl`
 
@@ -62,9 +66,12 @@ config:
   apiVersion: inference.networking.x-k8s.io/v1alpha1
   kind: EndpointPickerConfig
   plugins:
-    - type: always-disagg-pd-decider  # must precede pd-profile-handler (factory-time lookup)
-    - type: disagg-headers-handler    # must precede pd-profile-handler (factory-time lookup)
-    - type: pd-profile-handler
+    - type: always-disagg-pd-decider  # must precede disagg-profile-handler (factory-time lookup)
+    - type: disagg-headers-handler    # must precede disagg-profile-handler (factory-time lookup)
+    - type: disagg-profile-handler
+      parameters:
+        deciders:
+          prefill: always-disagg-pd-decider
     - type: prefill-filter
     - type: decode-filter
     - type: queue-scorer
@@ -92,11 +99,11 @@ inferencePool:
 
 ---
 
-## Recipe 3: Production PD with KV cache awareness [verified]
+## Recipe 3: Production disaggregation with KV cache awareness [verified]
 
-Source: `deploy/helm/heimdall/values.yaml` (chart default config), `website/versioned_docs/version-v0.0.0/reference/heimdall_scheduler.md`
+Source: `deploy/helm/heimdall/values.yaml` (chart default config)
 
-PD-disaggregated with `kv-cache-utilization-scorer` and optional saturation detection.
+Disaggregated with `kv-cache-utilization-scorer` and optional saturation detection.
 This is the Helm chart's default configuration.
 Use for: production environments with varying workloads.
 
@@ -109,9 +116,12 @@ config:
   apiVersion: inference.networking.x-k8s.io/v1alpha1
   kind: EndpointPickerConfig
   plugins:
-    - type: always-disagg-pd-decider  # must precede pd-profile-handler (factory-time lookup)
-    - type: disagg-headers-handler    # must precede pd-profile-handler (factory-time lookup)
-    - type: pd-profile-handler
+    - type: always-disagg-pd-decider  # must precede disagg-profile-handler (factory-time lookup)
+    - type: disagg-headers-handler    # must precede disagg-profile-handler (factory-time lookup)
+    - type: disagg-profile-handler
+      parameters:
+        deciders:
+          prefill: always-disagg-pd-decider
     - type: prefill-filter
     - type: decode-filter
     - type: queue-scorer

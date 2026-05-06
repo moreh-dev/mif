@@ -99,7 +99,7 @@ Separate profile handler for Prefill-Decode (PD) disaggregation, predating `disa
 | `prefixPluginType`  | `string` | `"prefix-cache-scorer"`     | Plugin type of the prefix cache scorer the decider reads from. Must be the registered type string.                                       |
 | `prefixPluginName`  | `string` | (value of `prefixPluginType`) | Plugin name (instance name) of the prefix cache scorer.                                                                               |
 | `primaryPort`       | `int`    | `0`                         | When non-zero, rewrites the decode endpoint's port to this value (used with data parallelism). Must be between 1 and 65535 when set.     |
-| `deciderPluginName` | `string` | `"always-disagg-pd-decider"` | Name of the decider plugin. The referenced plugin must implement the PD decider interface.                                             |
+| `deciderPluginName` | `string` | `"prefix-based-pd-decider"` | Name of the decider plugin. The referenced plugin must implement the PD decider interface. |
 
 :::warning
 Like `disagg-profile-handler`, the decider plugin (and `disagg-headers-handler`) must appear **earlier** in the top-level `plugins` list than `pd-profile-handler`. New deployments should prefer `disagg-profile-handler` — `pd-profile-handler` is kept for backward compatibility with existing `heimdall-values.yaml` files.
@@ -122,7 +122,7 @@ Runs prefill only when the request has enough **non-cached** tokens, based on ho
 
 | Parameter         | Type  | Default | Description                                                                                                                      |
 | :---------------- | :---- | :------ | :------------------------------------------------------------------------------------------------------------------------------- |
-| `nonCachedTokens` | `int` | `0`     | Minimum number of non-cached tokens required to trigger prefill. With the default `0`, prefill runs on every uncached token. |
+| `nonCachedTokens` | `int` | `0` | Minimum number of non-cached tokens required to trigger prefill. With the default `0`, P/D disaggregation is disabled and prefill never runs; set a positive threshold to enable it. |
 
 ### `always-disagg-pd-decider`
 
@@ -194,9 +194,11 @@ Also functions as a filter when `enableFiltering` is set to `true`. Pods whose l
 
 Scores pods based on the number of active (in-flight) requests being served. Scores are normalized from 0 to 1. Also hooks the request/response lifecycle to maintain its in-flight counter.
 
-| Parameter        | Type     | Default | Description                                                                                          |
-| :--------------- | :------- | :------ | :--------------------------------------------------------------------------------------------------- |
-| `requestTimeout` | `string` | `"2m"`  | Go duration string (for example `"30s"`, `"1m"`). A request older than this is treated as dropped. |
+| Parameter        | Type      | Default | Description                                                                                          |
+| :--------------- | :-------- | :------ | :--------------------------------------------------------------------------------------------------- |
+| `requestTimeout` | `string`  | `"2m"`  | Go duration string (for example `"30s"`, `"1m"`). A request older than this is treated as dropped.   |
+| `idleThreshold`  | `int`     | `0`     | Maximum active-request count for a pod to be treated as idle. Idle pods score `1.0`.                  |
+| `maxBusyScore`   | `float64` | `1.0`   | Upper bound on the score assigned to busy pods (range `0.0`-`1.0`). Lower values widen the gap between idle and busy. |
 
 ### `load-aware-scorer`
 
@@ -230,10 +232,9 @@ Scores pods based on **precise** prefix-cache KV-block locality, computed from r
 
 #### `tokenProcessorConfig`
 
-| Parameter   | Type     | Default | Description                                                     |
-| :---------- | :------- | :------ | :-------------------------------------------------------------- |
-| `blockSize` | `int`    | `16`    | Number of tokens per block.                                     |
-| `hashSeed`  | `string` | `""`    | Seed for computing block hashes. Should match `PYTHONHASHSEED`. |
+| Parameter   | Type  | Default | Description                                                                                                                  |
+| :---------- | :---- | :------ | :--------------------------------------------------------------------------------------------------------------------------- |
+| `blockSize` | `int` | `16`    | Number of tokens per block. Must match the InferenceService's `--block-size` (the value vLLM is started with on the inference pods). |
 
 #### `indexerConfig`
 
@@ -328,11 +329,10 @@ Configure exactly one backend.
 
 ##### `podDiscoveryConfig`
 
-| Parameter          | Type     | Default                            | Description                               |
-| :----------------- | :------- | :--------------------------------- | :---------------------------------------- |
-| `podLabelSelector` | `string` | `"llm-d.ai/inferenceServing=true"` | Label selector to find pods.              |
-| `podNamespace`     | `string` | `""`                               | Namespace to watch pods in (empty = all). |
-| `socketPort`       | `int`    | `5557`                             | Port where pods expose their ZMQ socket.  |
+| Parameter      | Type     | Default | Description                               |
+| :------------- | :------- | :------ | :---------------------------------------- |
+| `podNamespace` | `string` | `""`    | Namespace to watch pods in (empty = all). |
+| `socketPort`   | `int`    | `5557`  | Port where pods expose their ZMQ socket.  |
 
 ### `prefix-cache-scorer`
 
@@ -459,13 +459,23 @@ This plugin only activates when the `prepareDataPlugins` feature gate is enabled
 | Parameter            | Type     | Default | Description                                                                                              |
 | :------------------- | :------- | :------ | :------------------------------------------------------------------------------------------------------- |
 | `modelName`          | `string` | -       | Base model name for the tokenizer. (Required)                                                            |
-| `udsTokenizerConfig` | `Object` | (unset) | Unix domain socket tokenizer configuration. When unset, falls back to the in-process default tokenizer. |
+| `udsTokenizerConfig` | [`Object`](#udstokenizerconfig) | (unset) | Unix domain socket tokenizer configuration. When unset, falls back to the in-process default tokenizer. |
 
 #### `udsTokenizerConfig`
 
 | Parameter    | Type     | Default                               | Description                                   |
 | :----------- | :------- | :------------------------------------ | :-------------------------------------------- |
 | `socketFile` | `string` | `/tmp/tokenizer/tokenizer-uds.socket` | Path to the tokenizer UDS socket. |
+
+Example:
+
+```yaml
+- type: tokenizer
+  parameters:
+    modelName: meta-llama/Llama-3.2-1B-Instruct
+    udsTokenizerConfig:
+      socketFile: /tmp/tokenizer/tokenizer-uds.socket
+```
 
 ---
 
@@ -496,7 +506,7 @@ When heimdall-proxy is deployed with `--response-header`, the proxy natively set
 
 Data layer plugins feed pod-level signals (metrics, running model names, and so on) into the scheduler. They are declared in the top-level `plugins` list and wired together through the [`data`](./api-reference.mdx#datalayerconfig) field of `EndpointPickerConfig`: a `DataLayerSource` references a source plugin via `pluginRef` and attaches a list of extractor plugins.
 
-### `models` (data source)
+### `models-data-source`
 
 Polls each pod's `/v1/models` endpoint (or a configurable path) to discover which models are currently being served.
 
@@ -506,9 +516,9 @@ Polls each pod's `/v1/models` endpoint (or a configurable path) to discover whic
 | `path`               | `string` | `"/v1/models"` | URL path of the models endpoint.                           |
 | `insecureSkipVerify` | `bool`   | `true`        | Skip TLS certificate verification on the pod connection.   |
 
-### `models-extractor`
+### `model-server-protocol-models`
 
-Extracts the list of running model identifiers from a `models` source and publishes them on the pod's data-layer record, where downstream plugins can read them.
+Extracts the list of running model identifiers from a `models-data-source` and publishes them on the pod's data-layer record, where downstream plugins can read them.
 
 No parameters.
 
@@ -528,6 +538,96 @@ Supported backends: in-memory, Redis/Valkey, and MongoDB. Configure exactly one 
 
 | Parameter     | Type                | Default                    | Description                                                                                                     |
 | :------------ | :------------------ | :------------------------- | :-------------------------------------------------------------------------------------------------------------- |
-| `storeConfig` | `Object` (optional) | in-memory backend, `ttl: 24h` | Backend selection and configuration. When omitted, Heimdall uses an in-memory backend with a 24-hour TTL. |
+| `storeConfig` | [`Object`](#storeconfig) | in-memory backend, `ttl: 24h` | Backend selection and configuration. When omitted, Heimdall uses an in-memory backend with a 24-hour TTL. |
 
-The `storeConfig` object supports a `ttl` string (Go duration, default `"24h"`) plus one of the following backend sub-objects: `inMemory`, `redis`/`valkey`, or `mongo`. Consult the operator documentation for backend-specific fields; use the in-memory backend for smoke testing and a shared backend (Redis/Valkey/MongoDB) for production.
+Example (in-memory backend):
+
+```yaml
+- type: responses-store
+  parameters:
+    storeConfig:
+      inMemoryConfig:
+        ttl: 24h
+        maxEntries: 10000
+        maxEntryBytes: 1048576
+```
+
+Example (tiered Redis + MongoDB backend):
+
+```yaml
+- type: responses-store
+  parameters:
+    storeConfig:
+      tieredConfig:
+        redis:
+          address: redis://redis.responses-store.svc:6379
+          ttl: 24h
+        mongo:
+          uri: mongodb://mongo.responses-store.svc:27017
+          database: heimdall
+          collection: responses
+          ttl: 720h
+        stream:
+          key: heimdall:responses:mongo_sync
+          consumerGroup: mongo-sync
+          batchSize: 100
+          blockTimeout: 1s
+          claimAge: 30s
+```
+
+#### `storeConfig`
+
+| Parameter        | Type                            | Default | Description                                                              |
+| :--------------- | :------------------------------ | :------ | :----------------------------------------------------------------------- |
+| `inMemoryConfig` | [`Object`](#inmemoryconfig-1)   | -       | Configuration for the in-memory backend. Mutually exclusive with `tieredConfig`. |
+| `tieredConfig`   | [`Object`](#tieredconfig)       | -       | Configuration for the Redis/Valkey + optional MongoDB tiered backend. Wins over `inMemoryConfig` when both are set. |
+
+##### `inMemoryConfig`
+
+| Parameter        | Type     | Default   | Description                                                |
+| :--------------- | :------- | :-------- | :--------------------------------------------------------- |
+| `ttl`            | `string` | `"24h"`   | Go duration string. TTL applied to entries.                |
+| `maxEntries`    | `int`    | `10000`   | Maximum number of entries retained in memory.              |
+| `maxEntryBytes` | `int`    | `1048576` | Maximum size in bytes for a single entry.                  |
+
+##### `tieredConfig`
+
+| Parameter | Type                      | Default | Description                                                                                          |
+| :-------- | :------------------------ | :------ | :--------------------------------------------------------------------------------------------------- |
+| `redis`   | [`Object`](#redis)        | -       | Required Redis/Valkey configuration. Used for tier-1 storage and stream coordination.                |
+| `mongo`   | [`Object`](#mongo)        | -       | Optional MongoDB configuration. When set, enables tier-2 sync via the Redis stream consumer.         |
+| `stream`  | [`Object`](#stream)       | -       | Stream tuning for the Redis-to-Mongo sync goroutine.                                                 |
+
+##### `redis`
+
+| Parameter        | Type       | Default   | Description                                                                                                  |
+| :--------------- | :--------- | :-------- | :----------------------------------------------------------------------------------------------------------- |
+| `address`        | `string`   | -         | Standalone `redis://`/`valkey://` URL. Mutually exclusive with `addresses`.                                  |
+| `addresses`      | `[]string` | -         | Host:port entries. Combine with `masterName` for Sentinel mode; multiple bare entries select Cluster.        |
+| `masterName`     | `string`   | `""`      | Sentinel master name. Required for Sentinel mode.                                                            |
+| `username`       | `string`   | `""`      | Username used to authenticate to Redis/Valkey.                                                               |
+| `password`       | `string`   | `""`      | Password used to authenticate to Redis/Valkey.                                                               |
+| `db`             | `int`      | `0`       | Database index.                                                                                              |
+| `ttl`            | `string`   | `"24h"`   | Go duration string. TTL applied to entries stored in Redis/Valkey.                                           |
+| `maxEntryBytes` | `int`      | `1048576` | Maximum size in bytes for a single entry.                                                                    |
+
+##### `mongo`
+
+| Parameter    | Type     | Default       | Description                                              |
+| :----------- | :------- | :------------ | :------------------------------------------------------- |
+| `uri`        | `string` | -             | MongoDB connection URI.                                  |
+| `database`   | `string` | `"heimdall"`  | Database name.                                           |
+| `collection` | `string` | `"responses"` | Collection name.                                         |
+| `ttl`        | `string` | `"720h"`      | Go duration string. TTL applied to entries.              |
+| `timeout`    | `string` | `"500ms"`     | Go duration string. Per-operation timeout.               |
+
+##### `stream`
+
+| Parameter       | Type     | Default                            | Description                                          |
+| :-------------- | :------- | :--------------------------------- | :--------------------------------------------------- |
+| `key`           | `string` | `"heimdall:responses:mongo_sync"`  | Redis stream key used to buffer MongoDB syncs.       |
+| `consumerGroup` | `string` | `"mongo-sync"`                     | Stream consumer group name.                          |
+| `maxLen`        | `int64`  | `1000000`                          | Maximum stream length retained.                      |
+| `batchSize`     | `int`    | `100`                              | Number of entries claimed per batch.                 |
+| `blockTimeout` | `string` | `"1s"`                             | Go duration string. Block timeout when reading.      |
+| `claimAge`      | `string` | `"30s"`                            | Go duration string. Minimum age to re-claim entries. |
