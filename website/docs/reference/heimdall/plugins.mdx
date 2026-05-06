@@ -534,7 +534,7 @@ Persists multi-turn conversation state for the OpenAI Responses API (`/v1/respon
 This plugin only activates when the `prepareDataPlugins` feature gate is enabled. Add `featureGates: [prepareDataPlugins]` to the top of your `EndpointPickerConfig`; otherwise the plugin registration is silently skipped.
 :::
 
-Supported backends: in-memory or a Redis/Valkey-based tier with optional MongoDB tier-2 sync. Configure exactly one of `storeConfig.inMemoryConfig` or `storeConfig.tieredConfig` (Redis is required inside the tiered backend; MongoDB is optional).
+Supported backends: in-memory or a Redis/Valkey-based tier with optional MongoDB tier-2 sync. Configure at least one of `storeConfig.inMemoryConfig` or `storeConfig.tieredConfig`; if both are set, `tieredConfig` takes precedence (Redis is required inside the tiered backend; MongoDB is optional).
 
 | Parameter     | Type                | Default                    | Description                                                                                                     |
 | :------------ | :------------------ | :------------------------- | :-------------------------------------------------------------------------------------------------------------- |
@@ -627,7 +627,7 @@ Example (tiered Redis + MongoDB backend):
 | :-------------- | :------- | :--------------------------------- | :--------------------------------------------------- |
 | `key`           | `string` | `"heimdall:responses:mongo_sync"`  | Redis stream key used to buffer MongoDB syncs.       |
 | `consumerGroup` | `string` | `"mongo-sync"`                     | Stream consumer group name.                          |
-| `maxLen`        | `int64`  | `1000000`                          | Maximum stream length retained.                      |
+| `maxLen`        | `int`    | `1000000`                          | Maximum stream length retained.                      |
 | `batchSize`     | `int`    | `100`                              | Number of entries claimed per batch.                 |
 | `blockTimeout` | `string` | `"1s"`                             | Go duration string. Block timeout when reading.      |
 | `claimAge`      | `string` | `"30s"`                            | Go duration string. Minimum age to re-claim entries. |
