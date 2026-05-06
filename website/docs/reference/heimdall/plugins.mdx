@@ -534,7 +534,7 @@ Persists multi-turn conversation state for the OpenAI Responses API (`/v1/respon
 This plugin only activates when the `prepareDataPlugins` feature gate is enabled. Add `featureGates: [prepareDataPlugins]` to the top of your `EndpointPickerConfig`; otherwise the plugin registration is silently skipped.
 :::
 
-Supported backends: in-memory or a Redis/Valkey-based tier with optional MongoDB tier-2 sync. Configure at least one of `storeConfig.inMemoryConfig` or `storeConfig.tieredConfig`; if both are set, `tieredConfig` takes precedence (Redis is required inside the tiered backend; MongoDB is optional).
+Supported backends: in-memory or a Redis/Valkey-based tier with optional MongoDB tier-2 sync. Omit `storeConfig` entirely to use the default in-memory backend (`ttl: 24h`). When `storeConfig` is set, configure at least one of `storeConfig.inMemoryConfig` or `storeConfig.tieredConfig`; if both are set, `tieredConfig` takes precedence (Redis is required inside the tiered backend; MongoDB is optional).
 
 | Parameter     | Type                | Default                    | Description                                                                                                     |
 | :------------ | :------------------ | :------------------------- | :-------------------------------------------------------------------------------------------------------------- |

@@ -11,7 +11,7 @@ Copy a recipe, replace `<...>` placeholders, and save as your `heimdall-values.y
 
 ## Recipe 1: Basic aggregate (quickstart) [verified]
 
-Source: `website/docs/getting-started/quickstart.mdx`, `test/e2e/quality/config/heimdall-values.yaml.tmpl`
+Source: `website/docs/getting-started/quickstart.mdx`
 
 All pods are equal. Route to the pod with the shortest waiting queue.
 Use for: getting started, small deployments, homogeneous pods.
@@ -50,8 +50,6 @@ inferencePool:
 :::
 
 ## Recipe 2: Disaggregated with queue scoring [verified]
-
-Source: `test/e2e/performance/config/heimdall-values.yaml.tmpl`
 
 Separate prefill and decode pods. Each phase gets its own scheduling profile.
 Pods must have label `mif.moreh.io/role` set to `prefill`, `decode`, or `both`.
@@ -100,8 +98,6 @@ inferencePool:
 ---
 
 ## Recipe 3: Production disaggregation with KV cache awareness [verified]
-
-Source: `deploy/helm/heimdall/values.yaml` (chart default config)
 
 Disaggregated with `kv-cache-utilization-scorer` and optional saturation detection.
 This is the Helm chart's default configuration.
