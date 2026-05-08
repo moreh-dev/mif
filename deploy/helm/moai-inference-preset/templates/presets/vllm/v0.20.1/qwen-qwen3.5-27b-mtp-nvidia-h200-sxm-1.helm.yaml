@@ -11,7 +11,7 @@ metadata:
     mif.moreh.io/role: e2e
     mif.moreh.io/accelerator.vendor: nvidia
     mif.moreh.io/accelerator.model: h200-sxm
-    mif.moreh.io/parallelism: "tp1"
+    mif.moreh.io/parallelism: "1"
 spec:
   framework: vllm
   model:

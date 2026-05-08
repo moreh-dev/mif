@@ -19,7 +19,7 @@ spec:
   parallelism:
     data: 8
     expert: true
-  template:
+  workerTemplate:
     spec:
       containers:
         - name: main

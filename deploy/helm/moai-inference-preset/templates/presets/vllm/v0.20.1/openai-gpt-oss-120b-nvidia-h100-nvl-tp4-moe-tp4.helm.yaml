@@ -31,7 +31,6 @@ spec:
                 --gpu-memory-utilization 0.92
                 --max-num-batched-tokens 8192
                 --max-cudagraph-capture-size 2048
-                --no-enable-prefix-caching
                 --tool-call-parser openai
                 --enable-auto-tool-choice
                 --exclude-tools-when-tool-choice-none
