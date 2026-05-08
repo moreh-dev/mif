@@ -25,7 +25,7 @@ To enable prefix cache-aware routing, you must configure the `precise-prefix-cac
 
 The following example shows how to enable the scorer in `heimdall-values.yaml`:
 
-```yaml title="heimdall-values.yaml" {18}
+```yaml title="heimdall-values.yaml" {17}
 config:
   apiVersion: inference.networking.x-k8s.io/v1alpha1
   kind: EndpointPickerConfig
@@ -36,7 +36,6 @@ config:
       parameters:
         tokenProcessorConfig:
           blockSize: 32
-          hashSeed: "12345"
         indexerConfig:
           tokenizersPoolConfig:
             modelName: "meta-llama/Llama-3.2-1B-Instruct"
@@ -90,7 +89,7 @@ Since vLLM instances manage prefix caches using tokenized sequences, the scorer 
 
 ### Token processor
 
-vLLM uses block hashes to look up prefixes. The scorer emulates this by hashing the tokenized prompt into blocks of size `B`. The `blockSize` and `hashSeed` must match the vLLM configuration of the worker pods.
+vLLM uses block hashes to look up prefixes. The scorer emulates this by hashing the tokenized prompt into blocks of size `B`. The `blockSize` must match the InferenceService's `--block-size` (the value vLLM is started with on the inference pods).
 
 ### KV block index
 
@@ -145,9 +144,6 @@ spec:
             # Enable automatic generation of --kv-events-config
             - name: ISVC_USE_KV_EVENTS
               value: "true"
-            # Ensure the hash seed matches Heimdall scorer config
-            - name: PYTHONHASHSEED
-              value: "12345"
             # Maintain preset defaults while specifying the block size
             - name: ISVC_EXTRA_ARGS
               value: >-
