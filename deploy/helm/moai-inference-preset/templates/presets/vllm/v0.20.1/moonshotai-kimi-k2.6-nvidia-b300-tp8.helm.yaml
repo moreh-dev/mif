@@ -22,7 +22,9 @@ spec:
       containers:
         - name: main
           # Kimi K2.6 (released 2026-04-20): 1.04T-param MoE, 32B activated, 256K context, MLA.
-          # Eagle3 draft model: lightseekorg/kimi-k2.6-eagle3 (no native MTP).
+          # Eagle3 draft model: lightseekorg/kimi-k2.6-eagle3-mla (no native MTP).
+          # Aligned with vLLM official recipe (models/moonshotai/Kimi-K2.6.yaml):
+          # use eagle3-mla draft and Blackwell trtllm ragged prefill kernel.
           image: vllm/vllm-openai:v0.20.1
           env:
             - name: ISVC_EXTRA_ARGS
@@ -36,7 +38,8 @@ spec:
                 --tool-call-parser kimi_k2
                 --reasoning-parser kimi_k2
                 --enable-auto-tool-choice
-                --speculative-config '{"model":"lightseekorg/kimi-k2.6-eagle3","method":"eagle3","num_speculative_tokens":3}'
+                --speculative-config '{"model":"lightseekorg/kimi-k2.6-eagle3-mla","method":"eagle3","num_speculative_tokens":3}'
+                --attention-config.use_trtllm_ragged_deepseek_prefill=True
                 --disable-uvicorn-access-log
                 --no-enable-log-requests
           resources:
