@@ -138,7 +138,7 @@ kubectl create secret -n amd-gpu \
 Then, create a `gpu-operator-values.yaml` file with the following content. **Please replace `<registry>` with the URL of your private registry**. You may also change the image name `amdgpu-driver`, if necessary, according to your private registry's policies.
 
 :::warning
-If the AMD GPU driver is already installed on the host OS, set `driver.enable` to `false` to skip driver installation by the GPU Operator.
+If the AMD GPU driver is already installed on the host OS, set `deviceConfig.spec.driver.enable: false` to skip driver installation by the GPU Operator.
 :::
 
 :::info
