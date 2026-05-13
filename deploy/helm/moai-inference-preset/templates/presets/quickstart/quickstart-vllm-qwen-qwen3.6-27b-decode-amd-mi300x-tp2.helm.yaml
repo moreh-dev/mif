@@ -1,20 +1,20 @@
 apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceServiceTemplate
 metadata:
-  name: quickstart-vllm-qwen-qwen3-1.7b-amd-mi300x-tp2
+  name: quickstart-vllm-qwen-qwen3.6-27b-decode-amd-mi300x-tp2
   namespace: {{ include "common.names.namespace" . }}
   labels:
     {{- include "mif.preset.labels" . | nindent 4 }}
     mif.moreh.io/model.org: qwen
-    mif.moreh.io/model.name: qwen3-1.7b
-    mif.moreh.io/role: e2e
+    mif.moreh.io/model.name: qwen3.6-27b
+    mif.moreh.io/role: decode
     mif.moreh.io/accelerator.vendor: amd
     mif.moreh.io/accelerator.model: mi300x
     mif.moreh.io/parallelism: tp2
 spec:
   framework: vllm
   model:
-    name: Qwen/Qwen3-1.7B
+    name: Qwen/Qwen3.6-27B
   parallelism:
     tensor: 2
   template:
@@ -29,6 +29,13 @@ spec:
                 --no-enable-log-requests
                 --max-model-len -1
                 --enable-prefix-caching
+                --trust-remote-code
+                --enable-auto-tool-choice
+                --tool-call-parser qwen3_coder
+                --reasoning-parser qwen3
+                --mm-encoder-tp-mode data
+                --speculative-config '{"method":"mtp","num_speculative_tokens":3}'
+                --kv-transfer-config '{"kv_connector":"NixlConnector","kv_role":"kv_consumer"}'
           resources:
             requests:
               amd.com/gpu: 2
