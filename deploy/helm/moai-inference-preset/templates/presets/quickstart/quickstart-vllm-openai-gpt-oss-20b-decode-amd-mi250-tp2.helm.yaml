@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
         - name: main
-          image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/quickstart/moreh-vllm:v0.17.1.1
+          image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/quickstart/moreh-vllm:v0.19.1.1
           env:
             - name: ISVC_EXTRA_ARGS
               value: >-
@@ -32,6 +32,7 @@ spec:
                 --disable-uvicorn-access-log
                 --no-enable-log-requests
                 --max-model-len -1
+                --enable-prefix-caching
                 --kv-transfer-config '{"kv_connector":"NixlConnector","kv_role":"kv_consumer"}'
           resources:
             requests:

@@ -1,12 +1,12 @@
 apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceServiceTemplate
 metadata:
-  name: quickstart-vllm-qwen-qwen2-0.5b-instruct-decode-amd-mi250-tp2
+  name: quickstart-vllm-mistralai-ministral-3-8b-reasoning-2512-decode-amd-mi250-tp2
   namespace: {{ include "common.names.namespace" . }}
   labels:
     {{- include "mif.preset.labels" . | nindent 4 }}
-    mif.moreh.io/model.org: qwen
-    mif.moreh.io/model.name: qwen2-0.5b-instruct
+    mif.moreh.io/model.org: mistralai
+    mif.moreh.io/model.name: ministral-3-8b-reasoning-2512
     mif.moreh.io/role: decode
     mif.moreh.io/accelerator.vendor: amd
     mif.moreh.io/accelerator.model: mi250
@@ -14,20 +14,27 @@ metadata:
 spec:
   framework: vllm
   model:
-    name: Qwen/Qwen2-0.5B-Instruct
+    name: mistralai/Ministral-3-8B-Reasoning-2512
   parallelism:
     tensor: 2
   template:
     spec:
       containers:
         - name: main
-          image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/quickstart/moreh-vllm:v0.17.1.1
+          image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/quickstart/moreh-vllm:v0.19.1.1
           env:
             - name: ISVC_EXTRA_ARGS
               value: >-
                 --disable-uvicorn-access-log
                 --no-enable-log-requests
                 --max-model-len -1
+                --enable-prefix-caching
+                --tokenizer_mode mistral
+                --config_format mistral
+                --load_format mistral
+                --enable-auto-tool-choice
+                --tool-call-parser mistral
+                --reasoning-parser mistral
                 --kv-transfer-config '{"kv_connector":"NixlConnector","kv_role":"kv_consumer"}'
           resources:
             requests:

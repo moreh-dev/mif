@@ -21,18 +21,20 @@ spec:
     spec:
       containers:
         - name: main
-          image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/quickstart/moreh-vllm:v0.19.1.0
+          image: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com/quickstart/moreh-vllm:v0.19.1.1
           env:
             - name: ISVC_EXTRA_ARGS
               value: >-
                 --disable-uvicorn-access-log
                 --no-enable-log-requests
                 --max-model-len -1
+                --enable-prefix-caching
                 --trust-remote-code
                 --enable-auto-tool-choice
                 --tool-call-parser qwen3_coder
                 --reasoning-parser qwen3
                 --mm-encoder-tp-mode data
+                --speculative-config '{"method":"mtp","num_speculative_tokens":3}'
           resources:
             requests:
               amd.com/gpu: 2
