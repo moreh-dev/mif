@@ -1,0 +1,74 @@
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: Heimdall Error Alerts
+    folder: Heimdall
+    interval: 1m
+    rules:
+      - uid: heimdall-error-log-burst
+        title: Heimdall Error Log Burst
+        condition: B
+        data:
+          # LogQL: group by instance/namespace and extract the error message into a label_format.
+          # The resulting time series carries instance, namespace, and error_summary labels,
+          # which propagate to alert labels so Slack messages can render them.
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: loki
+            model:
+              refId: A
+              datasource:
+                type: loki
+                uid: loki
+              expr: |
+                sum by (instance, namespace, error_summary) (
+                  count_over_time(
+                    {app="heimdall-inference-scheduler", level="error"}
+                    | json
+                    | label_format error_summary=`{{ if .error }}{{ printf "%.180s" .message }}: {{ printf "%.180s" .error }}{{ else }}{{ printf "%.300s" .message }}{{ end }}`
+                    [5m]
+                  )
+                )
+              queryType: instant
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              datasource:
+                type: __expr__
+                uid: __expr__
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+                  operator:
+                    type: and
+                  query:
+                    params: []
+                  reducer:
+                    type: last
+                    params: []
+                  type: query
+              intervalMs: 1000
+              maxDataPoints: 43200
+        for: 1m
+        noDataState: OK
+        execErrState: Error
+        annotations:
+          summary: Heimdall error logs detected
+          description: '{{ $values.A.Value }} error log entries detected in the last 5 minutes.'
+          # Grafana Explore deep link — pre-filled LogQL filtered to Heimdall error logs.
+          # Slack template references this annotation as a clickable link.
+          exploreURL: '__GRAFANA_URL__/explore?schemaVersion=1&orgId=1&panes=%7B%22h1%22%3A%7B%22datasource%22%3A%22loki%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22datasource%22%3A%7B%22type%22%3A%22loki%22%2C%22uid%22%3A%22loki%22%7D%2C%22expr%22%3A%22%7Bapp%3D%5C%22heimdall-inference-scheduler%5C%22%2Clevel%3D%5C%22error%5C%22%7D%22%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22now-30m%22%2C%22to%22%3A%22now%22%7D%7D%7D'
+          # Direct link to this alert rule view.
+          ruleURL: '__GRAFANA_URL__/alerting/grafana/heimdall-error-log-burst/view'
+        labels:
+          severity: warning
+          component: heimdall
+        isPaused: false

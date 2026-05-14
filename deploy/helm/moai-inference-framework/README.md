@@ -33,6 +33,9 @@ Moreh Inference Framework
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
+| alerts.heimdall.enabled | bool | `true` | Enable provisioning of Heimdall alert rules, notification templates, and routing policies. Requires `prometheus-stack.grafana.sidecar.alerts.enabled`. |
+| alerts.heimdall.grafanaURL | string | `""` | Base URL of this cluster's Grafana, used for clickable links in Slack messages (Explore + alert rule view). Leave empty to omit the link prefix. |
+| alerts.heimdall.receiver | string | `"heimdall-slack"` | Name of the Grafana contact point that Heimdall alerts route to. The contact point itself must be created out-of-band (UI or Secret-backed provisioning) because the Slack webhook URL is a secret. |
 | commonLabels | object | `{}` | Labels applied to all resources. |
 | ecrTokenRefresher.aws.accessKeyId | string | `""` | AWS_ACCESS_KEY_ID |
 | ecrTokenRefresher.aws.region | string | `"ap-northeast-2"` | AWS Region. |
@@ -131,6 +134,7 @@ Moreh Inference Framework
 | prometheus-stack.defaultRules.create | bool | `false` |  |
 | prometheus-stack.enabled | bool | `true` | Enable prometheus-community/kube-prometheus-stack. Set to false if already deployed. |
 | prometheus-stack.grafana.enabled | bool | `true` |  |
+| prometheus-stack.grafana.sidecar.alerts.enabled | bool | `true` |  |
 | prometheus-stack.grafana.sidecar.dashboards.enabled | bool | `true` |  |
 | prometheus-stack.kubeApiServer.enabled | bool | `false` |  |
 | prometheus-stack.kubeControllerManager.enabled | bool | `false` |  |

@@ -130,6 +130,16 @@ Rules specific to the `deploy/helm/` directory. General contribution guidelines 
 
 - **Do not use YAML anchors at the root level of `values.yaml`** (e.g., `_defaults: &defaults`). Helm treats unknown root-level keys as invalid and may emit warnings or errors. Instead, duplicate shared configuration explicitly for each component.
 
+### Alert Provisioning
+
+The chart provisions Grafana Unified Alerting via ConfigMaps loaded by the `grafana-sc-alerts` sidecar. Each file under `moai-inference-framework/files/alerts/*.yaml` becomes an individual ConfigMap labelled `grafana_alert=1`; the sidecar mounts them into `/etc/grafana/provisioning/alerting/` and Grafana reloads automatically. The pattern mirrors `files/dashboards/*.json` so that adding a new alert file requires no template changes.
+
+**Out of scope for this chart**: contact points. Slack webhook URLs (and any other receiver credentials) are secrets and are not managed here. Operators must create the contact point named in `alerts.heimdall.receiver` through the Grafana UI or via a separate Secret-backed provisioning file.
+
+**Do NOT wrap alert ConfigMap data with `tpl`.** Alert rule YAML embeds Grafana's own Go template syntax (e.g. `{{ printf "%.180s" .message }}`, `{{ if .error }}`). `tpl` would evaluate those expressions at Helm render time and fail. The template (`templates/grafana/alert-configmap.yaml`) instead reads files as raw bytes via `Files.Get` and performs explicit `replace` substitutions for `__GRAFANA_URL__` and `__RECEIVER__` — keep new placeholders to this same convention.
+
+To customise cluster-specific links and the routing target, override `alerts.heimdall.grafanaURL` (used to compose Grafana Explore and rule view links surfaced in Slack messages) and `alerts.heimdall.receiver` (the contact point name).
+
 ## Odin Presets (`moai-inference-preset`)
 
 An Odin preset is a pair of Odin `InferenceServiceTemplate` resources — a **base template** (runtime base) and a **preset-specific template** — that together define how to deploy a Moreh vLLM pod. The base template defines how vLLM servers are launched and is shared across presets. The preset-specific template adds model-specific arguments, environment variables, resource requests, and disaggregation settings.

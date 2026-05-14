@@ -30,6 +30,8 @@ prometheus-stack:
     sidecar:
       dashboards:
         enabled: true
+      alerts:
+        enabled: true
   kubernetesServiceMonitors:
     enabled: true
   kubeApiServer:
@@ -58,6 +60,26 @@ prometheus-stack:
     enabled: true
   thanosRuler:
     enabled: false
+
+# Heimdall alert provisioning consumed by the grafana-sc-alerts sidecar.
+# Contact points (Slack webhook URLs) are intentionally not managed here —
+# operators must create the contact point referenced by `receiver` separately
+# (via Grafana UI or a Secret-backed provisioning file) because webhook URLs
+# are secrets.
+alerts:
+  heimdall:
+    # -- Enable provisioning of Heimdall alert rules, notification templates,
+    # and routing policies. Requires `prometheus-stack.grafana.sidecar.alerts.enabled`.
+    enabled: true
+
+    # -- Base URL of this cluster's Grafana, used for clickable links in Slack
+    # messages (Explore + alert rule view). Leave empty to omit the link prefix.
+    grafanaURL: ""
+
+    # -- Name of the Grafana contact point that Heimdall alerts route to.
+    # The contact point itself must be created out-of-band (UI or
+    # Secret-backed provisioning) because the Slack webhook URL is a secret.
+    receiver: "heimdall-slack"
 
 lws:
   # -- Enable kubernetes-sigs/lws. Set to false if already deployed.
