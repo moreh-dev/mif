@@ -19,7 +19,7 @@ metadata:
     {{- include "mif.labels" $ | nindent 4 }}
 data:
   {{ base $path }}: |-
-    {{- $.Files.Get $path | replace "__GRAFANA_URL__" ($.Values.alerts.heimdall.grafanaURL | default "") | replace "__RECEIVER__" ($.Values.alerts.heimdall.receiver | default "heimdall-slack") | nindent 4 }}
+    {{- $.Files.Get $path | replace "__GRAFANA_URL__" (trimSuffix "/" ($.Values.alerts.heimdall.grafanaURL | default "")) | replace "__RECEIVER__" ($.Values.alerts.heimdall.receiver | default "heimdall-slack") | nindent 4 }}
 {{- end }}
 {{- end }}
 {{- end }}

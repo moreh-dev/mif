@@ -34,7 +34,7 @@ Moreh Inference Framework
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | alerts.heimdall.enabled | bool | `true` | Enable provisioning of Heimdall alert rules, notification templates, and routing policies. Requires `prometheus-stack.grafana.sidecar.alerts.enabled`. |
-| alerts.heimdall.grafanaURL | string | `""` | Base URL of this cluster's Grafana, used for clickable links in Slack messages (Explore + alert rule view). Leave empty to omit the link prefix. |
+| alerts.heimdall.grafanaURL | string | `""` | Base URL of this cluster's Grafana, used for clickable links in Slack messages (Explore + alert rule view). A trailing slash is allowed and is stripped before substitution, so both `https://grafana.example.com` and `https://grafana.example.com/` are accepted. Leave empty to disable the link prefix; resulting links will be relative paths. |
 | alerts.heimdall.receiver | string | `"heimdall-slack"` | Name of the Grafana contact point that Heimdall alerts route to. The contact point itself must be created out-of-band (UI or Secret-backed provisioning) because the Slack webhook URL is a secret. |
 | commonLabels | object | `{}` | Labels applied to all resources. |
 | ecrTokenRefresher.aws.accessKeyId | string | `""` | AWS_ACCESS_KEY_ID |

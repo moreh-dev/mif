@@ -138,6 +138,12 @@ The chart provisions Grafana Unified Alerting via ConfigMaps loaded by the `graf
 
 **Do NOT wrap alert ConfigMap data with `tpl`.** Alert rule YAML embeds Grafana's own Go template syntax (e.g. `{{ printf "%.180s" .message }}`, `{{ if .error }}`). `tpl` would evaluate those expressions at Helm render time and fail. The template (`templates/grafana/alert-configmap.yaml`) instead reads files as raw bytes via `Files.Get` and performs explicit `replace` substitutions for `__GRAFANA_URL__` and `__RECEIVER__` — keep new placeholders to this same convention.
 
+**Placeholder conventions when adding new alert files**:
+
+- Use `__UPPER_SNAKE__` tokens (e.g. `__GRAFANA_URL__`) so they cannot collide with Grafana's `{{ ... }}` template syntax.
+- When a placeholder is concatenated with a path segment, write the path starting with a leading slash (e.g. `__GRAFANA_URL__/explore?...`). The template strips any trailing slash from `grafanaURL` before substitution, so both `https://grafana.example.com` and `https://grafana.example.com/` produce a single-slash result.
+- For each new placeholder, add a matching `replace` call to `alert-configmap.yaml` and verify with `helm template ... | grep '__'` that no tokens survive rendering.
+
 To customise cluster-specific links and the routing target, override `alerts.heimdall.grafanaURL` (used to compose Grafana Explore and rule view links surfaced in Slack messages) and `alerts.heimdall.receiver` (the contact point name).
 
 ## Odin Presets (`moai-inference-preset`)
