@@ -62,40 +62,25 @@ prometheus-stack:
     enabled: false
 
 # Heimdall alert provisioning consumed by the grafana-sc-alerts sidecar.
-# All resources (alert rules, notification templates, routing policies, and
-# the `heimdall-slack` contact point) are delivered as ConfigMaps labelled
-# `grafana_alert=1`. The receiver name is fixed to `heimdall-slack` and the
-# routing policy is wired to it automatically.
+# Rules, templates, policies, and the `heimdall-slack` contact point are all
+# delivered as ConfigMaps labelled `grafana_alert=1`; routing is hardcoded.
 alerts:
   heimdall:
-    # -- Enable provisioning of Heimdall alert resources. Disabled by default
-    # because a Slack webhook URL must be supplied (via `slack.webhookUrl` or
-    # `slack.existingSecret`) for alerts to actually deliver; flip to true
-    # once the webhook URL is in place. The clickable links surfaced inside
-    # Slack messages (alert rule view, Grafana Explore) are built from the
-    # Grafana server's external URL, so operators should also set
-    # `prometheus-stack.grafana.grafana.ini.server.root_url` to the cluster's
-    # public Grafana URL — without it Grafana falls back to `http://localhost:3000`.
+    # -- Enable Heimdall alert provisioning. Requires `slack.webhookUrl` or
+    # `slack.existingSecret`. Set `prometheus-stack.grafana.grafana.ini.server.root_url`
+    # for clickable links in Slack messages.
     enabled: false
 
     slack:
-      # -- Slack incoming webhook URL (inline). Used only when
-      # `existingSecret` is empty. The chart writes this value verbatim into
-      # the contact-points ConfigMap labelled `grafana_alert=1`; required for
-      # Slack delivery. SECRET — pass via `--set`, `--set-file`, sealed-secrets,
-      # SOPS, or an external secrets operator; never commit to git.
+      # -- Slack webhook URL (inline). Used only when `existingSecret` is empty.
+      # SECRET — pass via `--set-file` or an external secrets operator; never commit.
       webhookUrl: ""
-      # -- Externally-managed Secret holding the webhook URL. When set, the
-      # chart resolves the URL by Helm `lookup` at install/upgrade time and
-      # embeds it into the contact-points ConfigMap. Takes precedence over
-      # `webhookUrl`. Note: `helm template` and `helm install --dry-run`
-      # cannot read cluster state, so the rendered ConfigMap will contain an
-      # empty URL when used with those commands.
+      # -- Externally-managed Secret holding the webhook URL. Resolved by Helm
+      # `lookup` at install/upgrade time and takes precedence over `webhookUrl`;
+      # renders empty under `helm template`/`--dry-run` (no cluster access).
       existingSecret: ""
-      # Keys inside `existingSecret` that hold the webhook URL value.
       # Mirrors the Bitnami `secretKeys.<role>Key` pattern so operators can
-      # match the field name to the secret's actual data key without changing
-      # the secret.
+      # match the field name to the secret's actual data key.
       secretKeys:
         # -- Data key inside `existingSecret` that stores the webhook URL.
         webhookUrlKey: webhook-url

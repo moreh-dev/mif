@@ -33,10 +33,10 @@ Moreh Inference Framework
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| alerts.heimdall.enabled | bool | `false` | Enable provisioning of Heimdall alert resources. Disabled by default because a Slack webhook URL must be supplied (via `slack.webhookUrl` or `slack.existingSecret`) for alerts to actually deliver; flip to true once the webhook URL is in place. The clickable links surfaced inside Slack messages (alert rule view, Grafana Explore) are built from the Grafana server's external URL, so operators should also set `prometheus-stack.grafana.grafana.ini.server.root_url` to the cluster's public Grafana URL — without it Grafana falls back to `http://localhost:3000`. |
-| alerts.heimdall.slack.existingSecret | string | `""` | Externally-managed Secret holding the webhook URL. When set, the chart resolves the URL by Helm `lookup` at install/upgrade time and embeds it into the contact-points ConfigMap. Takes precedence over `webhookUrl`. Note: `helm template` and `helm install --dry-run` cannot read cluster state, so the rendered ConfigMap will contain an empty URL when used with those commands. |
+| alerts.heimdall.enabled | bool | `false` | Enable Heimdall alert provisioning. Requires `slack.webhookUrl` or `slack.existingSecret`. Set `prometheus-stack.grafana.grafana.ini.server.root_url` for clickable links in Slack messages. |
+| alerts.heimdall.slack.existingSecret | string | `""` | Externally-managed Secret holding the webhook URL. Resolved by Helm `lookup` at install/upgrade time and takes precedence over `webhookUrl`; renders empty under `helm template`/`--dry-run` (no cluster access). |
 | alerts.heimdall.slack.secretKeys.webhookUrlKey | string | `"webhook-url"` | Data key inside `existingSecret` that stores the webhook URL. |
-| alerts.heimdall.slack.webhookUrl | string | `""` | Slack incoming webhook URL (inline). Used only when `existingSecret` is empty. The chart writes this value verbatim into the contact-points ConfigMap labelled `grafana_alert=1`; required for Slack delivery. SECRET — pass via `--set`, `--set-file`, sealed-secrets, SOPS, or an external secrets operator; never commit to git. |
+| alerts.heimdall.slack.webhookUrl | string | `""` | Slack webhook URL (inline). Used only when `existingSecret` is empty. SECRET — pass via `--set-file` or an external secrets operator; never commit. |
 | commonLabels | object | `{}` | Labels applied to all resources. |
 | ecrTokenRefresher.aws.accessKeyId | string | `""` | AWS_ACCESS_KEY_ID |
 | ecrTokenRefresher.aws.region | string | `"ap-northeast-2"` | AWS Region. |
