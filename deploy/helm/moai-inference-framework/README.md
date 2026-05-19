@@ -62,14 +62,12 @@ Moreh Inference Framework
 | loki.backend.extraArgs[0] | string | `"-config.expand-env=true"` |  |
 | loki.backend.extraEnvFrom[0].secretRef.name | string | `"loki-bucket"` |  |
 | loki.backend.extraEnvFrom[1].configMapRef.name | string | `"loki-bucket"` |  |
-| loki.backend.nodeSelector."node-role.kubernetes.io/control-plane" | string | `""` |  |
 | loki.backend.persistence.volumeClaimsEnabled | bool | `false` |  |
 | loki.backend.replicas | int | `1` |  |
 | loki.enabled | bool | `true` | Enable grafana/loki. |
 | loki.gateway.extraArgs[0] | string | `"-config.expand-env=true"` |  |
 | loki.gateway.extraEnvFrom[0].secretRef.name | string | `"loki-bucket"` |  |
 | loki.gateway.extraEnvFrom[1].configMapRef.name | string | `"loki-bucket"` |  |
-| loki.gateway.nodeSelector."node-role.kubernetes.io/control-plane" | string | `""` |  |
 | loki.gateway.replicas | int | `1` |  |
 | loki.loki.auth_enabled | bool | `false` |  |
 | loki.loki.commonConfig.replication_factor | int | `1` |  |
@@ -104,12 +102,10 @@ Moreh Inference Framework
 | loki.read.extraArgs[0] | string | `"-config.expand-env=true"` |  |
 | loki.read.extraEnvFrom[0].secretRef.name | string | `"loki-bucket"` |  |
 | loki.read.extraEnvFrom[1].configMapRef.name | string | `"loki-bucket"` |  |
-| loki.read.nodeSelector."node-role.kubernetes.io/control-plane" | string | `""` |  |
 | loki.read.replicas | int | `1` |  |
 | loki.write.extraArgs[0] | string | `"-config.expand-env=true"` |  |
 | loki.write.extraEnvFrom[0].secretRef.name | string | `"loki-bucket"` |  |
 | loki.write.extraEnvFrom[1].configMapRef.name | string | `"loki-bucket"` |  |
-| loki.write.nodeSelector."node-role.kubernetes.io/control-plane" | string | `""` |  |
 | loki.write.persistence.volumeClaimsEnabled | bool | `false` |  |
 | loki.write.replicas | int | `1` |  |
 | lokiBucket.accessKey | string | `""` | MinIO access key for Loki storage. Defaults to minio.rootUser. |
