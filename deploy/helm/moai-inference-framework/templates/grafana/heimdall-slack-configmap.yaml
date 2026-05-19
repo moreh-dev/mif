@@ -17,6 +17,13 @@
 {{- else }}
 {{- $webhookUrl = $slack.secretValue }}
 {{- end }}
+{{- /*
+  Trim surrounding whitespace, including trailing newlines that creep in
+  when operators load the URL with `--set-file` or from a Secret whose
+  data was stored from a file. Grafana's contact-point provisioning
+  rejects the URL otherwise (treats `https://...\n` as an invalid URL).
+*/ -}}
+{{- $webhookUrl = trim $webhookUrl }}
 {{- if $webhookUrl }}
 ---
 apiVersion: v1
