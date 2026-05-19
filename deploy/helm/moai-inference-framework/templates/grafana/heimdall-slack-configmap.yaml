@@ -4,17 +4,18 @@
 {{- $webhookUrl := "" }}
 {{- if $slack.existingSecret }}
 {{- /*
-  Resolve the URL from an externally-managed Secret. `lookup` returns nil
-  during `helm template` and `helm install --dry-run` (no cluster access),
-  so the rendered URL is empty there — the ConfigMap is then skipped and
-  alerts will not deliver until applied against a real cluster.
+  Resolve the URL from an externally-managed Secret at key `secretKey`.
+  `lookup` returns nil during `helm template` and `helm install --dry-run`
+  (no cluster access), so the rendered URL is empty there — the ConfigMap
+  is then skipped and alerts will not deliver until applied against a real
+  cluster. Takes precedence over `secretValue`.
 */ -}}
 {{- $existing := lookup "v1" "Secret" (include "common.names.namespace" .) $slack.existingSecret }}
-{{- if and $existing $existing.data (index $existing.data "webhook-url") }}
-{{- $webhookUrl = index $existing.data "webhook-url" | b64dec }}
+{{- if and $existing $existing.data (index $existing.data $slack.secretKey) }}
+{{- $webhookUrl = index $existing.data $slack.secretKey | b64dec }}
 {{- end }}
 {{- else }}
-{{- $webhookUrl = $slack.webhookUrl }}
+{{- $webhookUrl = $slack.secretValue }}
 {{- end }}
 {{- if $webhookUrl }}
 ---
