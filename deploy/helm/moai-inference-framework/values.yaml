@@ -62,15 +62,16 @@ prometheus-stack:
     enabled: false
 
 # Heimdall alert provisioning consumed by the grafana-sc-alerts sidecar.
-# Contact points (Slack webhook URLs) are intentionally not managed here —
-# operators must create the contact point referenced by `receiver` separately
-# (via Grafana UI or a Secret-backed provisioning file) because webhook URLs
-# are secrets.
+# All resources (alert rules, notification templates, routing policies, and
+# the `heimdall-slack` contact point) are delivered as ConfigMaps labelled
+# `grafana_alert=1`. The receiver name is fixed to `heimdall-slack` and the
+# routing policy is wired to it automatically.
 alerts:
   heimdall:
-    # -- Enable provisioning of Heimdall alert rules, notification templates,
-    # and routing policies. Requires `prometheus-stack.grafana.sidecar.alerts.enabled`.
-    enabled: true
+    # -- Enable provisioning of Heimdall alert resources. Disabled by default
+    # because `slack.webhookUrl` must be supplied for alerts to actually
+    # deliver; flip to true once the webhook URL is in place.
+    enabled: false
 
     # -- Base URL of this cluster's Grafana, used for clickable links in Slack
     # messages (Explore + alert rule view). A trailing slash is allowed and is
@@ -79,10 +80,20 @@ alerts:
     # link prefix; resulting links will be relative paths.
     grafanaURL: ""
 
-    # -- Name of the Grafana contact point that Heimdall alerts route to.
-    # The contact point itself must be created out-of-band (UI or
-    # Secret-backed provisioning) because the Slack webhook URL is a secret.
-    receiver: "heimdall-slack"
+    slack:
+      # -- Externally-managed Secret with key `webhook-url`. When set, the
+      # chart resolves the webhook URL by `lookup` at install/upgrade time
+      # and embeds it into the contact-points ConfigMap. Takes precedence
+      # over `webhookUrl`. Note: `helm template` / `helm install --dry-run`
+      # cannot read cluster state, so the rendered ConfigMap will contain
+      # an empty URL when used with those commands.
+      existingSecret: ""
+      # -- Slack incoming webhook URL. Used only when `existingSecret` is
+      # empty. The chart writes this value verbatim into the contact-points
+      # ConfigMap labelled `grafana_alert=1`; required for Slack delivery.
+      # SECRET — pass via `--set`, `--set-file`, sealed-secrets, SOPS, or
+      # an external secrets operator; never commit to git.
+      webhookUrl: ""
 
 lws:
   # -- Enable kubernetes-sigs/lws. Set to false if already deployed.

@@ -6,7 +6,7 @@ policies:
       - grafana_folder
       - alertname
     routes:
-      - receiver: __RECEIVER__
+      - receiver: heimdall-slack
         object_matchers:
           - - component
             - "="

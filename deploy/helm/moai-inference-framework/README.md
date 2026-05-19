@@ -33,9 +33,10 @@ Moreh Inference Framework
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| alerts.heimdall.enabled | bool | `true` | Enable provisioning of Heimdall alert rules, notification templates, and routing policies. Requires `prometheus-stack.grafana.sidecar.alerts.enabled`. |
+| alerts.heimdall.enabled | bool | `false` | Enable provisioning of Heimdall alert resources. Disabled by default because `slack.webhookUrl` must be supplied for alerts to actually deliver; flip to true once the webhook URL is in place. |
 | alerts.heimdall.grafanaURL | string | `""` | Base URL of this cluster's Grafana, used for clickable links in Slack messages (Explore + alert rule view). A trailing slash is allowed and is stripped before substitution, so both `https://grafana.example.com` and `https://grafana.example.com/` are accepted. Leave empty to disable the link prefix; resulting links will be relative paths. |
-| alerts.heimdall.receiver | string | `"heimdall-slack"` | Name of the Grafana contact point that Heimdall alerts route to. The contact point itself must be created out-of-band (UI or Secret-backed provisioning) because the Slack webhook URL is a secret. |
+| alerts.heimdall.slack.existingSecret | string | `""` | Externally-managed Secret with key `webhook-url`. When set, the chart resolves the webhook URL by `lookup` at install/upgrade time and embeds it into the contact-points ConfigMap. Takes precedence over `webhookUrl`. Note: `helm template` / `helm install --dry-run` cannot read cluster state, so the rendered ConfigMap will contain an empty URL when used with those commands. |
+| alerts.heimdall.slack.webhookUrl | string | `""` | Slack incoming webhook URL. Used only when `existingSecret` is empty. The chart writes this value verbatim into the contact-points ConfigMap labelled `grafana_alert=1`; required for Slack delivery. SECRET — pass via `--set`, `--set-file`, sealed-secrets, SOPS, or an external secrets operator; never commit to git. |
 | commonLabels | object | `{}` | Labels applied to all resources. |
 | ecrTokenRefresher.aws.accessKeyId | string | `""` | AWS_ACCESS_KEY_ID |
 | ecrTokenRefresher.aws.region | string | `"ap-northeast-2"` | AWS Region. |

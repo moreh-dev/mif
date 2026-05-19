@@ -1,0 +1,48 @@
+{{- $ps := index .Values "prometheus-stack" }}
+{{- if and $ps.enabled $ps.grafana.enabled $ps.grafana.sidecar.alerts.enabled .Values.alerts.heimdall.enabled }}
+{{- $slack := .Values.alerts.heimdall.slack }}
+{{- $webhookUrl := "" }}
+{{- if $slack.existingSecret }}
+{{- /*
+  Resolve the URL from an externally-managed Secret. `lookup` returns nil
+  during `helm template` and `helm install --dry-run` (no cluster access),
+  so the rendered URL is empty there — the ConfigMap is then skipped and
+  alerts will not deliver until applied against a real cluster.
+*/ -}}
+{{- $existing := lookup "v1" "Secret" (include "common.names.namespace" .) $slack.existingSecret }}
+{{- if and $existing $existing.data (index $existing.data "webhook-url") }}
+{{- $webhookUrl = index $existing.data "webhook-url" | b64dec }}
+{{- end }}
+{{- else }}
+{{- $webhookUrl = $slack.webhookUrl }}
+{{- end }}
+{{- if $webhookUrl }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: {{ include "common.names.namespace" . }}
+  name: {{ include "common.names.name" . }}-alert-heimdall-slack-contact-points
+  annotations:
+    {{- with $ps.grafana.sidecar.alerts.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  labels:
+    {{ tpl $ps.grafana.sidecar.alerts.label . }}: {{ ((tpl $ps.grafana.sidecar.alerts.labelValue .) | default 1) | quote }}
+    {{- include "mif.labels" . | nindent 4 }}
+data:
+  heimdall-slack-contact-points.yaml: |
+    apiVersion: 1
+    contactPoints:
+      - orgId: 1
+        name: heimdall-slack
+        receivers:
+          - uid: heimdall-slack
+            type: slack
+            disableResolveMessage: false
+            settings:
+              url: {{ $webhookUrl | quote }}
+              title: '{{`{{ template "heimdall-slack.title" . }}`}}'
+              text: '{{`{{ template "heimdall-slack.body" . }}`}}'
+{{- end }}
+{{- end }}
