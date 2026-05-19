@@ -51,6 +51,7 @@ A preset is a pair of `InferenceServiceTemplate` resources — a **runtime base*
 
 - Runtime bases — `spec.framework`, launch command and parallelism flag assembly (`--tensor-parallel-size` etc.), disaggregation env (`VLLM_NIXL_SIDE_CHANNEL_HOST`, `VLLM_IS_DECODE_WORKER`), shm/readiness, PD proxy sidecar.
 - Presets — `spec.parallelism` values, model-specific vLLM args (`--max-model-len`, `--gpu-memory-utilization`, …), logging args (must repeat — `ISVC_EXTRA_ARGS` is fully overridden, not merged), model-specific env, resources/tolerations/nodeSelector.
+- Utils (`*-hf-hub-offline` templates) — offline HF cache env (`HF_HOME`, `HF_HUB_OFFLINE`, `HF_MODULES_CACHE`), shared by runtime bases and presets.
 - Users — image tag, replicas, volumes / model loading method, HF token, `--no-enable-prefix-caching`.
 
 **Reserved `mif.moreh.io/*` labels**:
