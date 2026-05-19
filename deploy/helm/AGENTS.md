@@ -1,223 +1,70 @@
 # Helm Charts — Agent Rules
 
-Rules specific to the `deploy/helm/` directory. General contribution guidelines are in the root [`AGENTS.md`](/AGENTS.md).
+Rules specific to `deploy/helm/`. General contribution guidelines are in the root [`AGENTS.md`](/AGENTS.md).
 
-## Design Principles
+## Principles
 
-### Minimum Necessary Complexity
+- **YAGNI** — Add no value field or abstraction without a current, concrete use case. Prefer documenting workarounds over new code paths for non-default edge cases.
+- **Reject wrong designs early** — Standalone prerequisites, `enabled: false` defaults, deeply-nested config instead of top-level sections — redesign before writing code, never retrofit.
 
-- **Do not add configuration options, fields, or abstractions for hypothetical future use cases.** Only add what the current task concretely requires.
-- Before introducing a new value field, ask: "Is there a real, current use case that cannot be handled without it?" If the answer is no, omit the field and handle the edge case through documentation instead.
-- Example: when considering whether to add a `minio.externalHost` field to support cross-namespace MinIO, the right answer was to document that users can point `loki.storage.s3.endpoint` to the external host directly — no new field needed.
+## Verification
 
-### Documentation over Code for Edge Cases
+After any chart change, run the narrowest sufficient check: `make helm-lint`, `helm lint <chart>`, or `helm template <chart>` with representative values; `make helm-dependency` when `Chart.yaml` deps change; `make helm-docs` when values/docs templates change. Don't claim a change complete without at least one render- or lint-level step; if skipped, state which and why.
 
-- When a behavior difference only arises in a non-default, edge-case configuration, prefer documenting the workaround over adding a dedicated code path or configuration key.
-- Reserve code changes for cases where the default path is broken or the workaround is genuinely error-prone.
+## Sub-chart integration
 
-### Reject Designs Before They Are Built
+- Every infrastructure component is a sub-chart of `moai-inference-framework`, never a standalone prerequisite. Default to `enabled: true` with a `condition:` entry in `Chart.yaml` — `enabled: false` defaults break the one-chart philosophy.
+- Use official upstream repos: loki `https://grafana.github.io/helm-charts`, vector `https://helm.vector.dev`, minio `https://charts.min.io`.
 
-- If an initial design is heading in the wrong direction (e.g., standalone prerequisites instead of sub-chart dependencies, `enabled: false` defaults, nested config instead of top-level sections), raise the issue and redesign before writing code. Retrofitting a wrong structure is always more costly.
+## Naming and references
 
-## Helm Chart Development
+- No `fullnameOverride`. Build service refs from `{{ .Release.Name }}-<svc>.{{ include "common.names.namespace" . }}.svc.cluster.local`. Inside a sub-chart's `customConfig` rendered through `tpl`, `{{ .Release.Name }}` resolves to the **parent** release name.
+- Large infra components are top-level keys (`minio:`, not `loki.minio:`) so they can be reused.
+- No YAML anchors at the root of `values.yaml` — Helm rejects unknown root keys.
 
-### Verification
+## Sub-chart `tpl` passthrough
 
-- After changing Helm charts, run the narrowest verification that proves the change.
-- Use `make helm-lint` for repo-wide chart linting, or run `helm lint <chart>` when only a single chart is affected.
-- Run `helm template <chart>` with representative values whenever the change affects rendered manifests or templating behavior.
-- If `Chart.yaml` dependencies change, run `make helm-dependency`.
-- If chart documentation generated from templates or values changes, run `make helm-docs`.
-- Do not claim a Helm change is complete without at least one render- or lint-level verification step unless the environment prevents running Helm locally.
-- If verification could not be run, state exactly which command was skipped and why.
+Before using a sub-chart's `customConfig`, verify whether the chart wraps it with `tpl` (`helm pull <chart> --version <ver> --untar`, inspect the ConfigMap template). If yes, escape the target tool's own `{{ }}` syntax with Go raw string literals to prevent Helm from evaluating it — e.g. Vector labels: `"{{`{{ namespace }}`}}"`.
 
-### Sub-chart Integration
+## MinIO
 
-- **All infrastructure components belong as sub-chart dependencies** of `moai-inference-framework`. Do not design them as standalone prerequisites that users install separately.
-- **Enablement convention**: Every sub-chart dependency must have both a `condition:` entry in `Chart.yaml` AND `enabled: true` in the default `values.yaml`. Setting `enabled: false` as the default breaks the "install everything in one chart" philosophy. Follow the same pattern as existing components (`keda`, `lws`, `odin`, etc.).
+Use `minio/minio`. Provision buckets/users/policies via the chart's top-level `buckets`/`users`/`policies` (not under `provisioning`). Create a dedicated user per consuming service, scoped by policy to its own bucket; templates read credentials via `{{ (index .Values.minio.users 0).accessKey }}` etc.
 
-  ```yaml
-  # Chart.yaml — always add condition: and use the official repository
-  - name: vector
-    version: 0.39.0
-    repository: https://helm.vector.dev
-    condition: vector.enabled
+The sub-chart's post-install hooks deadlock when a consumer (e.g. Loki) waits for the bucket at startup. Provision via a regular Job, not a Helm hook, so it runs as soon as MinIO is reachable.
 
-  # values.yaml — always default to true
-  vector:
-    enabled: true
-  ```
+## Alert provisioning
 
-- **Official repositories**: Always use the chart's official upstream repository, not a mirror.
-  - loki: `https://grafana.github.io/helm-charts`
-  - vector: `https://helm.vector.dev`
-  - minio: `https://charts.min.io`
+The chart provisions Grafana Unified Alerting through ConfigMaps labelled `grafana_alert=1`, mounted by the `grafana-sc-alerts` sidecar into `/etc/grafana/provisioning/alerting/`. Two groups:
 
-### Dynamic Service Name References
+- **Rules / templates / policies** — one ConfigMap per file under `files/alerts/*.yaml`, emitted verbatim by `alert-configmap.yaml`. Do **not** wrap with `tpl` (alert YAML embeds Grafana's own `{{ }}` syntax). Reference Grafana URLs via Grafana's `{{ externalURL }}` template, not a chart-side placeholder.
+- **Heimdall Slack contact point** — `heimdall-slack-configmap.yaml`. URL resolves from `alerts.heimdall.slack.existingSecret` + `slack.secretKeys.webhookUrlKey` (Bitnami secret-reference convention) via Helm `lookup`, falling back to inline `slack.webhookUrl`. `helm template` / `--dry-run` cannot read cluster state, so `existingSecret` renders empty under them — verify against a real cluster.
 
-- **Do not use `fullnameOverride`** to fix service names. Instead, build references using `.Release.Name` so that names are always consistent with whatever release name the user chooses.
+Operators must set `prometheus-stack.grafana.grafana.ini.server.root_url` for Slack links to work; otherwise Grafana falls back to `http://localhost:3000`.
 
-  ```yaml
-  # templates/grafana/datasource-loki.yaml
-  url: http://{{ .Release.Name }}-loki-gateway.{{ include "common.names.namespace" . }}.svc.cluster.local
+## Odin presets (`moai-inference-preset`)
 
-  # templates/loki/credentials.yaml
-  BUCKET_HOST: {{ printf "%s-minio" .Release.Name | quote }}
-  ```
+A preset is a pair of `InferenceServiceTemplate` resources — a **runtime base** (shared launcher) and a **preset-specific template** (model/GPU args).
 
-- In sub-chart `customConfig` values rendered through `tpl`, use `{{ .Release.Name }}` directly — it is evaluated by the sub-chart's `tpl` call and resolves to the parent release name.
+**Naming**: `{image_tag}-{org}-{model}[-mtp][-prefill|-decode]-{vendor}-{accel}-{parallelism}[-moe-{moe_par}]`. Org/model in HF kebab-case. Combined parallelism order: `dp` → `pp` → `tp` → `cp`. MoE adds `-moe-{ep|tp}N`.
 
-  ```yaml
-  # values.yaml (vector customConfig) — .Release.Name evaluated by tpl
-  endpoint: "http://{{ .Release.Name }}-loki-gateway"
-  ```
+**Responsibility split**:
 
-### Separation of Concerns in values.yaml
+- Runtime bases — `spec.framework`, launch command and parallelism flag assembly (`--tensor-parallel-size` etc.), disaggregation env (`VLLM_NIXL_SIDE_CHANNEL_HOST`, `VLLM_IS_DECODE_WORKER`), shm/readiness, PD proxy sidecar.
+- Presets — `spec.parallelism` values, model-specific vLLM args (`--max-model-len`, `--gpu-memory-utilization`, …), logging args (must repeat — `ISVC_EXTRA_ARGS` is fully overridden, not merged), model-specific env, resources/tolerations/nodeSelector.
+- Users — image tag, replicas, volumes / model loading method, HF token, `--no-enable-prefix-caching`.
 
-- **Large infrastructure components must be top-level sections**, not nested under their consumers. For example, MinIO configuration belongs at `minio:`, not at `loki.minio:`. This allows MinIO to be independently enabled/disabled and reused by other components in the future.
+**Reserved `mif.moreh.io/*` labels**:
 
-### MinIO Provisioning Pattern
+| Key | Example |
+| --- | --- |
+| `template.type` | `runtime-base`, `preset` |
+| `model.org` / `model.name` | `meta-llama` / `llama-3.3-70b-instruct` |
+| `model.mtp` | `"true"` |
+| `role` | `e2e`, `prefill`, `decode` |
+| `accelerator.vendor` / `accelerator.model` | `amd` / `mi300x` |
+| `parallelism` | `tp4`, `dp8-moe-ep8` |
+| `pool` | `heimdall` |
 
-- Use the `minio/minio` chart (`https://charts.min.io`), not the bitnami chart.
-- Create buckets, users, and policies directly via the chart's top-level `buckets`, `users`, and `policies` fields (not under a `provisioning` key).
-- Create a **dedicated user per consuming service** with a policy scoped to only its bucket — do not use root credentials for service-to-service access.
+Logs/metrics filtering also uses stock Kubernetes labels `app.kubernetes.io/name` (e.g. `vllm`) and `app.kubernetes.io/instance` (inference service name).
 
-  ```yaml
-  minio:
-    policies:
-      - name: loki
-        statements:
-          - resources: ["arn:aws:s3:::loki/*"]
-            effect: Allow
-            actions: ["s3:*"]
-    users:
-      - accessKey: loki
-        secretKey: "loki123!"
-        policy: loki
-    buckets:
-      - name: loki
-  ```
-
-- Templates that read MinIO credentials must reference the `users` array directly:
-
-  ```yaml
-  # credentials.yaml
-  stringData:
-    AWS_ACCESS_KEY_ID:     {{ (index .Values.minio.users 0).accessKey | quote }}
-    AWS_SECRET_ACCESS_KEY: {{ (index .Values.minio.users 0).secretKey | quote }}
-  ```
-
-- The MinIO subchart's post-install hooks for bucket/user/policy creation cause a **deadlock** when a consumer (e.g., Loki) depends on the bucket at startup: the consumer waits for the bucket, Helm waits for the consumer, and the hook never fires. To break this, provision buckets, users, and policies via a **regular Job** (not a Helm hook) that runs as soon as MinIO becomes reachable. Define the resources in `values.yaml` under `minio.buckets`, `minio.users`, and `minio.policies` as usual, but the init Job — not the subchart hooks — is responsible for actually creating them.
-
-### Helm `tpl` Passthrough — Vector Label Syntax
-
-- The vector chart renders `customConfig` through Helm's `tpl` function (`{{ tpl (toYaml .Values.customConfig) . | indent 4 }}`). This means any `{{ }}` expression in `customConfig` is evaluated as a Go template at render time.
-- To pass **Vector's own field-template syntax** (`{{ field }}`) through `tpl` without evaluation, use Go raw string literals:
-
-  ```yaml
-  # values.yaml — correct
-  labels:
-    namespace: "{{`{{ namespace }}`}}"
-
-  # values.yaml — WRONG: tpl evaluates {{ namespace }} as a Go template function
-  labels:
-    namespace: "{{ namespace }}"
-  ```
-
-- **Before using `customConfig` with any sub-chart, always verify whether the chart applies `tpl` to it** by running `helm pull <chart> --version <ver> --untar` and inspecting the ConfigMap template.
-
-### YAML Anchors
-
-- **Do not use YAML anchors at the root level of `values.yaml`** (e.g., `_defaults: &defaults`). Helm treats unknown root-level keys as invalid and may emit warnings or errors. Instead, duplicate shared configuration explicitly for each component.
-
-### Alert Provisioning
-
-The chart provisions Grafana Unified Alerting entirely through ConfigMaps labelled `grafana_alert=1`. The `grafana-sc-alerts` sidecar mounts them into `/etc/grafana/provisioning/alerting/` and Grafana reloads automatically. Resources fall into two groups:
-
-- **Rules / templates / policies** — one ConfigMap per file under `moai-inference-framework/files/alerts/*.yaml`, generated by `alert-configmap.yaml` (mirroring the `files/dashboards/*.json` pattern). The receiver name is hardcoded to `heimdall-slack` and the routing policy is wired to it automatically.
-- **Heimdall Slack contact point** — a separate ConfigMap rendered by `heimdall-slack-configmap.yaml` when `alerts.heimdall.enabled` is true and a webhook URL is available. The chart resolves the URL from `alerts.heimdall.slack.existingSecret` (an externally-managed Secret whose data key is named by `alerts.heimdall.slack.secretKeys.webhookUrlKey`, looked up via Helm `lookup`); when `existingSecret` is empty it falls back to the inline `alerts.heimdall.slack.webhookUrl`. The `webhookUrl` / `existingSecret` + `secretKeys.<role>Key` shape mirrors the Bitnami secret-reference convention. When neither produces a URL the ConfigMap is skipped and Slack delivery is silently off.
-
-`alerts.heimdall.enabled` defaults to `false` because a webhook URL must be supplied for delivery to work. `helm template` and `helm install --dry-run` cannot reach the cluster, so `existingSecret` resolves to an empty URL there — verify against a real cluster (`helm install` / `helm upgrade`).
-
-Clickable links inside Slack messages (alert rule view, Grafana Explore) are built from Grafana's own `externalURL`. The alert rule YAML embeds Grafana's `{{ externalURL }}` template, which Grafana substitutes at alert-evaluation time from `prometheus-stack.grafana.grafana.ini.server.root_url`. Operators **must** set `root_url` to the cluster's public Grafana URL; otherwise Grafana falls back to `http://localhost:3000` and every link in Slack becomes unreachable.
-
-**Conventions when adding new alert files**:
-
-- Read files as raw bytes via `Files.Get` and emit them verbatim from `alert-configmap.yaml`. Do **not** wrap the result with `tpl` — alert rule YAML embeds Grafana's own Go template syntax (e.g. `{{ printf "%.180s" .message }}`, `{{ externalURL }}`) and `tpl` would evaluate it at render time and crash.
-- Reference Grafana's runtime URL via `{{ externalURL }}` inside alert annotations instead of introducing a chart-side placeholder; this keeps `alert-configmap.yaml` a pure passthrough and lets operators centralise URL configuration in `server.root_url`.
-- For values that must remain secret at runtime, resolve them via Helm `lookup` against a Secret and write the plaintext into the rendered ConfigMap, following the Heimdall Slack contact point pattern.
-
-## Odin Presets (`moai-inference-preset`)
-
-An Odin preset is a pair of Odin `InferenceServiceTemplate` resources — a **base template** (runtime base) and a **preset-specific template** — that together define how to deploy a Moreh vLLM pod. The base template defines how vLLM servers are launched and is shared across presets. The preset-specific template adds model-specific arguments, environment variables, resource requests, and disaggregation settings.
-
-### Preset naming convention
-
-Preset names follow the pattern:
-`{image_tag}-{org_name}-{model_name}[-mtp][-prefill][-decode]-{accelerator_vendor}-{accelerator_model}-{parallelism}[-moe-{moe_parallelism}]`
-
-- `{org_name}` and `{model_name}` follow Hugging Face Hub names in kebab-case (e.g., `meta-llama/Llama-3.3-70B-Instruct` → `meta-llama-llama-3.3-70b-instruct`).
-- `-mtp` is appended after `{model_name}` if multi-token prediction is used.
-- `-prefill` or `-decode` is appended for disaggregation modes, placed after `{model_name}` (or `-mtp`) and before `{accelerator_vendor}`.
-- `{parallelism}` examples: `1`, `tp4`, `tp8`, `dp8`. Canonical order for combined strategies: `dp` → `pp` → `tp` → `cp`.
-- For MoE models, `-moe-{moe_parallelism}` is appended (e.g., `-moe-ep8`, `-moe-tp8`).
-
-### Reserved labels
-
-Odin presets use `mif.moreh.io/*` labels:
-
-| Label key                         | Description                  | Example values                          |
-| :-------------------------------- | :--------------------------- | :-------------------------------------- |
-| `mif.moreh.io/template.type`      | Template type                | `runtime-base`, `preset`                |
-| `mif.moreh.io/model.org`          | HF org name (kebab-case)     | `meta-llama`, `deepseek-ai`             |
-| `mif.moreh.io/model.name`         | HF model name (kebab-case)   | `llama-3.3-70b-instruct`, `deepseek-r1` |
-| `mif.moreh.io/model.mtp`          | Multi-token prediction       | `"true"` or unset                       |
-| `mif.moreh.io/role`               | Disaggregation mode          | `e2e`, `prefill`, `decode`              |
-| `mif.moreh.io/accelerator.vendor` | GPU vendor                   | `amd`                                   |
-| `mif.moreh.io/accelerator.model`  | GPU model                    | `mi250`, `mi300x`, `mi308x`             |
-| `mif.moreh.io/parallelism`        | Parallelism mode             | `tp4`, `dp8-moe-ep8`                    |
-
-### Responsibility boundaries
-
-**Presets define** (model/GPU-specific, not user-configurable):
-- `spec.parallelism` values and `mif.moreh.io/parallelism` labels that select the desired TP/PP/DP/EP behavior
-- Model-specific vLLM arguments (`--trust-remote-code`, `--max-model-len`, `--max-num-seqs`, `--kv-cache-type`, `--quantization`, `--gpu-memory-utilization`, etc.)
-- Logging arguments (`--disable-uvicorn-access-log`, `--no-enable-log-requests`) — presets must include these because `ISVC_EXTRA_ARGS` in a preset fully overrides the runtime base's value during Odin strategic merge patch (env vars merge by `name` key)
-- Model-specific environment variables (`VLLM_ROCM_USE_AITER`, `VLLM_MOE_DP_CHUNK_SIZE`, `UCX_*`, `NCCL_*`, etc.)
-- Resources (GPU count, RDMA NICs), tolerations, and nodeSelector
-
-**Runtime bases define** (shared across presets):
-- `spec.framework` (e.g., `vllm`)
-- Execution command(s) and launch logic (for-loop for DP, cleanup traps)
-- Parallelism flag assembly from `spec.parallelism` (`--tensor-parallel-size`, `--pipeline-parallel-size`, `--enable-expert-parallel`, `--data-parallel-rank`, `--data-parallel-address`, `--data-parallel-rpc-port`)
-- Disaggregation-specific environment variables (`VLLM_NIXL_SIDE_CHANNEL_HOST`, `VLLM_IS_DECODE_WORKER`)
-- Shared memory settings, readiness probes
-- Proxy sidecar configuration (for PD disaggregation)
-
-**Utils define** (shared utility templates, not runtime bases or presets):
-- Offline Hugging Face cache environment (`HF_HOME`, `HF_HUB_OFFLINE`, `HF_MODULES_CACHE`) in `*-hf-hub-offline` templates
-
-**Users configure** (not defined by presets or runtime bases):
-- Image repository and tag (with default provided)
-- Volume mounts and model loading method (HF download vs. PV)
-- Hugging Face token
-- Number of replicas
-- `--no-enable-prefix-caching`
-
-### PD decode proxy response headers
-
-- `heimdall-proxy --response-header` is a debug flag that adds `X-Decoder-Host-Port` and `X-Prefiller-Host-Port` to responses.
-- **Sim decode utils** (`sim-decode`, `sim-decode-dp`) include `--response-header` by default because they are debug-only templates.
-- **Production runtime-bases** (`vllm-decode`, `vllm-decode-dp`, `vllm-decode-pp`) do **not** set `--response-header` — users opt in via the decode `InferenceService` by overriding the proxy's `ISVC_EXTRA_ARGS`.
-- When `--response-header` is used, Heimdall's `response-header-handler` plugin is redundant.
-
-### MIF Pod Label Keys
-
-When filtering or labeling logs, metrics, or other signals by MIF-specific pod attributes, use these label keys:
-
-| Concept           | Label key                    | Example value       |
-| :---------------- | :--------------------------- | :------------------ |
-| Pool              | `mif.moreh.io/pool`          | `heimdall`          |
-| Role              | `mif.moreh.io/role`          | `prefill`, `decode` |
-| App name          | `app.kubernetes.io/name`     | `vllm`              |
-| Inference service | `app.kubernetes.io/instance` | `llama-3-2-1b`      |
+**PD decode proxy** — `heimdall-proxy --response-header` is a debug flag. Sim decode utils (`sim-decode*`) default it on; production runtime-bases (`vllm-decode*`) leave it off and users opt in via the decode `InferenceService`. When the flag is set, Heimdall's `response-header-handler` plugin is redundant.
