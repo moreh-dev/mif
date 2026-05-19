@@ -71,15 +71,12 @@ alerts:
     # -- Enable provisioning of Heimdall alert resources. Disabled by default
     # because a Slack webhook URL must be supplied (via `slack.existingSecret`
     # or `slack.secretValue`) for alerts to actually deliver; flip to true
-    # once the webhook URL is in place.
+    # once the webhook URL is in place. The clickable links surfaced inside
+    # Slack messages (alert rule view, Grafana Explore) are built from the
+    # Grafana server's external URL, so operators should also set
+    # `prometheus-stack.grafana.grafana.ini.server.root_url` to the cluster's
+    # public Grafana URL — without it Grafana falls back to `http://localhost:3000`.
     enabled: false
-
-    # -- Base URL of this cluster's Grafana, used for clickable links in Slack
-    # messages (Explore + alert rule view). A trailing slash is allowed and is
-    # stripped before substitution, so both `https://grafana.example.com` and
-    # `https://grafana.example.com/` are accepted. Leave empty to disable the
-    # link prefix; resulting links will be relative paths.
-    grafanaURL: ""
 
     slack:
       # -- Externally-managed Secret holding the webhook URL at key

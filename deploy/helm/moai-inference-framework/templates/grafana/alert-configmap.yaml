@@ -19,7 +19,7 @@ metadata:
     {{- include "mif.labels" $ | nindent 4 }}
 data:
   {{ base $path }}: |-
-    {{- $.Files.Get $path | replace "__GRAFANA_URL__" (trimSuffix "/" ($.Values.alerts.heimdall.grafanaURL | default "")) | nindent 4 }}
+    {{- $.Files.Get $path | nindent 4 }}
 {{- end }}
 {{- end }}
 {{- end }}
