@@ -30,6 +30,8 @@ prometheus-stack:
     sidecar:
       dashboards:
         enabled: true
+      alerts:
+        enabled: true
   kubernetesServiceMonitors:
     enabled: true
   kubeApiServer:
@@ -58,6 +60,30 @@ prometheus-stack:
     enabled: true
   thanosRuler:
     enabled: false
+
+# Heimdall alert provisioning consumed by the grafana-sc-alerts sidecar.
+# Rules, templates, policies, and the `heimdall-slack` contact point are all
+# delivered as ConfigMaps labelled `grafana_alert=1`; routing is hardcoded.
+alerts:
+  heimdall:
+    # -- Enable Heimdall alert provisioning. Requires `slack.webhookUrl` or
+    # `slack.existingSecret`. Set `prometheus-stack.grafana.grafana.ini.server.root_url`
+    # for clickable links in Slack messages.
+    enabled: false
+
+    slack:
+      # -- Slack webhook URL (inline). Used only when `existingSecret` is empty.
+      # SECRET — pass via `--set-file` or an external secrets operator; never commit.
+      webhookUrl: ""
+      # -- Externally-managed Secret holding the webhook URL. Resolved by Helm
+      # `lookup` at install/upgrade time and takes precedence over `webhookUrl`;
+      # renders empty under `helm template`/`--dry-run` (no cluster access).
+      existingSecret: ""
+      # Mirrors the Bitnami `secretKeys.<role>Key` pattern so operators can
+      # match the field name to the secret's actual data key.
+      secretKeys:
+        # -- Data key inside `existingSecret` that stores the webhook URL.
+        webhookUrlKey: webhook-url
 
 lws:
   # -- Enable kubernetes-sigs/lws. Set to false if already deployed.

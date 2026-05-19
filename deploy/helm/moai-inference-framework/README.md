@@ -33,6 +33,10 @@ Moreh Inference Framework
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
+| alerts.heimdall.enabled | bool | `false` | Enable Heimdall alert provisioning. Requires `slack.webhookUrl` or `slack.existingSecret`. Set `prometheus-stack.grafana.grafana.ini.server.root_url` for clickable links in Slack messages. |
+| alerts.heimdall.slack.existingSecret | string | `""` | Externally-managed Secret holding the webhook URL. Resolved by Helm `lookup` at install/upgrade time and takes precedence over `webhookUrl`; renders empty under `helm template`/`--dry-run` (no cluster access). |
+| alerts.heimdall.slack.secretKeys.webhookUrlKey | string | `"webhook-url"` | Data key inside `existingSecret` that stores the webhook URL. |
+| alerts.heimdall.slack.webhookUrl | string | `""` | Slack webhook URL (inline). Used only when `existingSecret` is empty. SECRET — pass via `--set-file` or an external secrets operator; never commit. |
 | commonLabels | object | `{}` | Labels applied to all resources. |
 | ecrTokenRefresher.aws.accessKeyId | string | `""` | AWS_ACCESS_KEY_ID |
 | ecrTokenRefresher.aws.region | string | `"ap-northeast-2"` | AWS Region. |
@@ -131,6 +135,7 @@ Moreh Inference Framework
 | prometheus-stack.defaultRules.create | bool | `false` |  |
 | prometheus-stack.enabled | bool | `true` | Enable prometheus-community/kube-prometheus-stack. Set to false if already deployed. |
 | prometheus-stack.grafana.enabled | bool | `true` |  |
+| prometheus-stack.grafana.sidecar.alerts.enabled | bool | `true` |  |
 | prometheus-stack.grafana.sidecar.dashboards.enabled | bool | `true` |  |
 | prometheus-stack.kubeApiServer.enabled | bool | `false` |  |
 | prometheus-stack.kubeControllerManager.enabled | bool | `false` |  |

@@ -1,0 +1,28 @@
+apiVersion: 1
+templates:
+  - orgId: 1
+    name: heimdall-slack-templates
+    template: |
+      {{ define "heimdall-slack.title" }}
+      [{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .CommonLabels.alertname }}
+      {{ end }}
+
+      {{ define "heimdall-slack.body" }}
+      {{ range .Alerts }}
+      :pushpin: *Summary*: {{ .Annotations.summary }}
+      :memo: *Description*: {{ .Annotations.description }}
+
+      {{ if .Labels.error_summary }}:warning: *Error message*:
+      ```{{ .Labels.error_summary }}```{{ end }}
+
+      *Context*
+      {{ if .Labels.namespace }}• Namespace: `{{ .Labels.namespace }}`{{ end }}
+      {{ if .Labels.instance }}• Instance: `{{ .Labels.instance }}`{{ end }}
+      • Severity: `{{ .Labels.severity }}`
+      • Component: `{{ .Labels.component }}`
+      {{ if .Labels.environment }}• Environment: `{{ .Labels.environment }}`{{ end }}
+
+      {{ if .Annotations.exploreURL }}:mag: <{{ .Annotations.exploreURL }}|View error logs in Grafana>{{ end }}
+      {{ if .Annotations.ruleURL }}:bell: <{{ .Annotations.ruleURL }}|View alert rule>{{ end }}
+      {{ end }}
+      {{ end }}
