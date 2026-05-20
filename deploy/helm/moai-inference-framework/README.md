@@ -62,14 +62,12 @@ Moreh Inference Framework
 | loki.backend.extraArgs[0] | string | `"-config.expand-env=true"` |  |
 | loki.backend.extraEnvFrom[0].secretRef.name | string | `"loki-bucket"` |  |
 | loki.backend.extraEnvFrom[1].configMapRef.name | string | `"loki-bucket"` |  |
-| loki.backend.nodeSelector."node-role.kubernetes.io/control-plane" | string | `""` |  |
 | loki.backend.persistence.volumeClaimsEnabled | bool | `false` |  |
 | loki.backend.replicas | int | `1` |  |
 | loki.enabled | bool | `true` | Enable grafana/loki. |
 | loki.gateway.extraArgs[0] | string | `"-config.expand-env=true"` |  |
 | loki.gateway.extraEnvFrom[0].secretRef.name | string | `"loki-bucket"` |  |
 | loki.gateway.extraEnvFrom[1].configMapRef.name | string | `"loki-bucket"` |  |
-| loki.gateway.nodeSelector."node-role.kubernetes.io/control-plane" | string | `""` |  |
 | loki.gateway.replicas | int | `1` |  |
 | loki.loki.auth_enabled | bool | `false` |  |
 | loki.loki.commonConfig.replication_factor | int | `1` |  |
@@ -101,15 +99,19 @@ Moreh Inference Framework
 | loki.loki.structuredConfig.limits_config.per_stream_rate_limit_burst | string | `"60MB"` |  |
 | loki.loki.structuredConfig.limits_config.retention_period | string | `"2160h"` |  |
 | loki.loki.structuredConfig.limits_config.split_queries_by_interval | string | `"24h"` |  |
+| loki.lokiCanary.tolerations[0].effect | string | `"NoSchedule"` |  |
+| loki.lokiCanary.tolerations[0].key | string | `"amd.com/gpu"` |  |
+| loki.lokiCanary.tolerations[0].operator | string | `"Exists"` |  |
+| loki.lokiCanary.tolerations[1].effect | string | `"NoSchedule"` |  |
+| loki.lokiCanary.tolerations[1].key | string | `"nvidia.com/gpu"` |  |
+| loki.lokiCanary.tolerations[1].operator | string | `"Exists"` |  |
 | loki.read.extraArgs[0] | string | `"-config.expand-env=true"` |  |
 | loki.read.extraEnvFrom[0].secretRef.name | string | `"loki-bucket"` |  |
 | loki.read.extraEnvFrom[1].configMapRef.name | string | `"loki-bucket"` |  |
-| loki.read.nodeSelector."node-role.kubernetes.io/control-plane" | string | `""` |  |
 | loki.read.replicas | int | `1` |  |
 | loki.write.extraArgs[0] | string | `"-config.expand-env=true"` |  |
 | loki.write.extraEnvFrom[0].secretRef.name | string | `"loki-bucket"` |  |
 | loki.write.extraEnvFrom[1].configMapRef.name | string | `"loki-bucket"` |  |
-| loki.write.nodeSelector."node-role.kubernetes.io/control-plane" | string | `""` |  |
 | loki.write.persistence.volumeClaimsEnabled | bool | `false` |  |
 | loki.write.replicas | int | `1` |  |
 | lokiBucket.accessKey | string | `""` | MinIO access key for Loki storage. Defaults to minio.rootUser. |
@@ -184,6 +186,9 @@ Moreh Inference Framework
 | vector.tolerations[2].effect | string | `"NoSchedule"` |  |
 | vector.tolerations[2].key | string | `"amd.com/gpu"` |  |
 | vector.tolerations[2].operator | string | `"Exists"` |  |
+| vector.tolerations[3].effect | string | `"NoSchedule"` |  |
+| vector.tolerations[3].key | string | `"nvidia.com/gpu"` |  |
+| vector.tolerations[3].operator | string | `"Exists"` |  |
 | vector.updateStrategy.rollingUpdate.maxUnavailable | int | `10` |  |
 | vector.updateStrategy.type | string | `"RollingUpdate"` |  |
 

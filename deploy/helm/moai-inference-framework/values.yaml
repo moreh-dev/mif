@@ -228,8 +228,6 @@ loki:
           name: loki-bucket
       - configMapRef:
           name: loki-bucket
-    nodeSelector:
-      node-role.kubernetes.io/control-plane: ""
 
   read:
     replicas: 1
@@ -240,8 +238,6 @@ loki:
           name: loki-bucket
       - configMapRef:
           name: loki-bucket
-    nodeSelector:
-      node-role.kubernetes.io/control-plane: ""
 
   write:
     replicas: 1
@@ -252,8 +248,6 @@ loki:
           name: loki-bucket
       - configMapRef:
           name: loki-bucket
-    nodeSelector:
-      node-role.kubernetes.io/control-plane: ""
     persistence:
       volumeClaimsEnabled: false
 
@@ -266,10 +260,17 @@ loki:
           name: loki-bucket
       - configMapRef:
           name: loki-bucket
-    nodeSelector:
-      node-role.kubernetes.io/control-plane: ""
     persistence:
       volumeClaimsEnabled: false
+
+  lokiCanary:
+    tolerations:
+      - key: amd.com/gpu
+        operator: Exists
+        effect: NoSchedule
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
 
 vector:
   # -- Enable vector/vector as a DaemonSet log collector.
@@ -287,6 +288,9 @@ vector:
       value: "true"
       effect: NoSchedule
     - key: amd.com/gpu
+      operator: Exists
+      effect: NoSchedule
+    - key: nvidia.com/gpu
       operator: Exists
       effect: NoSchedule
 
