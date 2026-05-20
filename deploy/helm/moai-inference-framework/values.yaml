@@ -263,6 +263,15 @@ loki:
     persistence:
       volumeClaimsEnabled: false
 
+  lokiCanary:
+    tolerations:
+      - key: amd.com/gpu
+        operator: Exists
+        effect: NoSchedule
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+
 vector:
   # -- Enable vector/vector as a DaemonSet log collector.
   enabled: true
@@ -279,6 +288,9 @@ vector:
       value: "true"
       effect: NoSchedule
     - key: amd.com/gpu
+      operator: Exists
+      effect: NoSchedule
+    - key: nvidia.com/gpu
       operator: Exists
       effect: NoSchedule
 
