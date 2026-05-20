@@ -17,6 +17,11 @@ data:
     apiVersion: 1
     datasources:
       - name: Loki
+        # Stable UID so other provisioned resources (e.g. the Heimdall alert
+        # rules under `files/alerts/`) can reference this datasource by a
+        # known identifier instead of the random UID Grafana would otherwise
+        # assign.
+        uid: loki
         type: loki
         access: proxy
         url: http://{{ .Release.Name }}-loki-gateway.{{ include "common.names.namespace" . }}.svc.cluster.local
