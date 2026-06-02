@@ -28,9 +28,9 @@ Before using a sub-chart's `customConfig`, verify whether the chart wraps it wit
 
 ## MinIO
 
-Use `minio/minio`. Provision buckets/users/policies via the chart's top-level `buckets`/`users`/`policies` (not under `provisioning`). Create a dedicated user per consuming service, scoped by policy to its own bucket; templates read credentials via `{{ (index .Values.minio.users 0).accessKey }}` etc.
+Use `minio/minio`. Declare buckets in the top-level `minio.buckets`. Do **not** set the sub-chart's `minio.users`/`minio.policies`: those provision through the sub-chart's post-install Helm hook, which deadlocks when a consumer (e.g. Loki, Tempo) needs its bucket and credentials at startup — the consumer waits for the bucket, Helm waits for the consumer, and the hook never fires.
 
-The sub-chart's post-install hooks deadlock when a consumer (e.g. Loki) waits for the bucket at startup. Provision via a regular Job, not a Helm hook, so it runs as soon as MinIO is reachable.
+Instead, the regular `templates/minio/init-job.yaml` Job (not a hook) provisions storage as soon as MinIO is reachable. For each enabled consumer it creates the bucket, a least-privilege policy scoped to that bucket, and a dedicated user (never the root user), via `mc admin`. Per-consumer credentials live in a top-level `<consumer>Bucket` section (e.g. `lokiBucket`, `tempoBucket`) and are surfaced through a `<consumer>-bucket` Secret + ConfigMap (`templates/<consumer>/credentials.yaml`); both the init Job and the consumer's pods read them via `extraEnvFrom` + `-config.expand-env=true`.
 
 ## Alert provisioning
 

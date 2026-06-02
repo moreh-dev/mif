@@ -146,8 +146,9 @@ minio:
   persistence:
     enabled: false
 
-  # Buckets to create. The minio-init Job (templates/loki/minio-init-job.yaml)
-  # creates these as a regular resource, avoiding the post-install hook deadlock.
+  # Buckets to create. The minio-init Job (templates/minio/init-job.yaml) creates
+  # the bucket, a bucket-scoped policy, and a dedicated user for each consumer as
+  # a regular resource, avoiding the post-install hook deadlock.
   buckets:
     - name: loki
 
@@ -156,15 +157,16 @@ minio:
       memory: 2Gi
 
 # Settings for Loki's object storage bucket.
-# When minio.enabled: true, these default to the MinIO root credentials.
+# When minio.enabled: true, these default to a dedicated "loki" MinIO user that the
+# minio-init Job scopes to the loki bucket (not the MinIO root user).
 # When minio.enabled: false (external MinIO), set all three fields explicitly.
 lokiBucket:
   # -- MinIO service host for Loki storage. Defaults to <release>-minio.
   # Use the FQDN (e.g. minio.minio.svc.cluster.local) for cross-namespace access.
   host: ""
-  # -- MinIO access key for Loki storage. Defaults to minio.rootUser.
+  # -- MinIO access key for Loki storage. Defaults to the dedicated "loki" user.
   accessKey: ""
-  # -- MinIO secret key for Loki storage. Defaults to minio.rootPassword.
+  # -- MinIO secret key for Loki storage. Defaults to the dedicated "loki" user's password.
   secretKey: ""
 
 loki:
