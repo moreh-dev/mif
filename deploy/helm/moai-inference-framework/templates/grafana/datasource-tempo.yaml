@@ -1,8 +1,7 @@
 {{- $ps := index .Values "prometheus-stack" }}
 {{- if and (default dict .Values.tempo).enabled $ps.enabled $ps.grafana.enabled }}
 ---
-# Grafana datasource ConfigMap for Tempo.
-# The grafana-sidecar discovers ConfigMaps labelled grafana_datasource=1 and
+# The grafana sidecar discovers ConfigMaps labelled grafana_datasource=1 and
 # provisions them as datasources automatically.
 apiVersion: v1
 kind: ConfigMap

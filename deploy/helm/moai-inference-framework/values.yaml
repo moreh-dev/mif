@@ -299,8 +299,7 @@ tempo:
   # -- Disable Tempo usage reporting/analytics.
   reportingEnabled: false
 
-  # Inject the tempo-bucket Secret + ConfigMap into every Tempo component and expand
-  # ${BUCKET_*}/${AWS_*} at startup (mirrors the Loki credential wiring).
+  # Inject the tempo-bucket credentials into every component (mirrors Loki).
   global:
     extraArgs:
       - -config.expand-env=true

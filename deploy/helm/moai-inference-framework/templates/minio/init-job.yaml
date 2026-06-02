@@ -54,7 +54,6 @@ spec:
               SECRET=$(cat /config/rootPassword)
               ENDPOINT="http://{{ .Release.Name }}-minio:9000"
 
-              # Wait for MinIO to become reachable.
               ATTEMPTS=0
               until $MC alias set myminio "$ENDPOINT" "$ACCESS" "$SECRET" >/dev/null 2>&1; do
                 ATTEMPTS=$((ATTEMPTS + 1))
