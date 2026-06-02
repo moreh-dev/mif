@@ -146,9 +146,11 @@ minio:
   persistence:
     enabled: false
 
-  # Buckets to create. The minio-init Job (templates/minio/init-job.yaml) creates
-  # the bucket, a bucket-scoped policy, and a dedicated user for each consumer as
-  # a regular resource, avoiding the post-install hook deadlock.
+  # Buckets pre-created by the MinIO sub-chart's own provisioning. This list does
+  # NOT drive the scoped per-consumer setup: the minio-init Job
+  # (templates/minio/init-job.yaml) creates the bucket + bucket-scoped policy +
+  # dedicated user for each enabled consumer (loki, tempo) from its
+  # <consumer>-bucket Secret/ConfigMap, independent of this list.
   buckets:
     - name: loki
     - name: tempo
