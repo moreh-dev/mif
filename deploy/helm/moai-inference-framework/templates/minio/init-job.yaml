@@ -25,7 +25,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ .Release.Name }}-minio-init
+  name: {{ .Release.Name }}-minio-init-{{ .Release.Revision }}
   namespace: {{ include "common.names.namespace" . }}
   labels:
     {{- include "mif.labels" . | nindent 4 }}
