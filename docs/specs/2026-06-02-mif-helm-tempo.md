@@ -129,7 +129,10 @@ skips its bucket/user. `minio.buckets` is retained for sub-chart compatibility.
 - `global.extraArgs: [-config.expand-env=true]` and `global.extraEnvFrom` referencing
   the `tempo-bucket` Secret + ConfigMap (verified to propagate to all six workloads).
 - `compactor.config.compaction.block_retention: 2160h` (90 days, matches Loki).
-- `replicas: 1` per component; `reportingEnabled: false`;
+- `replicas: 1` per component, paired with `ingester.config.replication_factor: 1`.
+  The chart default is 3; with a single ingester the distributor rejects writes
+  ("N live replicas required"), so the replication factor must track
+  `ingester.replicas` (valhalla runs 3 / 3). `reportingEnabled: false`;
   `metaMonitoring.serviceMonitor.enabled: false`.
 - **Not** set in chart defaults (valhalla-specific, recorded only as comments):
   `storageClass: ceph-block`, `tolerations: amd.com/gpu`, `dnsService: coredns`,

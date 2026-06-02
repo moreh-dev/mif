@@ -16,6 +16,11 @@
 #
 # Each consumer's bucket name and credentials are read from its
 # <consumer>-bucket Secret + ConfigMap (templates/<consumer>/credentials.yaml).
+#
+# Provisioning is create-once, not reconciling: an existing policy or user is
+# left as-is (policy create is `|| true`; user add is guarded by `user info`).
+# Changing a consumer's policy scope or secretKey later is not propagated by
+# re-running this Job — update the MinIO user/policy manually if that happens.
 ---
 apiVersion: batch/v1
 kind: Job
