@@ -86,6 +86,13 @@ never baked into the Job manifest.
 This is the security posture the user chose (least privilege, bucket isolation),
 and it is applied symmetrically to Loki and Tempo.
 
+**Upgrade note (existing installs).** On `helm upgrade` of a cluster where Loki
+currently authenticates as the MinIO root user, the init Job creates the `loki`
+user and its bucket-scoped policy idempotently, and Loki reconnects as `loki`.
+Data written under the root user stays readable: the bucket name is unchanged
+(`loki`) and the policy grants bucket-level `s3:*`, and MinIO authorizes by
+bucket/prefix rather than per-object ownership. No data migration is required.
+
 ## Components
 
 ### Commit 1 — `refactor(deploy): provision scoped MinIO users via the init Job`

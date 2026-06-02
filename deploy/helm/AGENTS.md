@@ -14,7 +14,7 @@ After any chart change, run the narrowest sufficient check: `make helm-lint`, `h
 ## Sub-chart integration
 
 - Every infrastructure component is a sub-chart of `moai-inference-framework`, never a standalone prerequisite. Default to `enabled: true` with a `condition:` entry in `Chart.yaml` — `enabled: false` defaults break the one-chart philosophy.
-- Use official upstream repos: loki `https://grafana.github.io/helm-charts`, vector `https://helm.vector.dev`, minio `https://charts.min.io`.
+- Use official upstream repos: loki `https://grafana.github.io/helm-charts`, vector `https://helm.vector.dev`, minio `https://charts.min.io`, tempo `https://grafana-community.github.io/helm-charts` (Grafana's community-maintained charts repo, which carries current `tempo-distributed`).
 
 ## Naming and references
 
