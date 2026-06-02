@@ -18,6 +18,7 @@ Moreh Inference Framework
 | Repository | Name | Version |
 |------------|------|---------|
 | https://charts.min.io | minio | 5.4.0 |
+| https://grafana-community.github.io/helm-charts | tempo(tempo-distributed) | 2.23.1 |
 | https://grafana.github.io/helm-charts | loki | 6.30.0 |
 | https://helm.mittwald.de | replicator(kubernetes-replicator) | 2.12.2 |
 | https://helm.vector.dev | vector | 0.39.0 |
@@ -119,7 +120,8 @@ Moreh Inference Framework
 | lokiBucket.secretKey | string | `""` | MinIO secret key for Loki storage. Defaults to the dedicated "loki" user's password. |
 | lws.enabled | bool | `true` | Enable kubernetes-sigs/lws. Set to false if already deployed. |
 | minio.buckets[0].name | string | `"loki"` |  |
-| minio.enabled | bool | `true` | Enable minio/minio as the S3-compatible object storage backend for Loki. Set to false if MinIO is already deployed; in that case, configure loki storage to point to the existing MinIO service. |
+| minio.buckets[1].name | string | `"tempo"` |  |
+| minio.enabled | bool | `true` | Enable minio/minio as the S3-compatible object storage backend for Loki and Tempo. Set to false if MinIO is already deployed; in that case, configure loki/tempo storage to point to the existing MinIO service. |
 | minio.mode | string | `"standalone"` |  |
 | minio.persistence.enabled | bool | `false` |  |
 | minio.resources.requests.memory | string | `"2Gi"` |  |
@@ -154,6 +156,35 @@ Moreh Inference Framework
 | prometheus-stack.thanosRuler.enabled | bool | `false` |  |
 | prometheus-stack.windowsMonitoring.enabled | bool | `false` |  |
 | replicator.enabled | bool | `true` | Enable mittwald/kubernetes-replicator. Set to false if already deployed. |
+| tempo.compactor.config.compaction.block_retention | string | `"2160h"` |  |
+| tempo.compactor.replicas | int | `1` |  |
+| tempo.distributor.replicas | int | `1` |  |
+| tempo.enabled | bool | `true` | Enable grafana-community/tempo-distributed. |
+| tempo.global.extraArgs[0] | string | `"-config.expand-env=true"` |  |
+| tempo.global.extraEnvFrom[0].secretRef.name | string | `"tempo-bucket"` |  |
+| tempo.global.extraEnvFrom[1].configMapRef.name | string | `"tempo-bucket"` |  |
+| tempo.ingester.config.replication_factor | int | `1` |  |
+| tempo.ingester.persistence.enabled | bool | `false` |  |
+| tempo.ingester.replicas | int | `1` |  |
+| tempo.memcached.enabled | bool | `true` |  |
+| tempo.memcached.replicas | int | `1` |  |
+| tempo.metaMonitoring.serviceMonitor.enabled | bool | `false` |  |
+| tempo.querier.replicas | int | `1` |  |
+| tempo.queryFrontend.replicas | int | `1` |  |
+| tempo.reportingEnabled | bool | `false` | Disable Tempo usage reporting/analytics. |
+| tempo.storage.trace.backend | string | `"s3"` |  |
+| tempo.storage.trace.s3.access_key | string | `"${AWS_ACCESS_KEY_ID}"` |  |
+| tempo.storage.trace.s3.bucket | string | `"${BUCKET_NAME}"` |  |
+| tempo.storage.trace.s3.endpoint | string | `"${BUCKET_HOST}:${BUCKET_PORT}"` |  |
+| tempo.storage.trace.s3.forcepathstyle | bool | `true` |  |
+| tempo.storage.trace.s3.insecure | bool | `true` |  |
+| tempo.storage.trace.s3.region | string | `"${BUCKET_REGION}"` |  |
+| tempo.storage.trace.s3.secret_key | string | `"${AWS_SECRET_ACCESS_KEY}"` |  |
+| tempo.traces.otlp.grpc.enabled | bool | `true` |  |
+| tempo.traces.otlp.http.enabled | bool | `true` |  |
+| tempoBucket.accessKey | string | `""` | MinIO access key for Tempo storage. Defaults to the dedicated "tempo" user. |
+| tempoBucket.host | string | `""` | MinIO service host for Tempo storage. Defaults to <release>-minio. Use the FQDN (e.g. minio.minio.svc.cluster.local) for cross-namespace access. |
+| tempoBucket.secretKey | string | `""` | MinIO secret key for Tempo storage. Defaults to the dedicated "tempo" user's password. |
 | vector.customConfig.api.address | string | `"0.0.0.0:8686"` |  |
 | vector.customConfig.api.enabled | bool | `true` |  |
 | vector.customConfig.data_dir | string | `"/vector-data"` |  |

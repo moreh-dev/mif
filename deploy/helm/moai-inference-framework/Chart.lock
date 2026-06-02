@@ -32,5 +32,8 @@ dependencies:
 - name: vector
   repository: https://helm.vector.dev
   version: 0.39.0
-digest: sha256:38dcfcf610839b5fd0cf0d4e48c3592ca9fd5fd9ff833470333f943e6c6d62b6
-generated: "2026-03-23T21:14:54.760708118+09:00"
+- name: tempo-distributed
+  repository: https://grafana-community.github.io/helm-charts
+  version: 2.23.1
+digest: sha256:6216cf9307d8629acade67e2fe057cef2c34371ee76fb74090748a6348c8b218
+generated: "2026-06-02T12:02:45.252803898+09:00"

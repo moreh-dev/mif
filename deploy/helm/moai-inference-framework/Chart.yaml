@@ -54,3 +54,8 @@ dependencies:
     version: 0.39.0
     repository: https://helm.vector.dev
     condition: vector.enabled
+  - name: tempo-distributed
+    alias: tempo
+    version: 2.23.1
+    repository: https://grafana-community.github.io/helm-charts
+    condition: tempo.enabled

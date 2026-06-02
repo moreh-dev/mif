@@ -1,0 +1,27 @@
+{{- $ps := index .Values "prometheus-stack" }}
+{{- if and .Values.tempo.enabled $ps.enabled $ps.grafana.enabled }}
+---
+# Grafana datasource ConfigMap for Tempo.
+# The grafana-sidecar discovers ConfigMaps labelled grafana_datasource=1 and
+# provisions them as datasources automatically.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "common.names.name" . }}-datasource-tempo
+  namespace: {{ include "common.names.namespace" . }}
+  labels:
+    grafana_datasource: "1"
+    {{- include "mif.labels" . | nindent 4 }}
+data:
+  tempo-datasource.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Tempo
+        # Stable UID so other provisioned resources can reference this datasource
+        # by a known identifier instead of the random UID Grafana would assign.
+        uid: tempo
+        type: tempo
+        access: proxy
+        url: http://{{ .Release.Name }}-tempo-query-frontend.{{ include "common.names.namespace" . }}.svc.cluster.local:3200
+        isDefault: false
+{{- end }}
