@@ -17,10 +17,10 @@
 # Each consumer's bucket name and credentials are read from its
 # <consumer>-bucket Secret + ConfigMap (templates/<consumer>/credentials.yaml).
 #
-# Provisioning is create-once, not reconciling: an existing policy or user is
-# left as-is (policy create is `|| true`; user add is guarded by `user info`).
-# Changing a consumer's policy scope or secretKey later is not propagated by
-# re-running this Job — update the MinIO user/policy manually if that happens.
+# Re-running this Job overwrites each consumer's policy (so policy/scope changes
+# are picked up), but it does not modify an existing user (user add is guarded by
+# `user info`). A changed secretKey is therefore not propagated to a user that
+# already exists — rotate it in MinIO manually if that happens.
 ---
 apiVersion: batch/v1
 kind: Job
@@ -80,8 +80,12 @@ spec:
               fi
 
               # Least-privilege policy scoped to this consumer's bucket only.
+              # `policy create` and `policy attach` are both idempotent (re-running
+              # returns success), so they run without `|| true`: a genuine failure
+              # (auth, connectivity, bad JSON) exits non-zero and fails the Job
+              # under `set -e` instead of being silently masked.
               echo "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":[\"s3:*\"],\"Resource\":[\"arn:aws:s3:::${BUCKET}\",\"arn:aws:s3:::${BUCKET}/*\"]}]}" > /tmp/{{ $c }}-policy.json
-              $MC admin policy create myminio {{ $c }} /tmp/{{ $c }}-policy.json || true
+              $MC admin policy create myminio {{ $c }} /tmp/{{ $c }}-policy.json
 
               if ! $MC admin user info myminio "$USER_KEY" >/dev/null 2>&1; then
                 echo "Creating user '$USER_KEY'"
@@ -89,7 +93,8 @@ spec:
               else
                 echo "User '$USER_KEY' already exists"
               fi
-              $MC admin policy attach myminio {{ $c }} --user "$USER_KEY" || true
+
+              $MC admin policy attach myminio {{ $c }} --user "$USER_KEY"
               {{- end }}
 
               echo "MinIO initialization complete"

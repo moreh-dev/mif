@@ -117,7 +117,7 @@ Moreh Inference Framework
 | loki.write.replicas | int | `1` |  |
 | lokiBucket.accessKey | string | `""` | MinIO access key for Loki storage. Defaults to the dedicated "loki" user. |
 | lokiBucket.host | string | `""` | MinIO service host for Loki storage. Defaults to <release>-minio. Use the FQDN (e.g. minio.minio.svc.cluster.local) for cross-namespace access. |
-| lokiBucket.secretKey | string | `""` | MinIO secret key for Loki storage. Defaults to the dedicated "loki" user's password. |
+| lokiBucket.secretKey | string | `""` | MinIO secret key for Loki storage. Defaults to a generated random value (preserved across upgrades); set to pin it explicitly (recommended in production). |
 | lws.enabled | bool | `true` | Enable kubernetes-sigs/lws. Set to false if already deployed. |
 | minio.buckets[0].name | string | `"loki"` |  |
 | minio.buckets[1].name | string | `"tempo"` |  |
@@ -184,7 +184,7 @@ Moreh Inference Framework
 | tempo.traces.otlp.http.enabled | bool | `true` |  |
 | tempoBucket.accessKey | string | `""` | MinIO access key for Tempo storage. Defaults to the dedicated "tempo" user. |
 | tempoBucket.host | string | `""` | MinIO service host for Tempo storage. Defaults to <release>-minio. Use the FQDN (e.g. minio.minio.svc.cluster.local) for cross-namespace access. |
-| tempoBucket.secretKey | string | `""` | MinIO secret key for Tempo storage. Defaults to the dedicated "tempo" user's password. |
+| tempoBucket.secretKey | string | `""` | MinIO secret key for Tempo storage. Defaults to a generated random value (preserved across upgrades); set to pin it explicitly (recommended in production). |
 | vector.customConfig.api.address | string | `"0.0.0.0:8686"` |  |
 | vector.customConfig.api.enabled | bool | `true` |  |
 | vector.customConfig.data_dir | string | `"/vector-data"` |  |

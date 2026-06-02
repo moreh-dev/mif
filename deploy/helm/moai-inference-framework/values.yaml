@@ -167,7 +167,8 @@ lokiBucket:
   host: ""
   # -- MinIO access key for Loki storage. Defaults to the dedicated "loki" user.
   accessKey: ""
-  # -- MinIO secret key for Loki storage. Defaults to the dedicated "loki" user's password.
+  # -- MinIO secret key for Loki storage. Defaults to a generated random value
+  # (preserved across upgrades); set to pin it explicitly (recommended in production).
   secretKey: ""
 
 loki:
@@ -285,7 +286,8 @@ tempoBucket:
   host: ""
   # -- MinIO access key for Tempo storage. Defaults to the dedicated "tempo" user.
   accessKey: ""
-  # -- MinIO secret key for Tempo storage. Defaults to the dedicated "tempo" user's password.
+  # -- MinIO secret key for Tempo storage. Defaults to a generated random value
+  # (preserved across upgrades); set to pin it explicitly (recommended in production).
   secretKey: ""
 
 tempo:
