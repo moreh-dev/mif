@@ -164,7 +164,7 @@ minio:
 # minio-init Job scopes to the loki bucket (not the MinIO root user).
 # When minio.enabled: false (external MinIO), set all three fields explicitly.
 lokiBucket:
-  # -- MinIO service host for Loki storage. Defaults to <release>-minio.
+  # -- MinIO service host for Loki storage. Defaults to the bundled MinIO service name (usually <release>-minio; <release> if the release name already contains "minio").
   # Use the FQDN (e.g. minio.minio.svc.cluster.local) for cross-namespace access.
   host: ""
   # -- MinIO access key for Loki storage. Defaults to the dedicated "loki" user.
@@ -283,7 +283,7 @@ loki:
 # minio-init Job scopes to the tempo bucket (not the MinIO root user).
 # When minio.enabled: false (external MinIO), set all three fields explicitly.
 tempoBucket:
-  # -- MinIO service host for Tempo storage. Defaults to <release>-minio.
+  # -- MinIO service host for Tempo storage. Defaults to the bundled MinIO service name (usually <release>-minio; <release> if the release name already contains "minio").
   # Use the FQDN (e.g. minio.minio.svc.cluster.local) for cross-namespace access.
   host: ""
   # -- MinIO access key for Tempo storage. Defaults to the dedicated "tempo" user.

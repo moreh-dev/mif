@@ -116,7 +116,7 @@ Moreh Inference Framework
 | loki.write.persistence.volumeClaimsEnabled | bool | `false` |  |
 | loki.write.replicas | int | `1` |  |
 | lokiBucket.accessKey | string | `""` | MinIO access key for Loki storage. Defaults to the dedicated "loki" user. |
-| lokiBucket.host | string | `""` | MinIO service host for Loki storage. Defaults to <release>-minio. Use the FQDN (e.g. minio.minio.svc.cluster.local) for cross-namespace access. |
+| lokiBucket.host | string | `""` | MinIO service host for Loki storage. Defaults to the bundled MinIO service name (usually <release>-minio; <release> if the release name already contains "minio"). Use the FQDN (e.g. minio.minio.svc.cluster.local) for cross-namespace access. |
 | lokiBucket.secretKey | string | `""` | MinIO secret key for Loki storage. Defaults to a generated random value (preserved across upgrades); set to pin it explicitly (recommended in production). |
 | lws.enabled | bool | `true` | Enable kubernetes-sigs/lws. Set to false if already deployed. |
 | minio.buckets[0].name | string | `"loki"` |  |
@@ -183,7 +183,7 @@ Moreh Inference Framework
 | tempo.traces.otlp.grpc.enabled | bool | `true` |  |
 | tempo.traces.otlp.http.enabled | bool | `true` |  |
 | tempoBucket.accessKey | string | `""` | MinIO access key for Tempo storage. Defaults to the dedicated "tempo" user. |
-| tempoBucket.host | string | `""` | MinIO service host for Tempo storage. Defaults to <release>-minio. Use the FQDN (e.g. minio.minio.svc.cluster.local) for cross-namespace access. |
+| tempoBucket.host | string | `""` | MinIO service host for Tempo storage. Defaults to the bundled MinIO service name (usually <release>-minio; <release> if the release name already contains "minio"). Use the FQDN (e.g. minio.minio.svc.cluster.local) for cross-namespace access. |
 | tempoBucket.secretKey | string | `""` | MinIO secret key for Tempo storage. Defaults to a generated random value (preserved across upgrades); set to pin it explicitly (recommended in production). |
 | vector.customConfig.api.address | string | `"0.0.0.0:8686"` |  |
 | vector.customConfig.api.enabled | bool | `true` |  |

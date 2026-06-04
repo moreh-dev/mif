@@ -25,7 +25,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ .Release.Name }}-minio-init-{{ .Release.Revision }}
+  name: {{ printf "%s-minio-init" .Release.Name | trunc 56 | trimSuffix "-" }}-{{ .Release.Revision }}
   namespace: {{ include "common.names.namespace" . }}
   labels:
     {{- include "mif.labels" . | nindent 4 }}
