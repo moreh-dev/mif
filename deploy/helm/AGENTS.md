@@ -28,9 +28,9 @@ Before using a sub-chart's `customConfig`, verify whether the chart wraps it wit
 
 ## MinIO
 
-Use `minio/minio`. Declare buckets in the top-level `minio.buckets`. Do **not** set the sub-chart's `minio.users`/`minio.policies`: those provision through the sub-chart's post-install Helm hook, which deadlocks when a consumer (e.g. Loki, Tempo) needs its bucket and credentials at startup — the consumer waits for the bucket, Helm waits for the consumer, and the hook never fires.
+Use `minio/minio`. Do **not** set the sub-chart's `minio.users`/`minio.policies`: those provision through the sub-chart's post-install Helm hook, which deadlocks when a consumer (e.g. Loki, Tempo) needs its bucket and credentials at startup — the consumer waits for the bucket, Helm waits for the consumer, and the hook never fires.
 
-Instead, the regular `templates/minio/init-job.yaml` Job (not a hook) provisions storage as soon as MinIO is reachable. For each enabled consumer it creates the bucket, a least-privilege policy scoped to that bucket, and a dedicated user (never the root user), via `mc admin`. Per-consumer credentials live in a top-level `<consumer>Bucket` section (e.g. `lokiBucket`, `tempoBucket`) and are surfaced through a `<consumer>-bucket` Secret + ConfigMap (`templates/<consumer>/credentials.yaml`); both the init Job and the consumer's pods read them via `extraEnvFrom` + `-config.expand-env=true`.
+Instead, the regular `templates/minio/init-job.yaml` Job (not a hook) provisions storage as soon as MinIO is reachable. For each enabled consumer it creates the bucket itself, a least-privilege policy scoped to that bucket, and a dedicated user (never the root user), via `mc admin`. The top-level `minio.buckets` only optionally pre-creates buckets via the sub-chart; it is not required and does not drive this scoped per-consumer provisioning. Per-consumer credentials live in a top-level `<consumer>Bucket` section (e.g. `lokiBucket`, `tempoBucket`) and are surfaced through a `<consumer>-bucket` Secret + ConfigMap (`templates/<consumer>/credentials.yaml`); both the init Job and the consumer's pods read them via `extraEnvFrom` + `-config.expand-env=true`.
 
 ## Alert provisioning
 

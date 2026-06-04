@@ -442,7 +442,8 @@ vector:
         type: loki
         # Rendered by the vector chart's tpl in the vector subchart context, so we
         # mirror Loki's gateway fullname from .Release.Name (parent .Values.loki is
-        # not visible here). Single-quoted YAML because the helper call uses "..".
+        # not visible here). Single-quoted YAML so the inner double quotes in the
+        # helper call need no escaping.
         endpoint: 'http://{{ include "mif.subchartFullname" (dict "name" "loki" "ctx" .) }}-gateway'
         inputs:
           - mif_log_transform
