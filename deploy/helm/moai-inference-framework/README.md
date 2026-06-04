@@ -189,7 +189,7 @@ Moreh Inference Framework
 | vector.customConfig.api.enabled | bool | `true` |  |
 | vector.customConfig.data_dir | string | `"/vector-data"` |  |
 | vector.customConfig.sinks.loki.encoding.codec | string | `"json"` |  |
-| vector.customConfig.sinks.loki.endpoint | string | `"http://{{ .Release.Name }}-loki-gateway"` |  |
+| vector.customConfig.sinks.loki.endpoint | string | `"http://{{ include \"mif.subchartFullname\" (dict \"name\" \"loki\" \"ctx\" .) }}-gateway"` |  |
 | vector.customConfig.sinks.loki.inputs[0] | string | `"mif_log_transform"` |  |
 | vector.customConfig.sinks.loki.labels.app | string | `"{{`{{ app }}`}}"` |  |
 | vector.customConfig.sinks.loki.labels.inference_service | string | `"{{`{{ inference_service }}`}}"` |  |

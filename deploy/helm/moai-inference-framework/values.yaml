@@ -440,9 +440,10 @@ vector:
     sinks:
       loki:
         type: loki
-        # {{ .Release.Name }} is evaluated by the vector chart's tpl rendering,
-        # producing the correct release-prefixed Loki gateway service name.
-        endpoint: "http://{{ .Release.Name }}-loki-gateway"
+        # Rendered by the vector chart's tpl in the vector subchart context, so we
+        # mirror Loki's gateway fullname from .Release.Name (parent .Values.loki is
+        # not visible here). Single-quoted YAML because the helper call uses "..".
+        endpoint: 'http://{{ include "mif.subchartFullname" (dict "name" "loki" "ctx" .) }}-gateway'
         inputs:
           - mif_log_transform
         encoding:

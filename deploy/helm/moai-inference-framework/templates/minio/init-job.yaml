@@ -52,7 +52,7 @@ spec:
 
               ACCESS=$(cat /config/rootUser)
               SECRET=$(cat /config/rootPassword)
-              ENDPOINT="http://{{ .Release.Name }}-minio:9000"
+              ENDPOINT="http://{{ include "mif.subchartFullname" (dict "name" "minio" "ctx" .) }}:9000"
 
               ATTEMPTS=0
               until $MC alias set myminio "$ENDPOINT" "$ACCESS" "$SECRET" >/dev/null 2>&1; do
@@ -110,9 +110,9 @@ spec:
           projected:
             sources:
               - configMap:
-                  name: {{ .Release.Name }}-minio
+                  name: {{ include "mif.subchartFullname" (dict "name" "minio" "ctx" .) }}
               - secret:
-                  name: {{ .Release.Name }}-minio
+                  name: {{ include "mif.subchartFullname" (dict "name" "minio" "ctx" .) }}
         {{- range $c := $consumers }}
         - name: creds-{{ $c }}
           projected:
