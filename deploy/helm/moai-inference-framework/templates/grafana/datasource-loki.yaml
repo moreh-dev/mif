@@ -24,7 +24,7 @@ data:
         uid: loki
         type: loki
         access: proxy
-        url: http://{{ .Release.Name }}-loki-gateway.{{ include "common.names.namespace" . }}.svc.cluster.local
+        url: http://{{ include "mif.subchartFullname" (dict "name" "loki" "ctx" .) }}-gateway.{{ include "common.names.namespace" . }}.svc.cluster.local
         isDefault: false
         jsonData:
           maxLines: 5000

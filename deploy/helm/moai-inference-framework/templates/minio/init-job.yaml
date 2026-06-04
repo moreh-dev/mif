@@ -1,0 +1,125 @@
+{{- $consumers := list -}}
+{{- if .Values.loki.enabled -}}{{- $consumers = append $consumers "loki" -}}{{- end -}}
+{{- if (default dict .Values.tempo).enabled -}}{{- $consumers = append $consumers "tempo" -}}{{- end -}}
+{{- if and .Values.minio.enabled $consumers }}
+# Regular Job (not a Helm hook) that provisions MinIO storage for the bundled
+# consumers (Loki, Tempo). For each enabled consumer it creates the bucket, a
+# least-privilege policy scoped to that bucket, and a dedicated user.
+#
+# The MinIO subchart provisions buckets/users/policies through a single
+# post-install Helm hook, which only runs after the whole release is ready.
+# A consumer that needs its bucket and credentials at startup would deadlock:
+# the consumer waits for the bucket, Helm waits for the consumer, and the hook
+# never fires. This Job runs as a normal resource so it is scheduled as soon as
+# MinIO is reachable, and it provisions users/policies via `mc admin` rather
+# than the deadlocking hook (minio.users / minio.policies are never set).
+#
+# Each consumer's bucket name and credentials are read from its
+# <consumer>-bucket Secret + ConfigMap (templates/<consumer>/credentials.yaml).
+#
+# Re-running this Job overwrites each consumer's policy (so policy/scope changes
+# are picked up), but it does not modify an existing user (user add is guarded by
+# `user info`). A changed secretKey is therefore not propagated to a user that
+# already exists — rotate it in MinIO manually if that happens.
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}-minio-init-{{ .Release.Revision }}
+  namespace: {{ include "common.names.namespace" . }}
+  labels:
+    {{- include "mif.labels" . | nindent 4 }}
+spec:
+  backoffLimit: 10
+  ttlSecondsAfterFinished: 300
+  activeDeadlineSeconds: 300
+  template:
+    metadata:
+      labels:
+        {{- include "mif.labels" . | nindent 8 }}
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: minio-init
+          image: "quay.io/minio/mc:RELEASE.2024-11-21T17-21-54Z"
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              MC="/usr/bin/mc --insecure"
+
+              ACCESS=$(cat /config/rootUser)
+              SECRET=$(cat /config/rootPassword)
+              ENDPOINT="http://{{ include "mif.subchartFullname" (dict "name" "minio" "ctx" .) }}:9000"
+
+              ATTEMPTS=0
+              until $MC alias set myminio "$ENDPOINT" "$ACCESS" "$SECRET" >/dev/null 2>&1; do
+                ATTEMPTS=$((ATTEMPTS + 1))
+                if [ $ATTEMPTS -gt 60 ]; then
+                  echo "ERROR: MinIO not reachable after 60 attempts"
+                  exit 1
+                fi
+                echo "Waiting for MinIO... (attempt $ATTEMPTS)"
+                sleep 2
+              done
+              {{- range $c := $consumers }}
+
+              # --- consumer {{ $c }} ---
+              BUCKET=$(cat /creds/{{ $c }}/BUCKET_NAME)
+              USER_KEY=$(cat /creds/{{ $c }}/AWS_ACCESS_KEY_ID)
+              USER_SECRET=$(cat /creds/{{ $c }}/AWS_SECRET_ACCESS_KEY)
+
+              if ! $MC stat "myminio/$BUCKET" >/dev/null 2>&1; then
+                echo "Creating bucket '$BUCKET'"
+                $MC mb "myminio/$BUCKET"
+              else
+                echo "Bucket '$BUCKET' already exists"
+              fi
+
+              # Least-privilege policy scoped to this consumer's bucket only.
+              # `policy create` and `policy attach` are both idempotent (re-running
+              # returns success), so they run without `|| true`: a genuine failure
+              # (auth, connectivity, bad JSON) exits non-zero and fails the Job
+              # under `set -e` instead of being silently masked.
+              echo "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":[\"s3:*\"],\"Resource\":[\"arn:aws:s3:::${BUCKET}\",\"arn:aws:s3:::${BUCKET}/*\"]}]}" > /tmp/{{ $c }}-policy.json
+              $MC admin policy create myminio {{ $c }} /tmp/{{ $c }}-policy.json
+
+              if ! $MC admin user info myminio "$USER_KEY" >/dev/null 2>&1; then
+                echo "Creating user '$USER_KEY'"
+                $MC admin user add myminio "$USER_KEY" "$USER_SECRET"
+              else
+                echo "User '$USER_KEY' already exists"
+              fi
+
+              $MC admin policy attach myminio {{ $c }} --user "$USER_KEY"
+              {{- end }}
+
+              echo "MinIO initialization complete"
+          volumeMounts:
+            - name: minio-configuration
+              mountPath: /config
+            {{- range $c := $consumers }}
+            - name: creds-{{ $c }}
+              mountPath: /creds/{{ $c }}
+              readOnly: true
+            {{- end }}
+      volumes:
+        - name: minio-configuration
+          projected:
+            sources:
+              - configMap:
+                  name: {{ include "mif.subchartFullname" (dict "name" "minio" "ctx" .) }}
+              - secret:
+                  name: {{ include "mif.subchartFullname" (dict "name" "minio" "ctx" .) }}
+        {{- range $c := $consumers }}
+        - name: creds-{{ $c }}
+          projected:
+            sources:
+              - secret:
+                  name: {{ $c }}-bucket
+              - configMap:
+                  name: {{ $c }}-bucket
+        {{- end }}
+{{- end }}
