@@ -173,7 +173,7 @@ The `level` Loki label is only populated for JSON-parsed pods (those labelled `m
 
 ## Automatically collected components
 
-AIGateway pods are collected automatically — no opt-in label is required. The Heimdall controller stamps the immutable label `app.kubernetes.io/name=aigateway` on every AIGateway pod and exposes no field to set `mif.moreh.io/log.collect`, so Vector selects these pods by that label and always parses their JSON output. This mirrors AIGateway metrics and traces, which the controller exposes through an auto-created ServiceMonitor and PodMonitor with no per-pod configuration.
+AIGateway pods are collected automatically — no opt-in label is required. The Heimdall controller stamps the immutable label `app.kubernetes.io/name=aigateway` on every AIGateway pod and exposes no field to set `mif.moreh.io/log.collect`, so Vector selects these pods by that label and always parses their JSON output. This mirrors AIGateway metrics, which the controller exposes through an auto-created ServiceMonitor and PodMonitor with no per-pod configuration.
 
 Query AIGateway logs in Grafana with the `app="aigateway"` selector (see [Searching logs in Grafana](#searching-logs-in-grafana)).
 
@@ -258,7 +258,7 @@ The `level` label is only available for JSON-parsed pods. To filter plain-text l
 
 AIGateway logs are collected automatically and always parsed as JSON. Select them with the `app` label, and use `| json` to expose fields such as `target`, `request_id`, and `trace_id`:
 
-```promql
+```promql {3}
 {app="aigateway"}
 {app="aigateway"} | json
 {app="aigateway"} | json | request_id="<requestId>"
@@ -270,7 +270,7 @@ AIGateway emits uppercase levels (`INFO`, `DEBUG`, `WARN`, `ERROR`), so filter b
 {app="aigateway", level="DEBUG"}
 ```
 
-The parsed `trace_id` field links a log line to its trace in Tempo.
+Each parsed line includes a `trace_id` field for correlating a log with its trace in Tempo. Automatic log-to-trace links require a `derivedFields` entry on the Loki datasource, which this chart does not configure by default.
 
 ---
 
