@@ -401,11 +401,21 @@ vector:
         type: kubernetes_logs
         # Only collect logs from pods that explicitly opt in to MIF log collection.
         extra_label_selector: "mif.moreh.io/log.collect=true"
+      aigateway_logs:
+        type: kubernetes_logs
+        # AIGateway is a first-class MIF component. The Heimdall controller stamps
+        # the immutable label app.kubernetes.io/name=aigateway on every AIGateway
+        # pod and exposes no field to set mif.moreh.io/log.collect, so its logs are
+        # collected automatically by that label — symmetric with how the controller
+        # auto-creates a ServiceMonitor/PodMonitor for its metrics (no per-pod opt-in).
+        # Disjoint from mif_logs: an AIGateway pod has no path to log.collect=true.
+        extra_label_selector: "app.kubernetes.io/name=aigateway"
     transforms:
       mif_log_transform:
         type: remap
         inputs:
           - mif_logs
+          - aigateway_logs
         source: |
           .namespace          = .kubernetes.pod_namespace
           .node_name          = "$VECTOR_SELF_NODE_NAME"
@@ -416,18 +426,24 @@ vector:
 
           log_format = get(.kubernetes.pod_labels, ["mif.moreh.io/log.format"]) ?? ""
 
-          if log_format == "json" {
+          # AIGateway always emits flat JSON (timestamp/level/target/message plus
+          # request_id/trace_id span fields) but cannot carry the log.format opt-in
+          # label, so parse JSON for it unconditionally.
+          if log_format == "json" || .app == "aigateway" {
             structured, err = parse_json(.message)
             if err == null {
               . = merge!(., structured)
-              msg, err = get(., ["msg"])
-              if err == null {
-                .message = msg
+              # Go slog emits "msg"/"time"; Rust components (AIGateway) emit
+              # "message"/"timestamp", which merge! already placed directly.
+              # Guard the slog promotion on field existence: get(., ["msg"])
+              # returns null WITHOUT an error when "msg" is absent, so an
+              # `err == null` guard would null the merged message/timestamp.
+              if exists(.msg) {
+                .message = .msg
                 del(.msg)
               }
-              time, err = get(., ["time"])
-              if err == null {
-                .timestamp = time
+              if exists(.time) {
+                .timestamp = .time
                 del(.time)
               }
             }

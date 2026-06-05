@@ -10,7 +10,7 @@ This document explains how to enable centralized log collection for the MoAI Inf
 
 ```mermaid
 flowchart TB
-    pods["`**Inference Service Pods**`"]
+    pods["`**Inference Service & AIGateway Pods**`"]
     vector["`**Vector**`"]
     grafana["`**Grafana**`"]
 
@@ -46,8 +46,8 @@ flowchart TB
 | :---------- | :------------------------------------------------------------------------ |
 | Helm chart  | `vector/vector` v0.39.0                                                   |
 | Deployment  | DaemonSet (Agent mode, one pod per node)                                  |
-| Log source  | Pods labelled `mif.moreh.io/log.collect=true` (`kubernetes_logs`)         |
-| Log format  | JSON parsing applied only to pods labelled `mif.moreh.io/log.format=json` |
+| Log source  | Pods labelled `mif.moreh.io/log.collect=true`, plus AIGateway pods (`app.kubernetes.io/name=aigateway`) collected automatically (`kubernetes_logs`) |
+| Log format  | JSON parsing applied to pods labelled `mif.moreh.io/log.format=json`, and always to AIGateway pods |
 | Tolerations | unschedulable, compute, `amd.com/gpu`                                     |
 
 ### MinIO
@@ -131,11 +131,11 @@ kubectl logs -n mif -l app.kubernetes.io/name=vector --tail=50
 
 ## Enabling log collection for a pod
 
-Vector collects logs only from pods that explicitly opt in. Two pod labels control this behavior.
+Most pods opt in to log collection explicitly, controlled by the two pod labels below. First-class components such as AIGateway are collected automatically — see [Automatically collected components](#automatically-collected-components).
 
 ### Opt-in label
 
-Add the `mif.moreh.io/log.collect=true` label to a pod to include its logs in Vector's collection. Pods without this label are ignored entirely.
+Add the `mif.moreh.io/log.collect=true` label to a pod to include its logs in Vector's collection. Pods without this label are ignored, except for components collected automatically (see [Automatically collected components](#automatically-collected-components)).
 
 ```yaml
 metadata:
@@ -147,12 +147,14 @@ metadata:
 
 Add the `mif.moreh.io/log.format=json` label to enable structured JSON log parsing for a pod. When set, Vector parses each log line as JSON and promotes the following fields:
 
-| JSON field | Mapped to             |
-| :--------- | :-------------------- |
-| `msg`      | `message`             |
-| `time`     | `timestamp`           |
-| `level`    | `level` (Loki label)  |
-| others     | merged into the event |
+| JSON field            | Mapped to             |
+| :-------------------- | :-------------------- |
+| `msg` or `message`    | `message`             |
+| `time` or `timestamp` | `timestamp`           |
+| `level`               | `level` (Loki label)  |
+| others                | merged into the event |
+
+Both common conventions are accepted: Go components emit `msg`/`time` (for example, the Heimdall scheduler), while Rust components emit `message`/`timestamp` (for example, AIGateway).
 
 Without this label, the log line is forwarded as-is without any JSON parsing.
 
@@ -164,8 +166,16 @@ metadata:
 ```
 
 :::info
-The `level` Loki label is only populated for pods with `mif.moreh.io/log.format=json`. For plain-text pods, `level` remains empty.
+The `level` Loki label is only populated for JSON-parsed pods (those labelled `mif.moreh.io/log.format=json`, plus AIGateway). For plain-text pods, `level` remains empty.
 :::
+
+---
+
+## Automatically collected components
+
+AIGateway pods are collected automatically — no opt-in label is required. The Heimdall controller stamps the immutable label `app.kubernetes.io/name=aigateway` on every AIGateway pod and exposes no field to set `mif.moreh.io/log.collect`, so Vector selects these pods by that label and always parses their JSON output. This mirrors AIGateway metrics, which the controller exposes through an auto-created ServiceMonitor and PodMonitor with no per-pod configuration.
+
+Query AIGateway logs in Grafana with the `app="aigateway"` selector (see [Searching logs in Grafana](#searching-logs-in-grafana)).
 
 ---
 
@@ -209,9 +219,9 @@ Vector enriches every log entry with the following labels, which can be used as 
 | `inference_service` | pod label `app.kubernetes.io/instance`                                             | `llama-3-2-1b`          |
 | `pool_name`         | pod label `mif.moreh.io/pool`                                                      | `heimdall-inference-scheduler` |
 | `role`              | pod label `mif.moreh.io/role`                                                      | `prefill`, `decode`     |
-| `app`               | pod label `app.kubernetes.io/name`                                                 | `vllm`                  |
+| `app`               | pod label `app.kubernetes.io/name`                                                 | `vllm`, `aigateway`     |
 | `node_name`         | `VECTOR_SELF_NODE_NAME` env var (injected by Vector)                               | `gpu-node-01`           |
-| `level`             | parsed from JSON log field `level` (pods with `mif.moreh.io/log.format=json` only) | `info`, `warn`, `error` |
+| `level`             | parsed from JSON log field `level` (JSON-parsed pods only)                         | `info`, `warn`, `error` |
 
 ### Query examples
 
@@ -237,12 +247,30 @@ Filter by log level (available only for JSON-formatted pods):
 ```
 
 :::info
-The `level` label is only available for pods with the `mif.moreh.io/log.format=json` label. To filter plain-text logs by level, use a pipeline filter instead:
+The `level` label is only available for JSON-parsed pods. To filter plain-text logs by level, use a pipeline filter instead:
 
 ```promql
 {namespace="default"} |= "ERROR"
 ```
 :::
+
+### AIGateway logs
+
+AIGateway logs are collected automatically and always parsed as JSON. Select them with the `app` label, and use `| json` to expose fields such as `target`, `request_id`, and `trace_id`:
+
+```promql {3}
+{app="aigateway"}
+{app="aigateway"} | json
+{app="aigateway"} | json | request_id="<requestId>"
+```
+
+AIGateway emits uppercase levels (`INFO`, `DEBUG`, `WARN`, `ERROR`), so filter by level with the uppercase value:
+
+```promql
+{app="aigateway", level="DEBUG"}
+```
+
+Each parsed line includes a `trace_id` field for correlating a log with its trace in Tempo. Automatic log-to-trace links require a `derivedFields` entry on the Loki datasource, which this chart does not configure by default.
 
 ---
 
