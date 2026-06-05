@@ -433,14 +433,17 @@ vector:
             structured, err = parse_json(.message)
             if err == null {
               . = merge!(., structured)
-              msg, err = get(., ["msg"])
-              if err == null {
-                .message = msg
+              # Go slog emits "msg"/"time"; Rust components (AIGateway) emit
+              # "message"/"timestamp", which merge! already placed directly.
+              # Guard the slog promotion on field existence: get(., ["msg"])
+              # returns null WITHOUT an error when "msg" is absent, so an
+              # `err == null` guard would null the merged message/timestamp.
+              if exists(.msg) {
+                .message = .msg
                 del(.msg)
               }
-              time, err = get(., ["time"])
-              if err == null {
-                .timestamp = time
+              if exists(.time) {
+                .timestamp = .time
                 del(.time)
               }
             }
