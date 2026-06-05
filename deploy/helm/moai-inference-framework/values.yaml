@@ -407,7 +407,7 @@ vector:
         # the immutable label app.kubernetes.io/name=aigateway on every AIGateway
         # pod and exposes no field to set mif.moreh.io/log.collect, so its logs are
         # collected automatically by that label — symmetric with how the controller
-        # auto-creates its ServiceMonitor/PodMonitor (metrics/traces need no opt-in).
+        # auto-creates a ServiceMonitor/PodMonitor for its metrics (no per-pod opt-in).
         # Disjoint from mif_logs: an AIGateway pod has no path to log.collect=true.
         extra_label_selector: "app.kubernetes.io/name=aigateway"
     transforms:
