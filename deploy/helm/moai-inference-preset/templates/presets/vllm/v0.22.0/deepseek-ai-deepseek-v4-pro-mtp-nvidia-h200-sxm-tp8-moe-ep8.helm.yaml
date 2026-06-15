@@ -1,0 +1,60 @@
+apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceServiceTemplate
+metadata:
+  name: vllm-v0.22.0-deepseek-ai-deepseek-v4-pro-mtp-nvidia-h200-sxm-tp8-moe-ep8
+  namespace: {{ include "common.names.namespace" . }}
+  labels:
+    {{- include "mif.preset.labels" . | nindent 4 }}
+    mif.moreh.io/model.org: deepseek-ai
+    mif.moreh.io/model.name: deepseek-v4-pro
+    mif.moreh.io/model.mtp: "true"
+    mif.moreh.io/role: e2e
+    mif.moreh.io/accelerator.vendor: nvidia
+    mif.moreh.io/accelerator.model: h200-sxm
+    mif.moreh.io/parallelism: "tp8-moe-ep8"
+spec:
+  framework: vllm
+  model:
+    name: deepseek-ai/DeepSeek-V4-Pro
+  parallelism:
+    tensor: 8
+    expert: true
+  template:
+    spec:
+      containers:
+        - name: main
+          image: vllm/vllm-openai:v0.22.0
+          env:
+            # Large MoE weights: extend engine startup timeout
+            - name: VLLM_ENGINE_READY_TIMEOUT_S
+              value: "3600"
+            # Skip cudagraph memory estimator; overestimates on H200 + MTP
+            - name: VLLM_MEMORY_PROFILER_ESTIMATE_CUDAGRAPHS
+              value: "0"
+            - name: ISVC_EXTRA_ARGS
+              value: >-
+                --trust-remote-code
+                --kv-cache-dtype fp8
+                --block-size 256
+                --max-model-len 800000
+                --gpu-memory-utilization 0.95
+                --max-num-seqs 512
+                --max-num-batched-tokens 512
+                --no-enable-flashinfer-autotune
+                --compilation-config '{"mode":0,"cudagraph_mode":"FULL_DECODE_ONLY"}'
+                --speculative-config '{"method":"mtp","num_speculative_tokens":2}'
+                --tokenizer-mode deepseek_v4
+                --tool-call-parser deepseek_v4
+                --reasoning-parser deepseek_v4
+                --enable-auto-tool-choice
+                --disable-uvicorn-access-log
+                --no-enable-log-requests
+          resources:
+            requests:
+              nvidia.com/gpu: "8"
+            limits:
+              nvidia.com/gpu: "8"
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule

@@ -1,0 +1,49 @@
+apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceServiceTemplate
+metadata:
+  name: vllm-v0.22.0-openai-gpt-oss-120b-nvidia-h100-nvl-tp4
+  namespace: {{ include "common.names.namespace" . }}
+  labels:
+    {{- include "mif.preset.labels" . | nindent 4 }}
+    mif.moreh.io/model.org: openai
+    mif.moreh.io/model.name: gpt-oss-120b
+    mif.moreh.io/role: e2e
+    mif.moreh.io/accelerator.vendor: nvidia
+    mif.moreh.io/accelerator.model: h100-nvl
+    mif.moreh.io/parallelism: "tp4"
+spec:
+  framework: vllm
+  model:
+    name: openai/gpt-oss-120b
+  parallelism:
+    tensor: 4
+  template:
+    spec:
+      containers:
+        - name: main
+          image: vllm/vllm-openai:v0.22.0
+          env:
+            - name: ISVC_EXTRA_ARGS
+              value: >-
+                --trust-remote-code
+                --max-model-len -1
+                --gpu-memory-utilization 0.90
+                --max-num-batched-tokens 8192
+                --max-cudagraph-capture-size 2048
+                --tool-call-parser openai
+                --enable-auto-tool-choice
+                --no-enable-prefix-caching
+                --stream-interval 20
+                --speculative-config '{"model":"nvidia/gpt-oss-120b-Eagle3-v3","num_speculative_tokens":7,"method":"eagle3","draft_tensor_parallel_size":1}'
+                --exclude-tools-when-tool-choice-none
+                --disable-uvicorn-access-log
+                --no-enable-log-requests
+          resources:
+            requests:
+              nvidia.com/gpu: "4"
+            limits:
+              nvidia.com/gpu: "4"
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
