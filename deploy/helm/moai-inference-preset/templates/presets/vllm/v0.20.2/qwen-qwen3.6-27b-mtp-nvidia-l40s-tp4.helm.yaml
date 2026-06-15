@@ -39,6 +39,9 @@ spec:
               nvidia.com/gpu: "4"
             limits:
               nvidia.com/gpu: "4"
+      nodeSelector:
+        moai.moreh.io/accelerator.vendor: nvidia
+        moai.moreh.io/accelerator.model: l40s
       tolerations:
         - key: nvidia.com/gpu
           operator: Exists
