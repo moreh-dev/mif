@@ -42,6 +42,9 @@ spec:
               nvidia.com/gpu: "8"
             limits:
               nvidia.com/gpu: "8"
+      nodeSelector:
+        moai.moreh.io/accelerator.vendor: nvidia
+        moai.moreh.io/accelerator.model: b300
       tolerations:
         - key: nvidia.com/gpu
           operator: Exists
