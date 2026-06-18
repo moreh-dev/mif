@@ -1,0 +1,64 @@
+apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceServiceTemplate
+metadata:
+  name: vllm-v0.22.0-moonshotai-kimi-k2.7-code-nvidia-b300-tp8
+  namespace: {{ include "common.names.namespace" . }}
+  labels:
+    {{- include "mif.preset.labels" . | nindent 4 }}
+    mif.moreh.io/model.org: moonshotai
+    mif.moreh.io/model.name: kimi-k2.7-code
+    mif.moreh.io/role: e2e
+    mif.moreh.io/accelerator.vendor: nvidia
+    mif.moreh.io/accelerator.model: b300
+    mif.moreh.io/parallelism: "tp8"
+spec:
+  framework: vllm
+  model:
+    name: moonshotai/Kimi-K2.7-Code
+  parallelism:
+    tensor: 8
+  template:
+    spec:
+      containers:
+        - name: main
+          # Kimi-K2.7-Code is verified on vLLM >= 0.19.1, so the v0.22.0 mainline
+          # image is sufficient (model_type kimi_k25, same kimi_k2 parsers / MLA
+          # arch as K2.6). The vLLM recipe baseline is just TP8 +
+          # --mm-encoder-tp-mode data + kimi_k2 parsers; the multimodal tuning
+          # (--mm-processor-cache-type shm, --limit-mm-per-prompt) and the B300 MLA
+          # prefill backend are carried over from the K2.6 preset since K2.7-Code
+          # reuses the K2.5 vision stack.
+          # Weights are INT4 (compressed-tensors, num_bits=4) — auto-detected by
+          # vLLM, so no explicit --quantization flag is needed (NOT an FP8 model).
+          # No --speculative-config: the checkpoint has no built-in MTP
+          # (config num_nextn_predict_layers=0), so speculative decoding would need
+          # an external eagle3 draft. K2.6 used lightseekorg/kimi-k2.6-eagle3-mla,
+          # but no K2.7 equivalent is published yet — add eagle3 here once it ships.
+          image: vllm/vllm-openai:v0.22.0
+          env:
+            - name: ISVC_EXTRA_ARGS
+              value: >-
+                --trust-remote-code
+                --max-model-len -1
+                --gpu-memory-utilization 0.92
+                --mm-encoder-tp-mode data
+                --mm-processor-cache-type shm
+                --limit-mm-per-prompt '{"image":4,"video":1}'
+                --tool-call-parser kimi_k2
+                --reasoning-parser kimi_k2
+                --enable-auto-tool-choice
+                --attention-config.mla_prefill_backend=TRTLLM_RAGGED
+                --disable-uvicorn-access-log
+                --no-enable-log-requests
+          resources:
+            requests:
+              nvidia.com/gpu: "8"
+            limits:
+              nvidia.com/gpu: "8"
+      nodeSelector:
+        moai.moreh.io/accelerator.vendor: nvidia
+        moai.moreh.io/accelerator.model: b300
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
