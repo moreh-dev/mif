@@ -27,7 +27,6 @@ Moreh Inference Framework
 | https://moreh-dev.github.io/helm-charts | odin-crd | v0.8.0 |
 | https://prometheus-community.github.io/helm-charts | prometheus-stack(kube-prometheus-stack) | 80.7.0 |
 | oci://registry-1.docker.io/bitnamicharts | common | 2.31.4 |
-| oci://registry.k8s.io/lws/charts | lws | 0.8.0 |
 | oci://registry.k8s.io/nfd/charts | nfd(node-feature-discovery) | 0.18.3 |
 
 ## Values
@@ -118,7 +117,6 @@ Moreh Inference Framework
 | lokiBucket.accessKey | string | `""` | MinIO access key for Loki storage. Defaults to the dedicated "loki" user. |
 | lokiBucket.host | string | `""` | MinIO service host for Loki storage. Defaults to the bundled MinIO service name (usually <release>-minio; <release> if the release name already contains "minio"). Use the FQDN (e.g. minio.minio.svc.cluster.local) for cross-namespace access. |
 | lokiBucket.secretKey | string | `""` | MinIO secret key for Loki storage. Defaults to a generated random value (preserved across upgrades); set to pin it explicitly (recommended in production). |
-| lws.enabled | bool | `true` | Enable kubernetes-sigs/lws. Set to false if already deployed. |
 | minio.buckets[0].name | string | `"loki"` |  |
 | minio.buckets[1].name | string | `"tempo"` |  |
 | minio.enabled | bool | `true` | Enable minio/minio as the S3-compatible object storage backend for Loki and Tempo. Set to false if MinIO is already deployed; in that case, configure loki/tempo storage to point to the existing MinIO service. |
@@ -134,6 +132,7 @@ Moreh Inference Framework
 | odin-crd.enabled | bool | `true` | Enable moreh/odin CRD. Set to false if already deployed. |
 | odin.enabled | bool | `true` | Enable moreh/odin. Set to false if already deployed. |
 | odin.image.pullSecrets[0].name | string | `"moreh-registry"` |  |
+| odin.lws.enabled | bool | `true` | Enable LeaderWorkerSet through the Odin sub-chart. Set to false if already deployed. |
 | prometheus-stack.alertmanager.enabled | bool | `false` |  |
 | prometheus-stack.coreDns.enabled | bool | `false` |  |
 | prometheus-stack.defaultRules.create | bool | `false` |  |

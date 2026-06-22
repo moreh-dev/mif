@@ -85,13 +85,13 @@ alerts:
         # -- Data key inside `existingSecret` that stores the webhook URL.
         webhookUrlKey: webhook-url
 
-lws:
-  # -- Enable kubernetes-sigs/lws. Set to false if already deployed.
-  enabled: true
-
 odin:
   # -- Enable moreh/odin. Set to false if already deployed.
   enabled: true
+
+  lws:
+    # -- Enable LeaderWorkerSet through the Odin sub-chart. Set to false if already deployed.
+    enabled: true
 
   image:
     pullSecrets:
