@@ -7,10 +7,10 @@ dependencies:
   version: 80.7.0
 - name: odin
   repository: https://moreh-dev.github.io/helm-charts
-  version: v0.8.0
+  version: v0.9.0
 - name: odin-crd
   repository: https://moreh-dev.github.io/helm-charts
-  version: v0.8.0
+  version: v0.9.0
 - name: keda
   repository: https://kedacore.github.io/charts
   version: 2.18.0
@@ -32,5 +32,5 @@ dependencies:
 - name: tempo-distributed
   repository: https://grafana-community.github.io/helm-charts
   version: 2.23.1
-digest: sha256:7cbbf3edaa072a6f1133f89ef6c6fa36176a8fe2985b57389d1eed0f8c32f1a6
-generated: "2026-06-22T10:34:28.720907973+09:00"
+digest: sha256:91bf2bbdc24be5afc56e07312a81c4f8bc8b5ccaa20bcc7f1d08ca62ff316f6f
+generated: "2026-06-24T19:03:34.296226532+09:00"
