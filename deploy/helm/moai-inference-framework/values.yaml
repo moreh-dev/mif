@@ -177,6 +177,12 @@ loki:
   # -- Enable grafana/loki.
   enabled: true
 
+  # -- Loki topology. Pin SimpleScalable (read/write/backend) explicitly: the
+  # grafana-community loki chart defaults to Monolithic since 18.x, which would
+  # ignore the read/write/backend blocks below (including the loki-bucket
+  # extraEnvFrom that expands ${BUCKET_HOST}) and break object-storage access.
+  deploymentMode: SimpleScalable
+
   loki:
     auth_enabled: false
     commonConfig:

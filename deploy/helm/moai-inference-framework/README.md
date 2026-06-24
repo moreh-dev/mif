@@ -18,15 +18,15 @@ Moreh Inference Framework
 | Repository | Name | Version |
 |------------|------|---------|
 | https://charts.min.io | minio | 5.4.0 |
-| https://grafana-community.github.io/helm-charts | tempo(tempo-distributed) | 2.23.1 |
-| https://grafana.github.io/helm-charts | loki | 6.30.0 |
-| https://helm.mittwald.de | replicator(kubernetes-replicator) | 2.12.2 |
-| https://helm.vector.dev | vector | 0.39.0 |
-| https://kedacore.github.io/charts | keda | 2.18.0 |
-| https://moreh-dev.github.io/helm-charts | odin | v0.8.0 |
-| https://moreh-dev.github.io/helm-charts | odin-crd | v0.8.0 |
-| https://prometheus-community.github.io/helm-charts | prometheus-stack(kube-prometheus-stack) | 80.7.0 |
-| oci://registry-1.docker.io/bitnamicharts | common | 2.31.4 |
+| https://grafana-community.github.io/helm-charts | loki | 18.1.0 |
+| https://grafana-community.github.io/helm-charts | tempo(tempo-distributed) | 2.25.5 |
+| https://helm.mittwald.de | replicator(kubernetes-replicator) | 2.12.3 |
+| https://helm.vector.dev | vector | 0.56.0 |
+| https://kedacore.github.io/charts | keda | 2.20.1 |
+| https://moreh-dev.github.io/helm-charts | odin | v0.9.0 |
+| https://moreh-dev.github.io/helm-charts | odin-crd | v0.9.0 |
+| https://prometheus-community.github.io/helm-charts | prometheus-stack(kube-prometheus-stack) | 87.1.0 |
+| oci://registry-1.docker.io/bitnamicharts | common | 2.40.0 |
 | oci://registry.k8s.io/nfd/charts | nfd(node-feature-discovery) | 0.18.3 |
 
 ## Values
@@ -64,6 +64,7 @@ Moreh Inference Framework
 | loki.backend.extraEnvFrom[1].configMapRef.name | string | `"loki-bucket"` |  |
 | loki.backend.persistence.volumeClaimsEnabled | bool | `false` |  |
 | loki.backend.replicas | int | `1` |  |
+| loki.deploymentMode | string | `"SimpleScalable"` | Loki topology. Pin SimpleScalable (read/write/backend) explicitly: the grafana-community loki chart defaults to Monolithic since 18.x, which would ignore the read/write/backend blocks below (including the loki-bucket extraEnvFrom that expands ${BUCKET_HOST}) and break object-storage access. |
 | loki.enabled | bool | `true` | Enable grafana/loki. |
 | loki.gateway.extraArgs[0] | string | `"-config.expand-env=true"` |  |
 | loki.gateway.extraEnvFrom[0].secretRef.name | string | `"loki-bucket"` |  |
