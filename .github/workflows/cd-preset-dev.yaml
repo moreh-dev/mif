@@ -1,0 +1,40 @@
+name: moai-inference-preset-dev-deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - deploy/helm/moai-inference-preset/**
+  workflow_dispatch:
+
+jobs:
+  release:
+    name: Release(dev)
+    runs-on: [ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Set Version
+        id: set-version
+        run: |
+          # Preset releases are tagged `preset/v1.2.3`; match only those and drop
+          # the `preset/` prefix so the chart version is a valid semantic version.
+          # No `--always`: fail fast instead of emitting a bare commit hash that
+          # is not a valid Helm chart version when no matching tag is reachable.
+          VERSION=$(git describe --tags --dirty --match 'preset/v[0-9]*' | sed 's|^preset/||')
+          echo VERSION=$VERSION
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Release Helm Chart
+        uses: ./.github/workflows/release-chart
+        with:
+          chart_name: moai-inference-preset
+          chart_path: deploy/helm/moai-inference-preset
+          chart_version: ${{ steps.set-version.outputs.version }}
+          publish_artifact_keeper: "true"
+          chartmuseum_username: ${{ secrets.ARTIFACT_KEEPER_USERNAME }}
+          chartmuseum_password: ${{ secrets.ARTIFACT_KEEPER_PASSWORD }}
