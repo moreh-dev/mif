@@ -23,7 +23,9 @@ jobs:
         run: |
           # Match only framework release tags (v1.2.3); `preset/v*` tags carry a
           # `/` that is invalid in a chart version and must never be picked here.
-          VERSION=$(git describe --tags --always --dirty --match 'v[0-9]*')
+          # No `--always`: fail fast instead of emitting a bare commit hash that
+          # is not a valid Helm chart version when no matching tag is reachable.
+          VERSION=$(git describe --tags --dirty --match 'v[0-9]*')
           echo VERSION=$VERSION
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 

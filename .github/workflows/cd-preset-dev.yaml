@@ -23,7 +23,9 @@ jobs:
         run: |
           # Preset releases are tagged `preset/v1.2.3`; match only those and drop
           # the `preset/` prefix so the chart version is a valid semantic version.
-          VERSION=$(git describe --tags --always --dirty --match 'preset/v[0-9]*' | sed 's|^preset/||')
+          # No `--always`: fail fast instead of emitting a bare commit hash that
+          # is not a valid Helm chart version when no matching tag is reachable.
+          VERSION=$(git describe --tags --dirty --match 'preset/v[0-9]*' | sed 's|^preset/||')
           echo VERSION=$VERSION
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
