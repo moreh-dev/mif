@@ -99,7 +99,13 @@ runs:
         git add .
         git config user.name "${{ github.actor }}"
         git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
-        git commit -m "feat: add ${{ inputs.chart_name }} ${{ inputs.chart_version }}"
+        # A re-run for an already-published version stages no changes; skip the
+        # commit instead of failing the job on `git commit`'s non-zero exit.
+        if git diff --cached --quiet; then
+          echo "Nothing to commit: ${{ inputs.chart_name }} ${{ inputs.chart_version }} already published"
+        else
+          git commit -m "feat: add ${{ inputs.chart_name }} ${{ inputs.chart_version }}"
+        fi
       shell: bash
 
     - name: Push changes
