@@ -110,7 +110,7 @@ runs:
 
     - name: Push changes
       if: ${{ inputs.publish_helm_charts == 'true' }}
-      uses: ad-m/github-push-action@master
+      uses: ad-m/github-push-action@v1.1.0
       with:
         repository: moreh-dev/helm-charts
         branch: main
