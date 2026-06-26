@@ -1,13 +1,13 @@
-name: moai-inference-preset-staging-deploy
+name: moai-inference-preset-prod-deploy
 
 on:
   push:
     tags:
-      - preset/v[0-9]+.[0-9]+.[0-9]+-rc.[0-9]+
+      - preset/v[0-9]+.[0-9]+.[0-9]+
 
 jobs:
   release:
-    name: Release(staging)
+    name: Release(prod)
     runs-on: [ubuntu-latest]
     steps:
       - uses: actions/checkout@v5
@@ -15,7 +15,7 @@ jobs:
       - name: Set Version
         id: set-version
         run: |
-          VERSION=$(echo "${{ github.ref_name }}" | sed 's/^preset\///')
+          VERSION=$(echo "${{ github.ref_name }}" | sed 's|^preset/||')
           echo VERSION=$VERSION
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
@@ -25,4 +25,8 @@ jobs:
           chart_name: moai-inference-preset
           chart_path: deploy/helm/moai-inference-preset
           chart_version: ${{ steps.set-version.outputs.version }}
+          publish_helm_charts: "true"
+          publish_artifact_keeper: "true"
           github_token: ${{ secrets.GITOPS_TOKEN }}
+          chartmuseum_username: ${{ secrets.ARTIFACT_KEEPER_USERNAME }}
+          chartmuseum_password: ${{ secrets.ARTIFACT_KEEPER_PASSWORD }}

@@ -1,23 +1,82 @@
 name: "Release Helm Chart"
-description: "Release Helm Chart "
+description: "Package a Helm chart and publish it to artifact-keeper and/or the moreh-dev/helm-charts repository"
 inputs:
   chart_name:
     required: true
-    description: "The name of helm chart"
+    description: "The name of the helm chart"
   chart_path:
     required: true
-    description: "The path of helm chart"
+    description: "The path of the helm chart"
   chart_version:
     required: true
-    description: "The version of application. It should be a semantic version"
+    description: "The version of the chart. It should be a semantic version"
+  publish_helm_charts:
+    required: false
+    default: "false"
+    description: "Whether to publish the chart to the moreh-dev/helm-charts git repository"
+  publish_artifact_keeper:
+    required: false
+    default: "false"
+    description: "Whether to publish the chart to the artifact-keeper ChartMuseum registry"
   github_token:
-    required: true
-    description: "Github repo access internal token"
+    required: false
+    description: "GitHub token with write access to moreh-dev/helm-charts (required when publish_helm_charts is true)"
+  chartmuseum_username:
+    required: false
+    description: "Username for the ChartMuseum registry (required when publish_artifact_keeper is true)"
+  chartmuseum_password:
+    required: false
+    description: "Password for the ChartMuseum registry (required when publish_artifact_keeper is true)"
 
 runs:
   using: "composite"
   steps:
-    - name: Checkout GitOps
+    - name: Setup Helm
+      uses: azure/setup-helm@v4.2.0
+
+    - name: Package Helm Chart
+      run: |
+        # `chart_version` should be a semantic version
+        package_dir=$(mktemp -d)
+        helm package "${{ inputs.chart_path }}" \
+          --version "${{ inputs.chart_version }}" \
+          --app-version "${{ inputs.chart_version }}" \
+          --destination "$package_dir"
+
+        # `helm package` names the archive after Chart.yaml's `name`, not the
+        # `chart_name` input. Move the single produced archive to the
+        # `chart_name`-based filename the upload and copy steps expect.
+        mv "$package_dir"/*.tgz "${{ inputs.chart_name }}-${{ inputs.chart_version }}.tgz"
+      shell: bash
+
+    - name: Push to ChartMuseum
+      if: ${{ inputs.publish_artifact_keeper == 'true' }}
+      env:
+        CM_USERNAME: ${{ inputs.chartmuseum_username }}
+        CM_PASSWORD: ${{ inputs.chartmuseum_password }}
+      run: |
+        if [ -z "${CM_USERNAME}" ] || [ -z "${CM_PASSWORD}" ]; then
+          echo "::error::publish_artifact_keeper is enabled but chartmuseum_username/chartmuseum_password is empty" >&2
+          exit 1
+        fi
+        curl --fail-with-body -u "${CM_USERNAME}:${CM_PASSWORD}" \
+          -F "chart=@${{ inputs.chart_name }}-${{ inputs.chart_version }}.tgz" \
+          https://artifact-keeper.master.moreh.dev/helm/charts/api/charts
+      shell: bash
+
+    - name: Validate GitHub token
+      if: ${{ inputs.publish_helm_charts == 'true' }}
+      env:
+        GH_TOKEN: ${{ inputs.github_token }}
+      run: |
+        if [ -z "${GH_TOKEN}" ]; then
+          echo "::error::publish_helm_charts is enabled but github_token is empty" >&2
+          exit 1
+        fi
+      shell: bash
+
+    - name: Checkout helm-charts
+      if: ${{ inputs.publish_helm_charts == 'true' }}
       uses: actions/checkout@v4
       with:
         repository: moreh-dev/helm-charts
@@ -25,35 +84,26 @@ runs:
         path: helm-charts
         token: ${{ inputs.github_token }}
 
-    - name: Setup Helm
-      uses: azure/setup-helm@v4.2.0
-
-    - name: Package Helm Chart
-      run: |
-        # `chart_version` should be a semantic version
-        sed -i "s/^version:.*/version: \"${{ inputs.chart_version }}\"/g" ${{ inputs.chart_path }}/Chart.yaml
-        sed -i "s/^appVersion:.*/appVersion: \"${{ inputs.chart_version }}\"/g" ${{ inputs.chart_path }}/Chart.yaml
-
-        helm package ${{ inputs.chart_path }}
-      shell: bash
-
     - name: Copy Helm Chart
+      if: ${{ inputs.publish_helm_charts == 'true' }}
       run: |
-        mv ${{ inputs.chart_name }}-${{ inputs.chart_version }}.tgz helm-charts/charts
+        mv "${{ inputs.chart_name }}-${{ inputs.chart_version }}.tgz" helm-charts/charts
         cd helm-charts
         make index
       shell: bash
 
     - name: Commit files
+      if: ${{ inputs.publish_helm_charts == 'true' }}
       run: |
         cd helm-charts
         git add .
-        git config --global user.name "${{ github.event.head_commit.author.name }}"
-        git config --global user.email "${{ github.event.head_commit.author.email }}"
+        git config user.name "${{ github.actor }}"
+        git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
         git commit -m "feat: add ${{ inputs.chart_name }} ${{ inputs.chart_version }}"
       shell: bash
 
     - name: Push changes
+      if: ${{ inputs.publish_helm_charts == 'true' }}
       uses: ad-m/github-push-action@master
       with:
         repository: moreh-dev/helm-charts
