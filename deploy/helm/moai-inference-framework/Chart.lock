@@ -5,15 +5,6 @@ dependencies:
 - name: kube-prometheus-stack
   repository: https://prometheus-community.github.io/helm-charts
   version: 80.7.0
-- name: odin
-  repository: https://moreh-dev.github.io/helm-charts
-  version: v0.9.0
-- name: odin-crd
-  repository: https://moreh-dev.github.io/helm-charts
-  version: v0.9.0
-- name: keda
-  repository: https://kedacore.github.io/charts
-  version: 2.18.0
 - name: kubernetes-replicator
   repository: https://helm.mittwald.de
   version: 2.12.2
@@ -32,5 +23,5 @@ dependencies:
 - name: tempo-distributed
   repository: https://grafana-community.github.io/helm-charts
   version: 2.23.1
-digest: sha256:91bf2bbdc24be5afc56e07312a81c4f8bc8b5ccaa20bcc7f1d08ca62ff316f6f
-generated: "2026-06-24T19:03:34.296226532+09:00"
+digest: sha256:48df69758dc827c813f3ff8225706f18c15536e3513a701bf7be60917adc6a63
+generated: "2026-06-29T18:05:18.228377809+09:00"
