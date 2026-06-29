@@ -22,9 +22,6 @@ Moreh Inference Framework
 | https://grafana.github.io/helm-charts | loki | 6.30.0 |
 | https://helm.mittwald.de | replicator(kubernetes-replicator) | 2.12.2 |
 | https://helm.vector.dev | vector | 0.39.0 |
-| https://kedacore.github.io/charts | keda | 2.18.0 |
-| https://moreh-dev.github.io/helm-charts | odin | v0.9.0 |
-| https://moreh-dev.github.io/helm-charts | odin-crd | v0.9.0 |
 | https://prometheus-community.github.io/helm-charts | prometheus-stack(kube-prometheus-stack) | 80.7.0 |
 | oci://registry-1.docker.io/bitnamicharts | common | 2.31.4 |
 | oci://registry.k8s.io/nfd/charts | nfd(node-feature-discovery) | 0.18.3 |
@@ -58,7 +55,6 @@ Moreh Inference Framework
 | fullnameOverride | string | `""` | Full name override. |
 | global | object | `{"imagePullSecrets":[]}` | global values are shared across all sub-charts if the value's key matches. |
 | global.imagePullSecrets | list | `[]` | Image pull secrets. |
-| keda.enabled | bool | `true` | Enable kedacore/keda. Set to false if already deployed. |
 | loki.backend.extraArgs[0] | string | `"-config.expand-env=true"` |  |
 | loki.backend.extraEnvFrom[0].secretRef.name | string | `"loki-bucket"` |  |
 | loki.backend.extraEnvFrom[1].configMapRef.name | string | `"loki-bucket"` |  |
@@ -129,10 +125,6 @@ Moreh Inference Framework
 | namespaceOverride | string | `""` | Namespace override. |
 | nfd.enabled | bool | `true` | Enable kubernetes-sigs/node-feature-discovery. Set to false if already deployed. |
 | nfd.worker.tolerations | list | `[{"effect":"NoSchedule","key":"amd.com/gpu","operator":"Exists"},{"effect":"NoSchedule","key":"nvidia.com/gpu","operator":"Exists"},{"effect":"NoExecute","key":"amd-dcm","operator":"Equal","value":"up"},{"effect":"NoSchedule","key":"amd-gpu-unhealthy","operator":"Exists"}]` | NFD Worker Tolerations to allow NFD workers to deploy to GPU nodes |
-| odin-crd.enabled | bool | `true` | Enable moreh/odin CRD. Set to false if already deployed. |
-| odin.enabled | bool | `true` | Enable moreh/odin. Set to false if already deployed. |
-| odin.image.pullSecrets[0].name | string | `"moreh-registry"` |  |
-| odin.lws.enabled | bool | `true` | Enable LeaderWorkerSet through the Odin sub-chart. Set to false if already deployed. |
 | prometheus-stack.alertmanager.enabled | bool | `false` |  |
 | prometheus-stack.coreDns.enabled | bool | `false` |  |
 | prometheus-stack.defaultRules.create | bool | `false` |  |
