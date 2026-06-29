@@ -7,10 +7,7 @@ sidebar_position: 2
 import Tabs from "@theme/Tabs";
 import TabItem from "@theme/TabItem";
 
-This quickstart launches two vLLM instances (pods) of the Llama 3.2 1B Instruct model and serves them through a single endpoint as an example. Please make sure to install all [prerequisites](./prerequisites.mdx), including the following versions of the components, before starting this quickstart guide.
-
-- **moai-inference-framework** v0.4.0
-- **moai-inference-preset** v0.5.0
+This quickstart launches two vLLM instances (pods) of the Llama 3.2 1B Instruct model and serves them through a single AI Gateway endpoint as an example. Please make sure to install all [prerequisites](./prerequisites.mdx) before starting this quickstart guide. The prerequisites install cert-manager, the infrastructure bundle, the required CRDs, and the **Odin** and **Heimdall** operators that this guide builds on.
 
 ---
 
@@ -91,226 +88,93 @@ jq-1.7.1
 
 ## Deployment
 
-Deploy at least three components to completely run the MoAI Inference Framework on the cluster.
+This guide deploys three resources on top of the operators installed during the [prerequisites](./prerequisites.mdx):
 
-- **Gateway**: A component that receives all requests through a single endpoint and distributes them to one of the vLLM pods.
-- **"Heimdall" scheduler**: A component that determines the rules the Gateway uses to select the proper destination for each request.
-- **"Odin" inference service**: A collection of vLLM pods running across different GPUs/servers.
+- **SchedulingProfile**: defines the routing rules (which scorers and picker the gateway uses to choose a destination pod). Cluster-scoped.
+- **AIGateway**: the request entrypoint. The Heimdall operator reconciles this resource and runs the gateway, which receives all requests through a single endpoint and routes each one to a vLLM pod according to the selected SchedulingProfile.
+- **InferenceService** (Odin): a collection of vLLM pods running the model across GPUs/servers. Each pod is bound to an AIGateway by a label.
 
 ```mermaid
 graph TB
-    clients@{ shape: procs, label: "Clients" } --> gateway[Gateway]
-    gateway <--> heimdall[Heimdall]
-    subgraph Odin
+    clients@{ shape: procs, label: "Clients" } --> gateway["AIGateway<br>(gateway runtime)"]
+    sp["SchedulingProfile<br>(routing rules)"] -. selected by AIGateway .-> gateway
+    subgraph odin["Odin InferenceService"]
       vllm1[vLLM 1]
       vllm2[vLLM 2]
     end
-    gateway --> vllm1[vLLM 1]
-    gateway --> vllm2[vLLM 2]
+    gateway --> vllm1
+    gateway --> vllm2
 ```
 
 ### Kubernetes namespace
 
-You need to have a namespace for deploying and running the components of the MoAI Inference Framework. This guide assumes the namespace is named `quickstart`.
+You need a namespace for deploying and running the workload. This guide assumes the namespace is named `quickstart`.
 
 ```shell
 kubectl create namespace quickstart
-kubectl label namespace quickstart mif=enabled
 ```
 
-### Gateway
+### Scheduling profile
 
-Gateway is not a component provided by the MoAI Inference Framework. You may use any gateway controller that is compatible with the [Gateway API Inference Extension](https://gateway-api-inference-extension.sigs.k8s.io/) in Kubernetes, though using **Istio** or **Kgateway** is recommended.
+Create a `SchedulingProfile` that defines how the gateway selects a destination pod. A SchedulingProfile is **cluster-scoped**. This example uses a single end-to-end (`e2e`) profile that scores pods by the number of in-flight requests and picks the highest-scoring one.
 
-Create a `gateway.yaml` file to add the Gateway resource to the `quickstart` namespace. The contents of `gateway.yaml` vary depending on which gateway controller you use, and this guide provides instructions for both Istio and Kgateway. If you did not set up the target Kubernetes cluster yourself, ask your administrator to check which gateway controller is currently installed and available. The inference endpoint will be exposed on port 80 as specified in the `gateway.yaml` file.
+```yaml title="scheduling-profile.yaml"
+apiVersion: heimdall.moreh.io/v1alpha1
+kind: SchedulingProfile
+metadata:
+  name: quickstart
+spec:
+  profileHandler: e2e
+  plugins:
+    - type: inflight-requests-scorer
+    - type: max-score-picker
+  profiles:
+    default:
+      pluginRefs:
+        - name: inflight-requests-scorer
+          weight: 100
+        - name: max-score-picker
+```
 
-<Tabs groupId="gateway-class">
-<TabItem value="istio" label="Istio (Default)" default>
+```shell
+kubectl apply -f scheduling-profile.yaml
+```
 
 :::info
-In environments with multiple Istio control planes, you may need to specify an Istio revision for the Gateway by adding the `istio.io/rev: <revision>` label to the `Gateway` metadata.
+A SchedulingProfile is optional. If you do not create one, the gateway uses a built-in default profile. See the [SchedulingProfile reference](../reference/heimdall-aigateway/usage.mdx) for the full list of scorers, pickers, and the default profile composition.
 :::
 
-```yaml title="gateway.yaml" {41}
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: mif-gateway-infrastructure
-data:
-  service: |
-    spec:
-      type: ClusterIP
-      ports:
-        - name: http
-          port: 80
-          targetPort: http
+### AIGateway
 
-  deployment: |
-    spec:
-      template:
-        metadata:
-          annotations:
-            proxy.istio.io/config: |
-              accessLogFile: /dev/stdout
-              accessLogEncoding: JSON
-        spec:
-          containers:
-            - name: istio-proxy
-              resources:
-                limits: null
-              ports:
-                - name: http
-                  containerPort: 80
+Create an `AIGateway` resource in the `quickstart` namespace. The Heimdall operator reconciles it and creates the gateway `Deployment` and `Service`. The `schedulingProfiles` field binds request models to SchedulingProfiles by name; the reserved model `default` is the gateway-wide fallback applied to every model unless a per-model override is listed.
 
----
-apiVersion: gateway.networking.k8s.io/v1
-kind: Gateway
-metadata:
-  name: mif
-  # labels:
-  #   istio.io/rev: <revision>
-spec:
-  gatewayClassName: istio
-  infrastructure:
-    parametersRef:
-      group: ""
-      kind: ConfigMap
-      name: mif-gateway-infrastructure
-  listeners:
-    - name: http
-      protocol: HTTP
-      port: 80
-      allowedRoutes:
-        namespaces:
-          from: All
-```
-
-</TabItem>
-<TabItem value="kgateway" label="Kgateway">
-
-```yaml title="gateway.yaml"
-apiVersion: gateway.kgateway.dev/v1alpha1
-kind: GatewayParameters
-metadata:
-  name: mif-gateway-infrastructure
-spec:
-  kube:
-    service:
-      type: ClusterIP
-
----
-apiVersion: gateway.networking.k8s.io/v1
-kind: Gateway
+```yaml title="aigateway.yaml"
+apiVersion: heimdall.moreh.io/v1alpha1
+kind: AIGateway
 metadata:
   name: mif
 spec:
-  gatewayClassName: kgateway
-  infrastructure:
-    parametersRef:
-      group: gateway.kgateway.dev
-      kind: GatewayParameters
-      name: mif-gateway-infrastructure
-  listeners:
-    - name: http
-      protocol: HTTP
-      port: 80
-      allowedRoutes:
-        namespaces:
-          from: All
-```
-
-</TabItem>
-</Tabs>
-
-Run the following command.
-
-```shell
-kubectl apply -n quickstart -f gateway.yaml
-```
-
-You can verify that the Gateway resource is created using the following command.
-
-```shell
-kubectl get pod -n quickstart -l gateway.networking.k8s.io/gateway-name=mif
-```
-
-Expected output:
-
-```shell title="Expected output (kubectl get pod -n quickstart -l gateway.networking.k8s.io/gateway-name=mif)"
-NAME                         READY   STATUS    RESTARTS   AGE
-mif-istio-78789865b7-747nz   1/1     Running   0          27s
-```
-
-### Heimdall
-
-To deploy Heimdall and Odin, you must first add the Moreh Helm chart repository.
-
-```shell
-helm repo add moreh https://moreh-dev.github.io/helm-charts
-helm repo update moreh
-```
-
-This quickstart uses a simple scheduling rule that selects the vLLM pod with fewer queued requests between the two pods. Create a `heimdall-values.yaml` file as shown below and deploy the Heimdall scheduler using this file. **Note that you need to set `gatewayClassName` to `kgateway` if you are using Kgateway as the gateway controller**.
-
-```yaml title="heimdall-values.yaml" {25}
-global:
-  imagePullSecrets:
-    - name: moreh-registry
-
-config:
-  apiVersion: inference.networking.x-k8s.io/v1alpha1
-  kind: EndpointPickerConfig
-  plugins:
-    - type: single-profile-handler
-    - type: queue-scorer
-    - type: max-score-picker
+  replicas: 1
   schedulingProfiles:
-    - name: default
-      plugins:
-        - pluginRef: queue-scorer
-        - pluginRef: max-score-picker
-
-gateway:
-  name: mif
-  gatewayClassName: istio
-  # labels:
-  #   istio.io/rev: <revision>
-
-inferencePool:
-  targetPorts:
-    - number: 8000
+    - model: default
+      profile: quickstart
 ```
+
+:::info
+The gateway runtime image tag is filled in automatically by the Heimdall operator (from its `aigateway.defaultTag` chart value). Set `spec.image.tag` only to pin a specific gateway version.
+:::
 
 ```shell
-helm upgrade -i heimdall-inference-scheduler moreh/heimdall-inference-scheduler \
-    --version v0.8.1 \
-    -n quickstart \
-    -f heimdall-values.yaml
+kubectl apply -n quickstart -f aigateway.yaml
 ```
 
-You can verify that the Heimdall pod is running and the related objects (ReplicaSet, Deployment and Service) are created as follows.
+Verify that the gateway pod is running:
 
 ```shell
-kubectl get all -n quickstart -l app.kubernetes.io/instance=heimdall-inference-scheduler
+kubectl get pod -n quickstart -l app.kubernetes.io/name=aigateway,app.kubernetes.io/instance=mif
 ```
 
-Expected output:
-
-```shell title="Expected output (kubectl get all -n quickstart -l app.kubernetes.io/instance=heimdall-inference-scheduler)"
-NAME                            READY   STATUS    RESTARTS   AGE
-pod/heimdall-inference-scheduler-7d54fcbfff-chw94   1/1     Running   0          70s
-
-NAME               TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)                      AGE
-service/heimdall-inference-scheduler   ClusterIP   10.110.35.57   <none>        9002/TCP,9090/TCP,5557/TCP   70s
-
-NAME                       READY   UP-TO-DATE   AVAILABLE   AGE
-deployment.apps/heimdall-inference-scheduler   1/1     1            1           70s
-
-NAME                                  DESIRED   CURRENT   READY   AGE
-replicaset.apps/heimdall-inference-scheduler-7d54fcbfff   1         1         1       70s
-```
-
-### Odin
+### Inference service
 
 This quickstart launches two vLLM instances using the `quickstart-vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2` preset, which includes the model name and model-specific arguments. Each pod utilizes two GPU devices to run the Llama 3.2 1B Instruct model with Tensor Parallelism (TP) set to 2.
 
@@ -326,17 +190,17 @@ In production environments, it is highly recommended to use **offline hub templa
 
 :::
 
-Create a `vllm-llama3-1b-instruct-tp2.yaml` file with the following contents. **Please replace `<huggingFaceToken>` with your Hugging Face token that has accepted the model license**.
+Create a `vllm-llama3-1b-instruct-tp2.yaml` file with the following contents. The `mif.moreh.io/aigateway` label binds this InferenceService to the AIGateway named `mif`; Odin propagates the label to the vLLM pods, and the Heimdall operator injects the gateway sidecar into them. **Please replace `<huggingFaceToken>` with your Hugging Face token that has accepted the model license**.
 
-```yaml title="vllm-llama3-1b-instruct-tp2.yaml" {18}
+```yaml title="vllm-llama3-1b-instruct-tp2.yaml" {6,18}
 apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceService
 metadata:
   name: vllm-llama3-1b-instruct-tp2
+  labels:
+    mif.moreh.io/aigateway: mif
 spec:
   replicas: 2
-  inferencePoolRefs:
-    - name: heimdall-inference-scheduler
   templateRefs:
     - name: vllm
     - name: quickstart-vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2
@@ -350,8 +214,8 @@ spec:
 ```
 
 - The `replicas` field specifies the number of vLLM pods.
-- The `inferencePoolRefs` field specifies the Heimdall's InferencePool where this vLLM pod will register to.
-- The `templateRefs` field specifies the list of `InferenceServiceTemplate` resources. These templates are merged in the order listed, with later templates overriding earlier ones. In this example, `vllm` is a runtime-base and `quickstart-vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2` is a model-specific template.
+- The `mif.moreh.io/aigateway` label binds the pods to the AIGateway. Routing and sidecar injection rely on this label.
+- The `templateRefs` field specifies the list of `InferenceServiceTemplate` resources. These templates are merged in the order listed, with later templates overriding earlier ones. In this example, `vllm` is a runtime-base and `quickstart-vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2` is a model-specific template. The `vllm` runtime-base sets the inference engine, so you do not need to set it on the InferenceService.
 
 :::info
 Select the appropriate runtime-base template according to your parallelism strategy:
@@ -374,35 +238,20 @@ kubectl wait inferenceservice -n quickstart vllm-llama3-1b-instruct-tp2 \
   --timeout=15m
 ```
 
-You can verify that the vLLM pods are running and the related objects (ReplicaSet and Deployment) are created as follows:
+You can verify that the vLLM pods are running as follows:
 
 ```shell
 kubectl get all -n quickstart -l app.kubernetes.io/name=vllm-llama3-1b-instruct-tp2
-```
-
-Expected output:
-
-```shell title="Expected output (kubectl get all -n quickstart -l app.kubernetes.io/name=vllm-llama3-1b-instruct-tp2)"
-NAME                                               READY   STATUS    RESTARTS   AGE
-pod/vllm-llama3-1b-instruct-tp2-64d68f6466-klzll   1/1     Running   0          2m54s
-pod/vllm-llama3-1b-instruct-tp2-64d68f6466-nzr89   1/1     Running   0          2m54s
-
-NAME                                          READY   UP-TO-DATE   AVAILABLE   AGE
-deployment.apps/vllm-llama3-1b-instruct-tp2   2/2     2            2           2m54s
-
-NAME                                                     DESIRED   CURRENT   READY   AGE
-replicaset.apps/vllm-llama3-1b-instruct-tp2-64d68f6466   2         2         2       2m54s
 ```
 
 ---
 
 ## Usage
 
-You can set up port forwarding as follows to send API requests to the inference endpoint from your local machine. This forwards port 80 of the ingress gateway to port 8000 of the local machine (`localhost`).
+You can set up port forwarding as follows to send API requests to the gateway endpoint from your local machine. The Heimdall operator creates a `Service` named after the AIGateway (`mif`) that exposes the gateway on port 8000. This forwards it to port 8000 of the local machine (`localhost`).
 
 ```shell
-SERVICE=$(kubectl -n quickstart get service -l gateway.networking.k8s.io/gateway-name=mif -o name)
-kubectl -n quickstart port-forward $SERVICE 8000:80
+kubectl -n quickstart port-forward service/mif 8000:8000
 ```
 
 Then, you can send a request to the inference endpoint as follows. Note that `jq` is used only to format the JSON response for better readability and is not required for the request to function.
@@ -438,31 +287,18 @@ Response:
       "index": 0,
       "message": {
         "role": "assistant",
-        "content": "Hello! How can I assist you today? Do you have a specific question or problem you'd like to talk about, or are you just looking for some information on a particular topic?",
-        "refusal": null,
-        "annotations": null,
-        "audio": null,
-        "function_call": null,
+        "content": "Hello! How can I assist you today?",
         "tool_calls": [],
         "reasoning_content": null
       },
-      "logprobs": null,
-      "finish_reason": "stop",
-      "stop_reason": null,
-      "token_ids": null
+      "finish_reason": "stop"
     }
   ],
-  "service_tier": null,
-  "system_fingerprint": null,
   "usage": {
     "prompt_tokens": 48,
     "total_tokens": 86,
-    "completion_tokens": 38,
-    "prompt_tokens_details": null
-  },
-  "prompt_logprobs": null,
-  "prompt_token_ids": null,
-  "kv_transfer_params": null
+    "completion_tokens": 38
+  }
 }
 ```
 
@@ -476,6 +312,6 @@ To delete all the resources created in this quickstart, run the following comman
 
 ```shell
 kubectl delete -n quickstart -f vllm-llama3-1b-instruct-tp2.yaml
-helm uninstall -n quickstart heimdall-inference-scheduler
-kubectl delete -n quickstart -f gateway.yaml
+kubectl delete -n quickstart -f aigateway.yaml
+kubectl delete -f scheduling-profile.yaml
 ```

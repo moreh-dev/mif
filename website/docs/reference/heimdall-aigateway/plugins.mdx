@@ -1,0 +1,13 @@
+---
+title: Plugins
+sidebar_label: Plugins
+sidebar_position: 2
+---
+
+A `SchedulingProfile` composes the gateway's routing decision from scorer and picker plugins. Scorers assign a score to each candidate inference pod; the picker selects a destination from the scored candidates. Each plugin is declared once under `spec.plugins` and referenced (with an optional `weight`) from a profile's `pluginRefs`.
+
+The following plugins are available.
+
+{/* AUTO-GENERATED:aigateway-plugins START */}
+{/* The plugin catalog (scorers and pickers) is generated from source. */}
+{/* AUTO-GENERATED:aigateway-plugins END */}
