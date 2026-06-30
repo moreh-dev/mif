@@ -61,36 +61,32 @@ Because only a fraction of requests are sampled, a one-off request may not be re
 ```shell {3}
 curl http://localhost:8000/v1/chat/completions \
   -H "Content-Type: application/json" \
-  -H "traceparent: 00-11111111111111111111111111111111-2222222222222222-01" \
+  -H "traceparent: 00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-1111111111111111-01" \
   -d '{
     "model": "meta-llama/Llama-3.2-1B-Instruct",
     "messages": [{"role": "user", "content": "Hello!"}]
   }'
 ```
 
-The header format is `00-<32-hex trace id>-<16-hex parent span id>-01`. The gateway honors the sampled flag, so this request is always recorded under the trace ID you chose (here `1111...1111`). Paste that trace ID into the **Trace ID** search in Grafana to open it.
+The header format is `00-<32-hex trace id>-<16-hex parent span id>-01`. The gateway honors the sampled flag, so this request is always recorded under the trace ID you chose (here `aaaa...aaaa`). Paste that trace ID into the **Trace ID** search in Grafana to open it.
 
 ---
 
 ## Reading an AI Gateway trace
 
-A gateway trace shows the full routing and scheduling path of one request. A prefill-decode (PD) request, for example, produces a span tree like this:
+A gateway trace shows the routing and scheduling path of one request. An end-to-end request — like the one from the [Quickstart](/getting-started/quickstart.mdx) — produces a small span tree:
 
-```text title="Example AIGateway trace (prefill-decode request)"
-aigateway.request                       ← request received (root span)
-├─ aigateway.pd.profile_handler.pick    ← prefill/decode scheduling decision
-├─ aigateway.scorer.prefix_cache ×2     ← scoring (prefill and decode profiles)
-├─ aigateway.kv_cache.get_scores ×2     ← KV prefix-cache lookup
-│   └─ aigateway.kv_cache.index ×2
-├─ aigateway.pd.prerequest              ← prefill request preparation
-├─ aigateway.pd.prefill                 ← prefill stage
-│   └─ aigateway.upstream.tito          ← prefill worker call
-└─ aigateway.pd.decode                  ← decode stage
-    └─ aigateway.upstream.tito          ← decode worker call
+```text title="Example AIGateway trace (end-to-end request)"
+aigateway.request            ← request received (root span)
+├─ aigateway.scheduler.run   ← scheduling decision (scores candidate pods, picks one)
+└─ aigateway.upstream.tito   ← call to the selected vLLM worker
 ```
 
-In the waterfall, each span's bar shows where time is spent. Scheduling work (`profile_handler`, `scorer.*`, `kv_cache.*`) is typically sub-millisecond, while most of the latency comes from the upstream worker calls (`aigateway.upstream.tito`):
+In the waterfall, each span's bar shows where time is spent. Scheduling (`aigateway.scheduler.run`) takes microseconds, while almost all of the latency is the upstream worker call (`aigateway.upstream.tito`):
 
 ![Grafana Tempo waterfall view of an AIGateway request trace](./tempo-trace-waterfall.png)
 
-An end-to-end (non-PD) scheduling profile produces a simpler tree without the `pd.*` stages.
+The exact spans depend on the scheduling profile:
+
+- A profile that uses prefix-cache scoring adds `aigateway.kv_cache.*` spans under `aigateway.scheduler.run`.
+- A prefill-decode (PD) profile adds `aigateway.pd.prefill` and `aigateway.pd.decode` stages, each with its own scheduling run and `aigateway.upstream.tito` call.
