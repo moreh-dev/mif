@@ -4,39 +4,44 @@ sidebar_label: Latest Release
 sidebar_position: -999
 ---
 
-The following table lists the latest released versions of MIF components and their bundled dependencies.
+The following table lists the latest released versions of MIF components and their bundled dependencies. The MIF charts are published to the `moreh` Helm repository (`https://moreh-dev.github.io/helm-charts`).
 
 ## MIF Helm charts
 
-| Component                | Version     | Chart Repository                 |
-| :----------------------- | :---------- | :------------------------------- |
-| moai-inference-framework | v0.4.0      | `moreh/moai-inference-framework` |
-| moai-inference-preset    | v0.5.0      | `moreh/moai-inference-preset`    |
+| Component                | Version | Chart                            |
+| :----------------------- | :------ | :------------------------------- |
+| moai-inference-framework | v0.4.0  | `moreh/moai-inference-framework` |
+| moai-inference-preset    | v0.5.0  | `moreh/moai-inference-preset`    |
+
+The `moai-inference-preset` chart ships the moreh-vLLM preset (`0.15.0-260226-rc2`).
 
 ---
 
-## Core components
+## Operators and CRDs
 
-| Component         | Version           | Type                |
-| :---------------- | :---------------- | :------------------ |
-| Odin              | v0.9.0            | Helm sub-chart      |
-| Odin CRD          | v0.9.0            | Helm sub-chart      |
-| Heimdall          | v0.8.1            | External Helm chart |
-| heimdall-proxy    | v0.7.0            | Container image     |
-| LWS               | 0.7.0             | Helm sub-chart      |
-| moreh-vLLM preset | 0.15.0-260226-rc2 | Preset directory    |
+Installed as separate charts. See [Prerequisites](../getting-started/prerequisites.mdx) for installation order.
+
+| Component              | Version | Chart                          |
+| :--------------------- | :------ | :----------------------------- |
+| Heimdall (operator)    | v0.8.0  | `moreh/heimdall`               |
+| Heimdall CRD           | v0.4.0  | `moreh/heimdall-crd`           |
+| Heimdall AIGateway CRD | v0.5.0  | `moreh/heimdall-aigateway-crd` |
+| Odin (operator)        | v0.9.0  | `moreh/odin`                   |
+| Odin CRD               | v0.9.0  | `moreh/odin-crd`               |
+
+Odin installs LeaderWorkerSet (LWS) `v0.9.0` as a dependency. The Heimdall AIGateway gateway runtime is not a Helm chart; the Heimdall operator deploys it as a container image from an `AIGateway` resource.
 
 ---
 
-## Infrastructure dependencies
+## Bundled infrastructure dependencies
 
 Bundled as sub-charts in `moai-inference-framework`:
 
 | Component              | Version |
 | :--------------------- | :------ |
 | kube-prometheus-stack  | 80.7.0  |
-| KEDA                   | 2.18.0  |
 | Loki                   | 6.30.0  |
+| Tempo                  | 2.23.1  |
 | Vector                 | 0.39.0  |
 | MinIO                  | 5.4.0   |
 | Node Feature Discovery | 0.18.3  |

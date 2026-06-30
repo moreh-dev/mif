@@ -1,0 +1,35 @@
+---
+title: Usage
+sidebar_label: Usage
+sidebar_position: 1
+---
+
+Heimdall AIGateway is the request entrypoint of the MoAI Inference Framework. The Heimdall operator runs the gateway from an `AIGateway` resource, and the gateway routes each request to an inference pod according to a `SchedulingProfile`. This page documents the custom resources an operator works with.
+
+## AIGateway
+
+An `AIGateway` (group `heimdall.moreh.io/v1alpha1`, namespaced) describes a gateway deployment. The Heimdall operator reconciles it into a gateway `Deployment` and `Service` and binds request models to scheduling profiles through `spec.schedulingProfiles`. The reserved model name `default` is the gateway-wide fallback.
+
+{/* AUTO-GENERATED:aigateway-crd START */}
+{/* The AIGateway spec field table is generated from source. */}
+{/* AUTO-GENERATED:aigateway-crd END */}
+
+## SchedulingProfile
+
+A `SchedulingProfile` (group `heimdall.moreh.io/v1alpha1`, cluster-scoped) defines how the gateway selects a destination pod. `spec.profileHandler` is `e2e` or `pd`. `spec.plugins` declares the scorer and picker plugins, and `spec.profiles.<name>.pluginRefs` lists them in evaluation order with an optional `weight`.
+
+If no `SchedulingProfile` is bound, the gateway falls back to a built-in default profile. For the available scorer and picker plugins, see [Plugins](./plugins.mdx).
+
+{/* AUTO-GENERATED:aigateway-crd-schedulingprofile START */}
+{/* The SchedulingProfile spec field table is generated from source. */}
+{/* AUTO-GENERATED:aigateway-crd-schedulingprofile END */}
+
+## InferenceWorker
+
+An `InferenceWorker` (group `heimdall.moreh.io/v1alpha1`, namespaced) advertises a single inference pod to the gateway — its address, framework, serving role, and the models it hosts. It is created and maintained by the gateway sidecar, so you do not author it directly.
+
+An inference pod joins a gateway through the `mif.moreh.io/aigateway` label, whose value is the target AIGateway's name. You set this label on the `InferenceService`; Odin propagates it to the pods, and the Heimdall operator injects the gateway sidecar into the labeled pods. The sidecar then registers each pod as an `InferenceWorker`, and the gateway routes requests to the workers that carry its name in that label.
+
+{/* AUTO-GENERATED:aigateway-crd-inferenceworker START */}
+{/* The InferenceWorker spec field table is generated from source. */}
+{/* AUTO-GENERATED:aigateway-crd-inferenceworker END */}

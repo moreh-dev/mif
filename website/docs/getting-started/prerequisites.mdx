@@ -4,9 +4,6 @@ sidebar_label: Prerequisites
 sidebar_position: 1
 ---
 
-import Tabs from "@theme/Tabs";
-import TabItem from "@theme/TabItem";
-
 This document introduces the prerequisites for the MoAI Inference Framework and provides instructions on how to install them.
 
 :::info
@@ -31,7 +28,7 @@ To install the MoAI Inference Framework, you must have
 
 ## cert-manager
 
-[cert-manager](https://cert-manager.io/) is a powerful and extensible X.509 certificate controller for Kubernetes workloads. It is essential for managing TLS certificates within the MoAI Inference Framework.
+[cert-manager](https://cert-manager.io/) is a powerful and extensible X.509 certificate controller for Kubernetes workloads. It is essential for managing TLS certificates within the MoAI Inference Framework. Both the Odin and Heimdall operators rely on cert-manager for their admission webhooks, so it must be installed first.
 
 Deploy `cert-manager` using the following command:
 
@@ -47,7 +44,7 @@ helm upgrade -i cert-manager oci://quay.io/jetstack/charts/cert-manager \
 
 ## moai-inference-framework
 
-The `moai-inference-framework` Helm chart deploys the dependencies required by the MoAI Inference Framework, excluding GPU and network-related components. To deploy it, you first need to add Moreh's Helm chart repository.
+The `moai-inference-framework` Helm chart deploys the infrastructure and observability dependencies required by the MoAI Inference Framework (such as monitoring, logging, and object storage), excluding GPU and network-related components. To deploy it, you first need to add Moreh's Helm chart repository.
 
 ```shell
 helm repo add moreh https://moreh-dev.github.io/helm-charts
@@ -79,7 +76,7 @@ ecrTokenRefresher:
 ```
 
 :::info
-If dependencies such as `keda`, `kube-prometheus-stack`, or `lws` are already installed in your cluster, skip their installation by setting the corresponding values to `false`. Refer to [moai-inference-framework README](https://github.com/moreh-dev/mif/tree/main/deploy/helm/moai-inference-framework) for the full list of dependencies.
+If an infrastructure dependency such as `kube-prometheus-stack` is already installed in your cluster, skip its installation by setting the corresponding value to `false`. Refer to [moai-inference-framework README](https://github.com/moreh-dev/mif/tree/main/deploy/helm/moai-inference-framework) for the full list of dependencies.
 :::
 
 Then, deploy the `moai-inference-framework` chart using the following command:
@@ -90,6 +87,50 @@ helm upgrade -i mif moreh/moai-inference-framework \
     -n mif \
     --create-namespace \
     -f moai-inference-framework-values.yaml
+```
+
+---
+
+## Custom resource definitions
+
+Install the custom resource definitions (CRDs) used by the operators. CRDs are packaged as separate charts so their lifecycle is independent of the operators.
+
+```shell
+helm upgrade -i odin-crd moreh/odin-crd --version v0.9.0 -n mif
+helm upgrade -i heimdall-crd moreh/heimdall-crd --version v0.4.0 -n mif
+helm upgrade -i heimdall-aigateway-crd moreh/heimdall-aigateway-crd --version v0.5.0 -n mif
+```
+
+This installs the custom resource definitions used by the operators, including `InferenceService` and `InferenceServiceTemplate` (Odin), `AIGateway` (Heimdall), and `SchedulingProfile` (Heimdall AIGateway).
+
+---
+
+## Odin
+
+Odin is the operator that manages inference services — the vLLM pods that serve a model. Install it after its CRDs and cert-manager.
+
+```shell
+helm upgrade -i odin moreh/odin \
+    --version v0.9.0 \
+    -n mif \
+    --create-namespace
+```
+
+:::info
+Odin installs [LeaderWorkerSet](https://github.com/kubernetes-sigs/lws) (LWS) as a dependency. If LWS is already installed in your cluster, set `--set lws.enabled=false`.
+:::
+
+---
+
+## Heimdall
+
+Heimdall is the operator that runs the AI Gateway. It reconciles `AIGateway` resources into a gateway deployment and injects the gateway sidecar into inference pods. Because it injects sidecars into Odin-managed pods, install it after Odin's `InferenceService` CRD.
+
+```shell
+helm upgrade -i heimdall moreh/heimdall \
+    --version v0.8.0 \
+    -n mif \
+    --create-namespace
 ```
 
 ---
@@ -355,94 +396,3 @@ kubectl get pods -n kube-system -l app.kubernetes.io/instance=rdma-shared-device
 NAME                              READY   STATUS    RESTARTS   AGE
 rdma-shared-device-plugin-wh9fz   1/1     Running   0          7s
 ```
-
----
-
-## Gateway
-
-Add the Gateway API and Gateway API Inference Extension CRDs.
-
-```shell
-kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.1/standard-install.yaml
-kubectl apply -f https://github.com/kubernetes-sigs/gateway-api-inference-extension/releases/download/v1.4.0/manifests.yaml
-```
-
-You can verify the CRDs are installed using the following command.
-
-```shell
-kubectl get crd | grep 'networking.k8s*.io'
-```
-
-```shell title="Expected output"
-gatewayclasses.gateway.networking.k8s.io            2025-12-12T02:03:07Z
-gateways.gateway.networking.k8s.io                  2025-12-12T02:03:07Z
-grpcroutes.gateway.networking.k8s.io                2025-12-12T02:03:07Z
-httproutes.gateway.networking.k8s.io                2025-12-12T02:03:07Z
-inferencepools.inference.networking.k8s.io          2025-12-12T02:03:08Z
-referencegrants.gateway.networking.k8s.io           2025-12-12T02:03:07Z
-```
-
-You can use any gateway controller compatible with the Gateway API Inference Extension. using either **Istio** or **Kgateway** is recommended, and installation instructions for both are provided below.
-
-<Tabs groupId="gateway-class">
-<TabItem value="istio" label="Istio (Default)" default>
-
-Add the Istio Helm chart repository.
-
-```shell
-helm repo add istio https://istio-release.storage.googleapis.com/charts
-helm repo update istio
-```
-
-Install the Istio base chart.
-
-```shell
-helm upgrade -i istio-base istio/base \
-    --version 1.29.1 \
-    -n istio-system \
-    --create-namespace
-```
-
-Create a `istiod-values.yaml` file and install the Istio control plane.
-
-```yaml title="istiod-values.yaml"
-pilot:
-  env:
-    ENABLE_GATEWAY_API_INFERENCE_EXTENSION: "true"
-```
-
-```shell
-helm upgrade -i istiod istio/istiod \
-    --version 1.29.1 \
-    -n istio-system \
-    -f istiod-values.yaml
-```
-
-</TabItem>
-<TabItem value="kgateway" label="Kgateway">
-
-Install the Kgateway CRDs.
-
-```shell
-helm upgrade -i kgateway-crds oci://cr.kgateway.dev/kgateway-dev/charts/kgateway-crds \
-    --version v2.1.1 \
-    -n kgateway-system \
-    --create-namespace
-```
-
-Create a `kgateway-values.yaml` file and install the Kgateway controller.
-
-```yaml title="kgateway-values.yaml"
-inferenceExtension:
-  enabled: true
-```
-
-```shell
-helm upgrade -i kgateway oci://cr.kgateway.dev/kgateway-dev/charts/kgateway \
-    --version v2.1.1 \
-    -n kgateway-system \
-    -f kgateway-values.yaml
-```
-
-</TabItem>
-</Tabs>
