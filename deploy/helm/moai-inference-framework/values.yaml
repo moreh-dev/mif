@@ -52,12 +52,7 @@ prometheus-stack:
     enabled: false
   kubeStateMetrics:
     enabled: true
-  # kube-state-metrics subchart values (passed through kube-prometheus-stack to the
-  # kube-state-metrics subchart; distinct from the `kubeStateMetrics.enabled` toggle).
   kube-state-metrics:
-    # -- Node label keys exposed as `kube_node_labels` series. The AIGateway dashboard
-    # resolves GPU nodes by accelerator vendor/model from these (variables `amd_hostname`
-    # / `nvidia_hostname`). Keep the list narrow to avoid label cardinality blow-up.
     metricLabelsAllowlist:
       - "nodes=[moai.moreh.io/accelerator.vendor,moai.moreh.io/accelerator.model]"
   nodeExporter:

@@ -132,7 +132,7 @@ Moreh Inference Framework
 | prometheus-stack.grafana.enabled | bool | `true` |  |
 | prometheus-stack.grafana.sidecar.alerts.enabled | bool | `true` |  |
 | prometheus-stack.grafana.sidecar.dashboards.enabled | bool | `true` |  |
-| prometheus-stack.kube-state-metrics.metricLabelsAllowlist | list | `["nodes=[moai.moreh.io/accelerator.vendor,moai.moreh.io/accelerator.model]"]` | Node label keys exposed as `kube_node_labels` series. The AIGateway dashboard resolves GPU nodes by accelerator vendor/model from these (variables `amd_hostname` / `nvidia_hostname`). Keep the list narrow to avoid label cardinality blow-up. |
+| prometheus-stack.kube-state-metrics.metricLabelsAllowlist[0] | string | `"nodes=[moai.moreh.io/accelerator.vendor,moai.moreh.io/accelerator.model]"` |  |
 | prometheus-stack.kubeApiServer.enabled | bool | `false` |  |
 | prometheus-stack.kubeControllerManager.enabled | bool | `false` |  |
 | prometheus-stack.kubeDns.enabled | bool | `false` |  |
