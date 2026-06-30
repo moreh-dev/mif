@@ -82,12 +82,12 @@ The dashboard includes several filters at the top that allow you to customize th
 
 - **amd_nodes, nvidia_nodes**: Filter metrics by specific AMD or NVIDIA node hostnames. Select one or more nodes of each type to focus on. These filters are particularly useful when viewing GPU metrics, as they allow you to monitor GPU utilization, VRAM usage, and temperature for specific nodes in your cluster.
 - **namespace**: Filter metrics by Kubernetes namespace. Use this to isolate metrics for specific deployments.
-- **inference_pool**: Filter metrics by inference pool name. This helps you monitor specific pool configurations.
+- **inference_pool**: Filter metrics by AIGateway name. The metrics are labeled with the name of the AIGateway routing the requests, so this filter scopes the view to a single gateway.
 - **inference_service**: Filter metrics by inference service name. Use this to focus on specific model deployments.
 
-By setting the **namespace** and **inference_pool** filters together, you can view metrics for a specific model deployment. For example, if you followed the [quickstart guide](/getting-started/quickstart.mdx), you would set **namespace** to `quickstart` and **inference_pool** to `heimdall-inference-scheduler` to see metrics for the `meta-llama/Llama-3.2-1B-Instruct` model deployed in that guide.
+By setting the **namespace** and **inference_pool** filters together, you can view metrics for a specific gateway. For example, if you followed the [quickstart guide](/getting-started/quickstart.mdx), you would set **namespace** to `quickstart` and **inference_pool** to `mif` (the AIGateway name) to see metrics for the `meta-llama/Llama-3.2-1B-Instruct` model deployed in that guide.
 
-These filters work together to help you drill down into specific components of your infrastructure for detailed analysis. While you can typically use `All` for most filters to view aggregate metrics across your entire cluster, you may want to use specific filter values when comparing performance across different optimization options. For instance, if a selected pool contains multiple inference services with different optimization configurations, you can use the **inference_service** filter to compare how each optimization option performs.
+These filters work together to help you drill down into specific components of your infrastructure for detailed analysis. While you can typically use `All` for most filters to view aggregate metrics across your entire cluster, you may want to use specific filter values when comparing performance across different optimization options. For instance, if a gateway serves multiple inference services with different optimization configurations, you can use the **inference_service** filter to compare how each optimization option performs.
 
 ---
 
@@ -119,16 +119,16 @@ These metrics help you identify GPU bottlenecks, memory pressure, and thermal is
 This section is only available when Heimdall is deployed in your cluster. If you do not see these metrics, ensure that Heimdall is installed and running.
 :::
 
-This section monitors the Heimdall scheduler component:
+This section monitors the Heimdall gateway component:
 
 ![MIF dashboard Heimdall](./heimdall.png)
 
-- **Ready Pods**: Shows the number of ready inference pods in each namespace and pool combination.
-- **Inference RPS**: Displays the requests per second (RPS) handled by Heimdall for each namespace and pool.
-- **Heimdall E2EL**: Shows the end-to-end latency (E2EL) from Heimdall's perspective, including P50, P75, and P95 percentiles. This metric measures the time from when a request enters Heimdall until it is fully processed.
+- **Ready Pods**: Shows the number of ready inference pods in each namespace and gateway combination.
+- **Inference RPS**: Displays the requests per second (RPS) handled by the gateway for each namespace and gateway.
+- **Heimdall E2EL**: Shows the end-to-end latency (E2EL) from the gateway's perspective, including P50, P75, and P95 percentiles. This metric measures the time from when a request enters the gateway until it is fully processed.
 - **Heimdall KVCache hit/req**: Displays the ratio of KV cache hits to total requests, indicating how effectively the KV cache is being utilized.
 
-These metrics help you understand the scheduler's performance and the efficiency of request routing.
+These metrics help you understand the gateway's routing performance and the efficiency of request routing.
 
 ### InferenceService
 
