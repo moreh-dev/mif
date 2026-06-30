@@ -92,13 +92,13 @@ This guide deploys three resources on top of the operators installed during the 
 
 - **SchedulingProfile**: defines the routing rules (which scorers and picker the gateway uses to choose a destination pod). Cluster-scoped.
 - **AIGateway**: the request entrypoint. The Heimdall operator reconciles this resource and runs the gateway, which receives all requests through a single endpoint and routes each one to a vLLM pod according to the selected SchedulingProfile.
-- **InferenceService** (Odin): a collection of vLLM pods running the model across GPUs/servers. Each pod is bound to an AIGateway by a label.
+- **InferenceService**: a collection of vLLM pods running the model across GPUs/servers. Each pod is bound to an AIGateway by a label.
 
 ```mermaid
 graph TB
     clients@{ shape: procs, label: "Clients" } --> gateway["AIGateway<br>(gateway runtime)"]
     sp["SchedulingProfile<br>(routing rules)"] -. selected by AIGateway .-> gateway
-    subgraph odin["Odin InferenceService"]
+    subgraph odin["InferenceService"]
       vllm1[vLLM 1]
       vllm2[vLLM 2]
     end
@@ -224,13 +224,13 @@ Select the appropriate runtime-base template according to your parallelism strat
 - **PP (Pipeline Parallel)**: Use `vllm-pp`.
 :::
 
-After that, you can deploy the Odin InferenceService by running the following command:
+After that, you can deploy the InferenceService by running the following command:
 
 ```shell
 kubectl apply -n quickstart -f vllm-llama3-1b-instruct-tp2.yaml
 ```
 
-You can wait for the Odin InferenceService to be ready as follows:
+You can wait for the InferenceService to be ready as follows:
 
 ```shell
 kubectl wait inferenceservice -n quickstart vllm-llama3-1b-instruct-tp2 \
