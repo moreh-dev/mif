@@ -174,6 +174,11 @@ Verify that the gateway pod is running:
 kubectl get pod -n quickstart -l app.kubernetes.io/name=aigateway,app.kubernetes.io/instance=mif
 ```
 
+```shell title="Expected output (gateway pod Running)"
+NAME                  READY   STATUS    RESTARTS   AGE
+mif-c45c66f8b-lnzm9   1/1     Running   0          12s
+```
+
 ### Inference service
 
 This quickstart launches two vLLM instances using the `quickstart-vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2` preset, which includes the model name and model-specific arguments. Each pod utilizes two GPU devices to run the Llama 3.2 1B Instruct model with Tensor Parallelism (TP) set to 2.
@@ -238,10 +243,26 @@ kubectl wait inferenceservice -n quickstart vllm-llama3-1b-instruct-tp2 \
   --timeout=15m
 ```
 
+```shell title="Expected output (InferenceService Ready)"
+inferenceservice.odin.moreh.io/vllm-llama3-1b-instruct-tp2 condition met
+```
+
 You can verify that the vLLM pods are running as follows:
 
 ```shell
 kubectl get all -n quickstart -l app.kubernetes.io/name=vllm-llama3-1b-instruct-tp2
+```
+
+```shell title="Expected output (two vLLM pods Running)"
+NAME                                               READY   STATUS    RESTARTS   AGE
+pod/vllm-llama3-1b-instruct-tp2-6dff9fc488-g4qdw   2/2     Running   0          2m14s
+pod/vllm-llama3-1b-instruct-tp2-6dff9fc488-z8hhh   2/2     Running   0          2m14s
+
+NAME                                          READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/vllm-llama3-1b-instruct-tp2   2/2     2            2           2m14s
+
+NAME                                                     DESIRED   CURRENT   READY   AGE
+replicaset.apps/vllm-llama3-1b-instruct-tp2-6dff9fc488   2         2         2       2m14s
 ```
 
 ---
@@ -278,9 +299,9 @@ Response:
 
 ```json
 {
-  "id": "chatcmpl-5613ccb4-d168-40df-a5b7-842ab4a00d6a",
+  "id": "chatcmpl-019f166d-4915-7a83-a020-1b839b6d895c",
   "object": "chat.completion",
-  "created": 1761484035,
+  "created": 1782787688,
   "model": "meta-llama/Llama-3.2-1B-Instruct",
   "choices": [
     {
@@ -288,16 +309,25 @@ Response:
       "message": {
         "role": "assistant",
         "content": "Hello! How can I assist you today?",
-        "tool_calls": [],
-        "reasoning_content": null
+        "refusal": null,
+        "annotations": null,
+        "audio": null,
+        "function_call": null,
+        "tool_calls": []
       },
+      "logprobs": null,
       "finish_reason": "stop"
     }
   ],
+  "service_tier": null,
   "usage": {
     "prompt_tokens": 48,
-    "total_tokens": 86,
-    "completion_tokens": 38
+    "total_tokens": 58,
+    "completion_tokens": 10,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    }
   }
 }
 ```
