@@ -28,7 +28,7 @@ If no `SchedulingProfile` is bound, the gateway falls back to a built-in default
 
 An `InferenceWorker` (group `heimdall.moreh.io/v1alpha1`, namespaced) advertises a single inference pod to the gateway — its address, framework, serving role, and the models it hosts. It is created and maintained by the gateway sidecar, so you do not author it directly.
 
-An inference pod joins a gateway through the `mif.moreh.io/aigateway` label, whose value is the target AIGateway's name. You set this label on the Odin `InferenceService`; Odin propagates it to the pods, and the Heimdall operator injects the gateway sidecar into the labeled pods. The sidecar then registers each pod as an `InferenceWorker`, and the gateway routes requests to the workers that carry its name in that label.
+An inference pod joins a gateway through the `mif.moreh.io/aigateway` label, whose value is the target AIGateway's name. You set this label on the `InferenceService`; Odin propagates it to the pods, and the Heimdall operator injects the gateway sidecar into the labeled pods. The sidecar then registers each pod as an `InferenceWorker`, and the gateway routes requests to the workers that carry its name in that label.
 
 {/* AUTO-GENERATED:aigateway-crd-inferenceworker START */}
 {/* The InferenceWorker spec field table is generated from source. */}
