@@ -114,6 +114,12 @@ You need a namespace for deploying and running the workload. This guide assumes 
 kubectl create namespace quickstart
 ```
 
+Label the namespace `mif=enabled` so the `moreh-registry` image pull secret is replicated into it. The `moai-inference-framework` chart configures the replicator to copy this secret only into namespaces with this label; without it, the vLLM pods cannot pull images from the private registry.
+
+```shell
+kubectl label namespace quickstart mif=enabled
+```
+
 ### Scheduling profile
 
 Create a `SchedulingProfile` that defines how the gateway selects a destination pod. A SchedulingProfile is **cluster-scoped**. This example uses a single end-to-end (`e2e`) profile that scores pods by the number of in-flight requests and picks the highest-scoring one.
