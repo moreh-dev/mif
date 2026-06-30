@@ -87,7 +87,7 @@ jq-1.7.1
 
 This guide deploys three resources on top of the operators installed during the [prerequisites](./prerequisites.mdx):
 
-- **SchedulingProfile**: defines the routing rules (which scorers and picker the gateway uses to choose a destination pod). Cluster-scoped.
+- **SchedulingProfile**: defines the routing rules (the scorers and picker the gateway uses to choose a destination pod). Cluster-scoped.
 - **AIGateway**: the request entrypoint. The Heimdall operator reconciles this resource and runs the gateway, which receives all requests through a single endpoint and routes each one to a vLLM pod according to the selected SchedulingProfile.
 - **InferenceService**: a collection of vLLM pods running the model across GPUs/servers. Each pod is bound to an AIGateway by a label.
 
