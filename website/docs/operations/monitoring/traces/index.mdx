@@ -21,14 +21,7 @@ telemetry:
       endpoint: http://mif-tempo-distributor.mif.svc.cluster.local:4317
 ```
 
-Apply it on top of the base install described in [Prerequisites](/getting-started/prerequisites.mdx#heimdall):
-
-```shell
-helm upgrade -i heimdall moreh/heimdall \
-    --version v0.8.0 \
-    -n mif \
-    -f heimdall-values.yaml
-```
+Pass this file to the Heimdall install command in [Prerequisites](/getting-started/prerequisites.mdx#heimdall) by adding `-f heimdall-values.yaml`.
 
 :::info Trace sampling
 
