@@ -2302,6 +2302,7 @@
         },
         "refresh": 2,
         "regex": "",
+        "sort": 1,
         "type": "query"
       },
       {
@@ -2328,6 +2329,7 @@
         },
         "refresh": 2,
         "regex": "",
+        "sort": 1,
         "type": "query"
       },
       {
