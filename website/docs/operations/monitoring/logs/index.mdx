@@ -205,7 +205,7 @@ The query editor defaults to **Builder** mode, which provides a visual query bui
 
 ### Running a log query
 
-Enter a LogQL query in the query editor and click **Run query** (or press `Shift+Enter`). For example, `{namespace="default"}` returns all logs from the `default` namespace. The screenshot below shows the results, which include both plain-text and JSON-formatted logs collected from different pods:
+Enter a LogQL query in the query editor and click **Run query** (or press `Shift+Enter`). For example, `{app="aigateway"}` returns all logs from the AIGateway pods. Because AIGateway emits structured JSON, Vector parses each line and promotes its fields (such as `level`, `message`, and `target`), as the results below show:
 
 ![Log search results in Grafana](./loki-logs.png)
 
@@ -216,12 +216,16 @@ Vector enriches every log entry with the following labels, which can be used as 
 | Label               | Source                                                                             | Example value           |
 | :------------------ | :--------------------------------------------------------------------------------- | :---------------------- |
 | `namespace`         | `kubernetes.pod_namespace`                                                         | `default`               |
-| `inference_service` | pod label `app.kubernetes.io/instance`                                             | `llama-3-2-1b`          |
-| `pool_name`         | pod label `mif.moreh.io/pool`                                                      | `heimdall-inference-scheduler` |
-| `role`              | pod label `mif.moreh.io/role`                                                      | `prefill`, `decode`     |
+| `inference_service` | pod label `app.kubernetes.io/instance`                                             | `llama-mi250`           |
+| `pool_name`         | pod label `mif.moreh.io/pool`                                                      | (empty unless set)      |
+| `role`              | pod label `mif.moreh.io/role`                                                      | `e2e`, `prefill`, `decode` |
 | `app`               | pod label `app.kubernetes.io/name`                                                 | `vllm`, `aigateway`     |
 | `node_name`         | `VECTOR_SELF_NODE_NAME` env var (injected by Vector)                               | `gpu-node-01`           |
 | `level`             | parsed from JSON log field `level` (JSON-parsed pods only)                         | `info`, `warn`, `error` |
+
+:::info
+The `pool_name` label maps from the `mif.moreh.io/pool` pod label. Inference pods bound to an AIGateway through the `mif.moreh.io/aigateway` label do not carry `mif.moreh.io/pool`, so `pool_name` is empty for them. To scope a query to a deployment, use `inference_service` (the InferenceService name) or `app` (for example, `vllm` for model pods, `aigateway` for the gateway).
+:::
 
 ### Query examples
 
@@ -229,15 +233,15 @@ Filter by a single label:
 
 ```promql
 {namespace="default"}
-{inference_service="llama-3-2-1b"}
-{pool_name="heimdall-inference-scheduler"}
+{inference_service="llama-mi250"}
+{app="vllm"}
 {role="decode"}
 ```
 
 Combine multiple labels and search for a keyword in the log line:
 
 ```promql
-{namespace="default", inference_service="llama-3-2-1b", role="prefill"} |= "error"
+{namespace="default", inference_service="llama-mi250", role="prefill"} |= "error"
 ```
 
 Filter by log level (available only for JSON-formatted pods):

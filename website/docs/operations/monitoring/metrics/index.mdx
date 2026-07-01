@@ -4,7 +4,7 @@ sidebar_label: Metrics
 sidebar_position: 1
 ---
 
-This document describes how to access Grafana dashboards to monitor the MoAI Inference Framework and provides an overview of the available metrics. Please make sure to install all [prerequisites](/getting-started/prerequisites.mdx) before starting this monitoring guide.
+This document describes how to access the Grafana dashboard to monitor the MoAI Inference Framework and provides an overview of the available metrics. Please make sure to install all [prerequisites](/getting-started/prerequisites.mdx) before starting this monitoring guide.
 
 ---
 
@@ -44,7 +44,7 @@ kubectl port-forward -n mif services/mif-grafana 3000:80
 
 You should see output similar to the following, indicating that port forwarding is active:
 
-```shell Expected output
+```shell title="Expected output (port-forward active)"
 Forwarding from 127.0.0.1:3000 -> 80
 Forwarding from [::1]:3000 -> 80
 ```
@@ -68,7 +68,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser. You will se
 After logging in:
 
 1. Click on the **Dashboards** icon in the left sidebar.
-2. In the dashboard list, find and click on the **MIF** dashboard, which provides comprehensive monitoring of the MoAI Inference Framework.
+2. In the dashboard list, find and click on the **MIF — AIGateway** dashboard, which provides comprehensive monitoring of the MoAI Inference Framework.
 
 ![Grafana dashboard access](./grafana-dashboard-access.png)
 
@@ -76,122 +76,76 @@ After logging in:
 
 ## Dashboard filters
 
-The dashboard includes several filters at the top that allow you to customize the view:
+The dashboard includes several filters (Grafana template variables) at the top that scope every panel to the components you care about:
 
-![MIF dashboard filters](./filters.png)
+![MIF — AIGateway dashboard filters](./filters.png)
 
-- **amd_nodes, nvidia_nodes**: Filter metrics by specific AMD or NVIDIA node hostnames. Select one or more nodes of each type to focus on. These filters are particularly useful when viewing GPU metrics, as they allow you to monitor GPU utilization, VRAM usage, and temperature for specific nodes in your cluster.
-- **namespace**: Filter metrics by Kubernetes namespace. Use this to isolate metrics for specific deployments.
-- **inference_pool**: Filter metrics by inference pool name. This helps you monitor specific pool configurations.
-- **inference_service**: Filter metrics by inference service name. Use this to focus on specific model deployments.
+- **hostname**: Filter the GPU sections by node. Select one or more GPU nodes to scope the GPU utilization, VRAM, and temperature panels; the dashboard sorts the selected nodes into the AMD and NVIDIA sections by vendor automatically.
+- **namespace**: Filter metrics by Kubernetes namespace. Use this to isolate a specific deployment.
+- **aigateway**: Filter by AIGateway name. Gateway metrics are labeled with the name of the AIGateway that routed the request, so this scopes the view to a single gateway.
+- **model**: Filter by served model name (for example, `meta-llama/Llama-3.2-1B-Instruct`). The Heimdall AIGateway section breaks its metrics down per model, so this narrows the view to one model served by the gateway.
+- **endpoint**: Filter by individual inference endpoint (a single inference pod). The Odin InferenceService section reports per-endpoint metrics, so this focuses on one pod.
 
-By setting the **namespace** and **inference_pool** filters together, you can view metrics for a specific model deployment. For example, if you followed the [quickstart guide](/getting-started/quickstart.mdx), you would set **namespace** to `quickstart` and **inference_pool** to `heimdall-inference-scheduler` to see metrics for the `meta-llama/Llama-3.2-1B-Instruct` model deployed in that guide.
+By setting **namespace** and **aigateway** together, you can view metrics for a specific gateway. For example, if you followed the [quickstart guide](/getting-started/quickstart.mdx), set **namespace** to `quickstart` and **aigateway** to `mif` (the AIGateway name) to see metrics for the `meta-llama/Llama-3.2-1B-Instruct` model deployed in that guide.
 
-These filters work together to help you drill down into specific components of your infrastructure for detailed analysis. While you can typically use `All` for most filters to view aggregate metrics across your entire cluster, you may want to use specific filter values when comparing performance across different optimization options. For instance, if a selected pool contains multiple inference services with different optimization configurations, you can use the **inference_service** filter to compare how each optimization option performs.
+Most filters accept `All` to view aggregate metrics across the cluster. Use specific values when drilling down — for example, set **model** to compare how the gateway serves different models, or **endpoint** to compare individual inference pods.
 
 ---
 
 ## Dashboard overview
 
-The MIF dashboard is organized into several sections, each focusing on different aspects of the system:
+The MIF — AIGateway dashboard is organized into several sections, each focusing on a different layer of the system.
 
 ### GPU total
 
-This section displays the overall GPU utilization across all selected nodes as a gauge panel, providing a quick overview of the cluster's GPU usage.
+This section displays the overall GPU utilization across the cluster's GPU nodes as a gauge panel, providing a quick overview of GPU usage.
 
-![MIF dashboard GPU total](./gpu-total.png)
+![MIF — AIGateway dashboard GPU total](./gpu-total.png)
 
 ### AMD / NVIDIA GPU
 
-These sections provide detailed GPU metrics for each node type:
+These sections provide detailed per-node GPU metrics for each vendor. Use the **hostname** filter to scope them to specific GPU nodes; the dashboard sorts the selected nodes into the AMD and NVIDIA sections by vendor automatically. The screenshot below shows the AMD GPU section; the NVIDIA GPU section mirrors it for NVIDIA nodes.
 
-![MIF dashboard AMD / NVIDIA GPU](./gpu.png)
+![MIF — AIGateway dashboard AMD GPU section](./gpu.png)
 
-- **GPU Utilization**: Shows the utilization percentage for each GPU device on the nodes selected via the **amd_nodes** or **nvidia_nodes** filters, displayed as both bar gauges and time series graphs.
-- **VRAM Usage**: Displays the percentage of video memory (VRAM) used by each GPU device.
-- **GPU Junction Temperature**: Monitors the junction temperature of each GPU device in Celsius.
+- **GPU Utilization**: Utilization percentage for each GPU device, displayed as both bar gauges and per-host time series graphs.
+- **VRAM Usage**: The percentage of video memory (VRAM) used by each GPU device.
+- **GPU Junction Temperature**: The junction temperature of each GPU device in Celsius.
 
 These metrics help you identify GPU bottlenecks, memory pressure, and thermal issues across your cluster.
 
-### Heimdall
+### Heimdall AIGateway
 
 :::info
-This section is only available when Heimdall is deployed in your cluster. If you do not see these metrics, ensure that Heimdall is installed and running.
+These panels are fed by the Heimdall AI Gateway, so they only show data once Heimdall is installed and an AIGateway is up and serving traffic. Empty panels here usually mean no gateway is running yet.
 :::
 
-This section monitors the Heimdall scheduler component:
+This section reports the request traffic the Heimdall AI Gateway routes, both in aggregate and broken down per served model. Use the **model** filter to focus these panels on a single model.
 
-![MIF dashboard Heimdall](./heimdall.png)
+![MIF — AIGateway dashboard Heimdall AIGateway](./heimdall-aigateway.png)
 
-- **Ready Pods**: Shows the number of ready inference pods in each namespace and pool combination.
-- **Inference RPS**: Displays the requests per second (RPS) handled by Heimdall for each namespace and pool.
-- **Heimdall E2EL**: Shows the end-to-end latency (E2EL) from Heimdall's perspective, including P50, P75, and P95 percentiles. This metric measures the time from when a request enters Heimdall until it is fully processed.
-- **Heimdall KVCache hit/req**: Displays the ratio of KV cache hits to total requests, indicating how effectively the KV cache is being utilized.
+- **Total request rate / Total inflight**: Aggregate requests per second and the number of in-flight requests across all models served by the gateway.
+- **Request rate by model / Inflight by model**: The same two metrics broken down per served model.
+- **TTFT p50/p75/p95 by model**: Time to first token per model, at the 50th, 75th, and 95th percentiles.
+- **E2E latency p50/p75/p95 by model**: End-to-end request latency per model, from the gateway's perspective.
+- **ITL p50/p75/p95 by model**: Inter-token latency (time between consecutive output tokens) per model.
+- **Output tokens/sec / Input tokens/sec by model**: Token throughput per model, for generated and prompt tokens respectively.
+- **ISL p50/p75/p95 by model**: Input sequence length distribution per model.
+- **OSL p50/p75/p95 by model**: Output sequence length distribution per model.
 
-These metrics help you understand the scheduler's performance and the efficiency of request routing.
-
-### InferenceService
+### Odin InferenceService
 
 :::info
-This section is only available when InferenceService (Odin) is deployed in your cluster. If you do not see these metrics, ensure that at least one InferenceService is created and running.
+These panels are fed by Odin's inference endpoints, so they only show data once Odin is installed and at least one InferenceService is Ready. Empty panels here usually mean no InferenceService is running yet.
 :::
 
-This section provides comprehensive metrics for inference services, organized by different latency and throughput measurements:
+This section reports the health and per-endpoint performance of the inference pods behind the gateway. Use the **endpoint** filter to focus these panels on a single inference pod.
 
-![MIF dashboard InferenceService](./inferenceservice.png)
+![MIF — AIGateway dashboard Odin InferenceService](./odin-inferenceservice.png)
 
-#### Time to first token (TTFT)
-
-- **Prefill TTFT per Endpoint**: Time to first token for prefill requests, broken down by individual endpoint instances (P50, P75, P95).
-- **Prefill TTFT**: Aggregated time to first token for all prefill requests.
-- **Decode TTFT per Endpoint**: Time to first token for decode requests, broken down by individual endpoint instances (P50, P75, P95).
-- **Decode TTFT**: Aggregated time to first token for all decode requests.
-
-#### Inter-token latency (ITL)
-
-- **Prefill ITL per Endpoint**: Latency between consecutive tokens for prefill requests, broken down by individual endpoint instances (P50, P75, P95).
-- **Prefill ITL**: Aggregated inter-token latency for all prefill requests.
-- **Decode ITL per Endpoint**: Latency between consecutive tokens for decode requests, broken down by individual endpoint instances (P50, P75, P95).
-- **Decode ITL**: Aggregated inter-token latency for all decode requests.
-
-#### End-to-end latency (E2EL)
-
-- **Prefill E2EL per Endpoint**: Total request latency for prefill requests, broken down by individual endpoint instances (P50, P75, P95).
-- **Prefill E2EL**: Aggregated end-to-end latency for all prefill requests.
-- **Decode E2EL per Endpoint**: Total request latency for decode requests, broken down by individual endpoint instances (P50, P75, P95).
-- **Decode E2EL**: Aggregated end-to-end latency for all decode requests.
-
-#### Input sequence length (ISL)
-
-- **Prefill ISL per Endpoint**: Distribution of input sequence lengths for prefill requests, broken down by individual endpoint instances (P50, P75, P95).
-- **Prefill ISL**: Aggregated input sequence length distribution for all prefill requests.
-- **Decode ISL per Endpoint**: Distribution of input sequence lengths for decode requests, broken down by individual endpoint instances (P50, P75, P95).
-- **Decode ISL**: Aggregated input sequence length distribution for all decode requests.
-
-#### Output sequence length (OSL)
-
-- **Prefill OSL per Endpoint**: Distribution of output sequence lengths for prefill requests, broken down by individual endpoint instances (P50, P75, P95).
-- **Prefill OSL**: Aggregated output sequence length distribution for all prefill requests.
-- **Decode OSL per Endpoint**: Distribution of output sequence lengths for decode requests, broken down by individual endpoint instances (P50, P75, P95).
-- **Decode OSL**: Aggregated output sequence length distribution for all decode requests.
-
-#### KV cache usage
-
-- **Prefill KVCache Usage per Endpoint**: KV cache utilization percentage for prefill requests, broken down by individual endpoint instances.
-- **Prefill KVCache Usage**: Aggregated KV cache utilization for all prefill requests.
-- **Decode KVCache Usage per Endpoint**: KV cache utilization percentage for decode requests, broken down by individual endpoint instances.
-- **Decode KVCache Usage**: Aggregated KV cache utilization for all decode requests.
-
-#### Waiting queue
-
-- **Prefill waiting queue per Endpoint**: Number of requests waiting in the queue for prefill processing, broken down by individual endpoint instances.
-- **Prefill waiting queue**: Aggregated waiting queue size for all prefill requests.
-- **Decode waiting queue per Endpoint**: Number of requests waiting in the queue for decode processing, broken down by individual endpoint instances.
-- **Decode waiting queue**: Aggregated waiting queue size for all decode requests.
-
-#### Prefix hit rate
-
-- **Prefill prefix hit rate per Endpoint**: Percentage of prefix cache hits for prefill requests, broken down by individual endpoint instances.
-- **Prefill prefix hit rate**: Aggregated prefix cache hit rate for all prefill requests.
-- **Decode prefix hit rate per Endpoint**: Percentage of prefix cache hits for decode requests, broken down by individual endpoint instances.
-- **Decode prefix hit rate**: Aggregated prefix cache hit rate for all decode requests.
+- **Total endpoints / Healthy endpoints / Healthy ratio**: The number of inference endpoints, how many are healthy, and the healthy percentage.
+- **Endpoints total/healthy**: The total and healthy endpoint counts over time.
+- **Endpoints**: A table listing each endpoint with its current status and latency.
+- **Last TTFT by endpoint / Last ITL by endpoint**: The most recent time to first token and inter-token latency for each endpoint.
+- **KV cache usage by endpoint**: KV cache utilization percentage for each endpoint.
+- **Running requests by endpoint / Waiting requests by endpoint**: The number of requests currently running and the number queued on each endpoint.

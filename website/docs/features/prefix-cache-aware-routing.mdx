@@ -14,86 +14,62 @@ In a production environment, cache hit rates are considered alongside other fact
 
 ## Key features
 
-- **Heimdall Integration**: The Heimdall scheduler tokenizes request prompts, calculates cache hit rates for candidate pods, and assigns scores used for routing. It stays synchronized with pod cache states through real-time ZMQ events.
-- **SLO-based Importance**: The framework can dynamically weight prefix cache hits based on Service Level Objectives (SLOs) and the specific cost of KV cache recomputation for different GPU architectures.
+- **Gateway integration**: The AIGateway calculates cache hit rates for candidate pods and assigns scores used for routing. It stays synchronized with pod cache states through real-time ZMQ events relayed by the gateway sidecar on each inference pod.
+- **SLO-based importance**: The framework can dynamically weight prefix cache hits based on Service Level Objectives (SLOs) and the specific cost of KV cache recomputation for different GPU architectures.
 
 ---
 
 ## Scorer configuration
 
-To enable prefix cache-aware routing, you must configure the `precise-prefix-cache-scorer` plugin in **Heimdall**. This plugin tracks the KV block locality across all pods.
+To enable prefix cache-aware routing, configure the `prefix-cache-scorer` plugin in a `SchedulingProfile`. The scorer tracks KV block locality across the pods bound to the gateway and scores each candidate by how many of the request's prefix blocks it already holds.
 
-The following example shows how to enable the scorer in `heimdall-values.yaml`:
+The following `SchedulingProfile` enables the scorer in an end-to-end (`e2e`) profile and selects the highest-scoring pod with `max-score-picker`:
 
-```yaml title="heimdall-values.yaml" {17}
-config:
-  apiVersion: inference.networking.x-k8s.io/v1alpha1
-  kind: EndpointPickerConfig
+```yaml title="prefix-cache-profile.yaml" {12}
+apiVersion: heimdall.moreh.io/v1alpha1
+kind: SchedulingProfile
+metadata:
+  name: prefix-cache
+spec:
+  profileHandler: e2e
   plugins:
-    - type: single-profile-handler
+    - type: prefix-cache-scorer
+      config:
+        # blockSize is required and must match the engine's --block-size
+        # (the value vLLM is started with on the inference pods).
+        blockSize: 32
     - type: max-score-picker
-    - type: precise-prefix-cache-scorer
-      parameters:
-        tokenProcessorConfig:
-          blockSize: 32
-        indexerConfig:
-          tokenizersPoolConfig:
-            modelName: "meta-llama/Llama-3.2-1B-Instruct"
-            workersCount: 8
-            hf:
-              enabled: true
-              huggingFaceToken: <huggingFaceToken>
-            # local:
-            #   autoDiscoveryDir: /mnt/models/hub
-          kvBlockIndexConfig:
-            inMemoryConfig:
-              size: 100000000
-              podCacheSize: 10
-            enableMetrics: true
-        kvEventsConfig:
-          # Pods connect to Heimdall. Set discoverPods to false
-          # and bind to all interfaces on port 5557.
-          discoverPods: false
-          zmqEndpoint: "tcp://0.0.0.0:5557"
-          topicFilter: "kv@"
-          concurrency: 16
-
-  schedulingProfiles:
-    - name: default
-      plugins:
-        - pluginRef: precise-prefix-cache-scorer
-        - pluginRef: max-score-picker
-
-# extraVolumes:
-#   - name: models
-#     persistentVolumeClaim:
-#       claimName: models
-
-# extraVolumeMounts:
-#   - name: models
-#     mountPath: /mnt/models
-#     readOnly: true
+  profiles:
+    default:
+      pluginRefs:
+        - name: prefix-cache-scorer
+          weight: 100
+        - name: max-score-picker
 ```
 
-:::info
-In offline environments, use the `local` tokenizer config. If your models are downloaded via the `hf` CLI, set `autoDiscoveryDir` to `/mnt/models/hub` to match the standard Hugging Face cache structure.
-:::
+```shell
+kubectl apply -f prefix-cache-profile.yaml
+```
+
+The `prefix-cache-scorer` accepts the following `config` fields:
+
+- **`blockSize`** (required): the KV block size in tokens. It must match the engine's `--block-size`, otherwise the scorer's block hashes will not align with the engine's and no cache hits will be detected.
+- **`normalization`** (optional, default `longestPrefix`): how the matched-block count is normalized into a `0`–`1` score. `longestPrefix` scores against the length of the matched prefix; `input` scores against the full input length.
+- **`transform`** (optional, default `linear`): reshapes the normalized score before it enters the composite. `linear` is the identity; `logistic` applies a sigmoid (tunable via `k` and `x_0`) to sharpen the preference around a cache-hit threshold.
+
+Bind this `SchedulingProfile` to the gateway through the `AIGateway`'s `schedulingProfiles` field, as shown in the [deployment example](#3-bind-the-profile-to-the-gateway) below.
 
 ---
 
 ## Components
 
-### Tokenizer and prefix store
-
-Since vLLM instances manage prefix caches using tokenized sequences, the scorer must tokenize incoming prompts. To minimize overhead, the scorer maintains a **prefix store** that caches previous tokenization results. If a new request shares a significant portion (e.g., >80%) with a cached prefix, the scorer reuses the tokens to estimate the hit rate without re-tokenizing the entire prompt.
-
 ### Token processor
 
-vLLM uses block hashes to look up prefixes. The scorer emulates this by hashing the tokenized prompt into blocks of size `B`. The `blockSize` must match the InferenceService's `--block-size` (the value vLLM is started with on the inference pods).
+vLLM uses block hashes to look up prefixes. The scorer emulates this by hashing the request's tokens into blocks of size `B` (`blockSize`). The `blockSize` must match the InferenceService's `--block-size` (the value vLLM is started with on the inference pods); otherwise the scorer's block hashes will not align with the engine's and no cache hits will be detected.
 
 ### KV block index
 
-Pods publish events (`BlockStored`, `BlockRemoved`) via ZMQ when their cache updates. The scorer subscribes to these events to maintain a **KV block index**, mapping prefix hashes to the list of pods holding that cache. The pod with the most matching blocks for a request is assigned the highest score.
+Pods publish events (`BlockStored`, `BlockRemoved`) via ZMQ when their cache updates. The gateway sidecar on each inference pod relays these events to the gateway, which maintains a **KV block index** mapping prefix hashes to the list of pods holding that cache. The pod with the most matching blocks for a request is assigned the highest score.
 
 ---
 
@@ -121,15 +97,17 @@ In production environments, it is highly recommended to use **offline hub templa
 
 :::
 
-```yaml title="llama-prefix-cache.yaml" {19}
+The `mif.moreh.io/aigateway` label binds these pods to an `AIGateway` named `mif`. The `--block-size 32` value matches the `blockSize: 32` set in the `SchedulingProfile` above.
+
+```yaml title="llama-prefix-cache.yaml" {6,22}
 apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceService
 metadata:
   name: llama-1b-prefix-cache
+  labels:
+    mif.moreh.io/aigateway: mif
 spec:
   replicas: 4
-  inferencePoolRefs:
-    - name: heimdall-inference-scheduler
   templateRefs:
     - name: vllm
     - name: quickstart-vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2
@@ -155,3 +133,21 @@ spec:
 :::info
 On AMD MI250, each physical GPU is recognized as two logical devices. In this example, the preset for `tp2` uses 1 physical GPU (requesting `amd.com/gpu: 2`).
 :::
+
+### 3. Bind the profile to the gateway
+
+Reference the `prefix-cache` `SchedulingProfile` from the `AIGateway` so the gateway applies it when routing requests. Binding it to the reserved model `default` makes it the gateway-wide profile for every request:
+
+```yaml title="aigateway.yaml" {7-9}
+apiVersion: heimdall.moreh.io/v1alpha1
+kind: AIGateway
+metadata:
+  name: mif
+spec:
+  replicas: 1
+  schedulingProfiles:
+    - model: default
+      profile: prefix-cache
+```
+
+The InferenceService pods bound through the `mif.moreh.io/aigateway: mif` label and this `AIGateway` together complete the deployment. See the [Quickstart](../getting-started/quickstart.mdx) for the full apply-and-verify flow.

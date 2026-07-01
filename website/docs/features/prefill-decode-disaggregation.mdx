@@ -14,7 +14,7 @@ PD disaggregation can improve key metrics such as time to first token (TTFT) and
 
 ## Key features
 
-- The **Heimdall** scheduler runs prefill-only and decode-only instances separately, allowing each to scale independently and managing request routing between them.
+- The **AIGateway** routes requests across prefill-only and decode-only instances, allowing each phase to scale independently while managing the prefill-to-decode handoff for every request.
 - The framework can automatically determine whether to apply PD disaggregation and how to scale each phase according to defined service level objectives (SLOs).
 - Moreh vLLM is optimized to efficiently execute both prefill and decode phases of various models on AMD MI200 and MI300 series GPUs. It applies distinct parallelization and optimization strategies tailored to prefill-only and decode-only instances.
 
@@ -26,54 +26,53 @@ PD disaggregation can improve key metrics such as time to first token (TTFT) and
 This section covers only the differences from the standard deployment described in the [Quickstart](../getting-started/quickstart.mdx). Read the Quickstart first to understand the base setup.
 :::
 
-To enable PD disaggregation, you must configure both **Heimdall** (to route requests appropriately) and **Odin InferenceServices** (to deploy prefill and decode instances with correct roles and hardware).
+To enable PD disaggregation, you configure a `pd` `SchedulingProfile` (to route prefill and decode separately) and deploy prefill and decode `InferenceService`s with the correct roles and hardware.
 
-### Heimdall configuration
+### Scheduling profile
 
-:::warning
-`pd-profile-handler` is legacy and has been replaced by [`disagg-profile-handler`](../reference/heimdall/plugins.mdx#disagg-profile-handler).
-:::
+Create a `SchedulingProfile` with `profileHandler: pd`. Unlike the end-to-end (`e2e`) handler, the `pd` handler runs two sub-profiles, `prefill` and `decode`. For each request the gateway runs both sub-pipelines, picks a prefill pod and a decode pod, and disaggregates the request across them; if only one role has available pods, it falls back to serving the request end-to-end on that pick.
 
-In the Heimdall configuration, enable [`disagg-profile-handler`](../reference/heimdall/plugins.mdx#disagg-profile-handler) together with a [PD decider](../reference/heimdall/plugins.mdx#deciders) and [`disagg-headers-handler`](../reference/heimdall/plugins.mdx#disagg-headers-handler). The profile handler runs the `decode` profile first and then consults the configured decider to decide whether to also run `prefill`; when prefill is selected, `disagg-headers-handler` writes the prefill endpoint into a request header so the decode pod can reach it. The [`prefill-filter`](../reference/heimdall/plugins.mdx#prefill-filter) and [`decode-filter`](../reference/heimdall/plugins.mdx#decode-filter) plugins filter pods by the `mif.moreh.io/role` label within their respective profiles. The configuration is part of the [`EndpointPickerConfig`](../reference/heimdall/api-reference.mdx#endpointpickerconfig).
+Each sub-profile lists only the scorers and a picker. You do **not** add a role filter: the gateway automatically restricts the `prefill` sub-profile to pods labeled `mif.moreh.io/role: prefill` and the `decode` sub-profile to pods labeled `mif.moreh.io/role: decode`. Those labels are set by the prefill/decode presets and runtime-bases, so you do not set them manually (see [InferenceService configuration](#inferenceservice-configuration-with-presets) below).
 
-Consider the following `heimdall-values.yaml` example, which uses [`prefix-based-pd-decider`](../reference/heimdall/plugins.mdx#prefix-based-pd-decider) so prefill only runs when the request exceeds a non-cached-token budget. Swap it for [`always-disagg-pd-decider`](../reference/heimdall/plugins.mdx#always-disagg-pd-decider) if every request should run prefill.
-
-```yaml title="heimdall-values.yaml"
-# ... (other values)
-
-config:
+```yaml title="pd-profile.yaml" {6}
+apiVersion: heimdall.moreh.io/v1alpha1
+kind: SchedulingProfile
+metadata:
+  name: pd
+spec:
+  profileHandler: pd
   plugins:
-    # 1. Declare the decider and header handler before the profile handler so
-    #    `disagg-profile-handler`'s factory can resolve them at init time.
-    - type: disagg-headers-handler
-    - type: prefix-based-pd-decider
-      parameters:
-        nonCachedTokens: 16
-    - type: prefill-filter
-    - type: decode-filter
-    - type: queue-scorer
+    - type: waiting-requests-scorer
     - type: max-score-picker
-    # 2. Wire the deciders via the nested parameter schema.
-    - type: disagg-profile-handler
-      parameters:
-        profiles:
-          prefill: prefill
-          decode: decode
-        deciders:
-          prefill: prefix-based-pd-decider
-  schedulingProfiles:
-    - name: prefill
-      plugins:
-        - pluginRef: prefill-filter
-        - pluginRef: queue-scorer
-        - pluginRef: max-score-picker
-    - name: decode
-      plugins:
-        - pluginRef: decode-filter
-        - pluginRef: queue-scorer
-        - pluginRef: max-score-picker
+  profiles:
+    prefill:
+      pluginRefs:
+        - name: waiting-requests-scorer
+          weight: 100
+        - name: max-score-picker
+    decode:
+      pluginRefs:
+        - name: waiting-requests-scorer
+          weight: 100
+        - name: max-score-picker
+```
 
-# ... (other values)
+```shell
+kubectl apply -f pd-profile.yaml
+```
+
+Bind the profile to the gateway through the `AIGateway`'s `schedulingProfiles` field. Binding it to the reserved model `default` applies it to every request:
+
+```yaml title="aigateway.yaml" {7-9}
+apiVersion: heimdall.moreh.io/v1alpha1
+kind: AIGateway
+metadata:
+  name: mif
+spec:
+  replicas: 1
+  schedulingProfiles:
+    - model: default
+      profile: pd
 ```
 
 ### InferenceService configuration with presets
@@ -99,7 +98,11 @@ In this example, **DeepSeek-R1** is deployed using:
 - **Prefill**: **AMD MI300X** (DP=8, Expert Parallel)
 - **Decode**: **AMD MI308X** (DP=8, Expert Parallel)
 
-Two `InferenceService` resources are created. Because the presets use data parallelism (`dp8-moe-ep8`), the runtime-bases are `vllm-prefill-dp` and `vllm-decode-dp`, and the ISVC uses `workerTemplate` instead of `template`.
+Two `InferenceService` resources are created. Because the presets use data parallelism (`dp8-moe-ep8`), the runtime-bases are `vllm-prefill-dp` and `vllm-decode-dp`, and the ISVC uses `workerTemplate` instead of `template`. Both are bound to the same `AIGateway` (named `mif` above) through the `mif.moreh.io/aigateway` label.
+
+:::info
+The `prefill` and `decode` runtime-bases stamp the `mif.moreh.io/role` label (`prefill` or `decode`) onto their pods automatically. The gateway's `pd` profile reads this label to route each phase to the right pods, so you do not set the role yourself &mdash; choosing a `vllm-prefill*` or `vllm-decode*` runtime-base is what assigns the role.
+:::
 
 :::info
 Choose the appropriate PD-specific runtime-base template according to your parallelism strategy:
@@ -115,14 +118,14 @@ In production environments, it is highly recommended to use **offline hub templa
 
 This service uses the MI300X prefill preset and the `vllm-prefill-dp` runtime-base for data-parallel prefill.
 
-```yaml title="deepseek-r1-prefill.yaml" {19}
+```yaml title="deepseek-r1-prefill.yaml" {6,24}
 apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceService
 metadata:
   name: deepseek-r1-prefill
+  labels:
+    mif.moreh.io/aigateway: mif
 spec:
-  inferencePoolRefs:
-    - name: heimdall-inference-scheduler
   templateRefs:
     # 1. Runtime base for data-parallel prefill
     - name: vllm-prefill-dp
@@ -145,14 +148,14 @@ spec:
 
 This service uses the MI308X decode preset and the `vllm-decode-dp` runtime-base for data-parallel decode.
 
-```yaml title="deepseek-r1-decode.yaml" {29}
+```yaml title="deepseek-r1-decode.yaml" {6,34}
 apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceService
 metadata:
   name: deepseek-r1-decode
+  labels:
+    mif.moreh.io/aigateway: mif
 spec:
-  inferencePoolRefs:
-    - name: heimdall-inference-scheduler
   templateRefs:
     # 1. Runtime base for data-parallel decode
     - name: vllm-decode-dp
