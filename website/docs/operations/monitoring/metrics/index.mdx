@@ -80,6 +80,7 @@ The dashboard includes several filters (Grafana template variables) at the top t
 
 ![MIF — AIGateway dashboard filters](./filters.png)
 
+- **hostname**: Filter the GPU sections by node. Select one or more GPU nodes to scope the GPU utilization, VRAM, and temperature panels; the dashboard sorts the selected nodes into the AMD and NVIDIA sections by vendor automatically.
 - **namespace**: Filter metrics by Kubernetes namespace. Use this to isolate a specific deployment.
 - **aigateway**: Filter by AIGateway name. Gateway metrics are labeled with the name of the AIGateway that routed the request, so this scopes the view to a single gateway.
 - **model**: Filter by served model name (for example, `meta-llama/Llama-3.2-1B-Instruct`). The Heimdall AIGateway section breaks its metrics down per model, so this narrows the view to one model served by the gateway.
@@ -103,7 +104,7 @@ This section displays the overall GPU utilization across the cluster's GPU nodes
 
 ### AMD / NVIDIA GPU
 
-These sections provide detailed per-node GPU metrics for each vendor. The dashboard detects AMD and NVIDIA GPU nodes automatically, so these panels populate without any filter selection. The screenshot below shows the AMD GPU section; the NVIDIA GPU section mirrors it for NVIDIA nodes.
+These sections provide detailed per-node GPU metrics for each vendor. Use the **hostname** filter to scope them to specific GPU nodes; the dashboard sorts the selected nodes into the AMD and NVIDIA sections by vendor automatically. The screenshot below shows the AMD GPU section; the NVIDIA GPU section mirrors it for NVIDIA nodes.
 
 ![MIF — AIGateway dashboard AMD GPU section](./gpu.png)
 
