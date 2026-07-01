@@ -2262,6 +2262,86 @@
           "type": "prometheus",
           "uid": "prometheus"
         },
+        "definition": "label_values(kube_node_labels{label_moai_moreh_io_accelerator_vendor=~\"^(amd|nvidia)$\"}, node)",
+        "includeAll": true,
+        "label": "hostname",
+        "multi": true,
+        "name": "hostname",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(kube_node_labels{label_moai_moreh_io_accelerator_vendor=~\"^(amd|nvidia)$\"}, node)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values(kube_node_labels{label_moai_moreh_io_accelerator_vendor=\"amd\", node=~\"$hostname\"}, node)",
+        "hide": 2,
+        "includeAll": true,
+        "label": "amd_hostname",
+        "multi": true,
+        "name": "amd_hostname",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(kube_node_labels{label_moai_moreh_io_accelerator_vendor=\"amd\", node=~\"$hostname\"}, node)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values(kube_node_labels{label_moai_moreh_io_accelerator_vendor=\"nvidia\", node=~\"$hostname\"}, node)",
+        "hide": 2,
+        "includeAll": true,
+        "label": "nvidia_hostname",
+        "multi": true,
+        "name": "nvidia_hostname",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(kube_node_labels{label_moai_moreh_io_accelerator_vendor=\"nvidia\", node=~\"$hostname\"}, node)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
         "definition": "label_values(aigateway_endpoints_healthy, namespace)",
         "includeAll": true,
         "label": "namespace",
@@ -2354,50 +2434,6 @@
         "refresh": 2,
         "regex": "",
         "sort": 1,
-        "type": "query"
-      },
-      {
-        "current": {},
-        "datasource": {
-          "type": "prometheus",
-          "uid": "prometheus"
-        },
-        "definition": "label_values(kube_node_labels{label_moai_moreh_io_accelerator_vendor=\"amd\"}, node)",
-        "hide": 2,
-        "includeAll": true,
-        "label": "amd_hostname",
-        "multi": true,
-        "name": "amd_hostname",
-        "options": [],
-        "query": {
-          "qryType": 1,
-          "query": "label_values(kube_node_labels{label_moai_moreh_io_accelerator_vendor=\"amd\"}, node)",
-          "refId": "PrometheusVariableQueryEditor-VariableQuery"
-        },
-        "refresh": 2,
-        "regex": "",
-        "type": "query"
-      },
-      {
-        "current": {},
-        "datasource": {
-          "type": "prometheus",
-          "uid": "prometheus"
-        },
-        "definition": "label_values(kube_node_labels{label_moai_moreh_io_accelerator_vendor=\"nvidia\"}, node)",
-        "hide": 2,
-        "includeAll": true,
-        "label": "nvidia_hostname",
-        "multi": true,
-        "name": "nvidia_hostname",
-        "options": [],
-        "query": {
-          "qryType": 1,
-          "query": "label_values(kube_node_labels{label_moai_moreh_io_accelerator_vendor=\"nvidia\"}, node)",
-          "refId": "PrometheusVariableQueryEditor-VariableQuery"
-        },
-        "refresh": 2,
-        "regex": "",
         "type": "query"
       }
     ]
