@@ -21,8 +21,8 @@ This example deploys four `InferenceService` instances serving two models (Llama
 ```mermaid
 graph TB
     clients@{ shape: procs, label: "Clients" } --> gateway["AIGateway<br>(single endpoint)"]
-    sp_llama["SchedulingProfile<br>llama"] -. model: Llama .-> gateway
-    sp_qwen["SchedulingProfile<br>qwen"] -. model: Qwen .-> gateway
+    sp_llama["SchedulingProfile<br>llama"] -. "meta-llama/Llama-3.2-1B-Instruct" .-> gateway
+    sp_qwen["SchedulingProfile<br>qwen"] -. "Qwen/Qwen3-1.7B" .-> gateway
     subgraph isvc_llama["Llama 3.2 1B"]
       llama_mi250["vLLM (MI250)"]
       llama_mi300x["vLLM (MI300X)"]
@@ -31,10 +31,10 @@ graph TB
       qwen_mi250["vLLM (MI250)"]
       qwen_mi300x["vLLM (MI300X)"]
     end
-    gateway -->|model = Llama| llama_mi250
-    gateway -->|model = Llama| llama_mi300x
-    gateway -->|model = Qwen| qwen_mi250
-    gateway -->|model = Qwen| qwen_mi300x
+    gateway -->|"meta-llama/Llama-3.2-1B-Instruct"| llama_mi250
+    gateway -->|"meta-llama/Llama-3.2-1B-Instruct"| llama_mi300x
+    gateway -->|"Qwen/Qwen3-1.7B"| qwen_mi250
+    gateway -->|"Qwen/Qwen3-1.7B"| qwen_mi300x
 ```
 
 When a request arrives:
