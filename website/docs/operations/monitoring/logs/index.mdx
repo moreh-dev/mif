@@ -205,7 +205,7 @@ The query editor defaults to **Builder** mode, which provides a visual query bui
 
 ### Running a log query
 
-Enter a LogQL query in the query editor and click **Run query** (or press `Shift+Enter`). For example, `{namespace="default"}` returns all logs from the `default` namespace. The screenshot below shows the results, which include both plain-text and JSON-formatted logs collected from different pods:
+Enter a LogQL query in the query editor and click **Run query** (or press `Shift+Enter`). For example, `{app="aigateway"}` returns all logs from the AIGateway gateway pods. Because AIGateway emits structured JSON, Vector parses each line and promotes its fields (such as `level`, `message`, and `target`), as the results below show:
 
 ![Log search results in Grafana](./loki-logs.png)
 
