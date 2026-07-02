@@ -15,6 +15,7 @@ After any chart change, run the narrowest sufficient check: `make helm-lint`, `h
 
 - Every infrastructure component is a sub-chart of `moai-inference-framework`, never a standalone prerequisite. Default to `enabled: true` with a `condition:` entry in `Chart.yaml` — `enabled: false` defaults break the one-chart philosophy.
 - Use official upstream repos: loki `https://grafana.github.io/helm-charts`, vector `https://helm.vector.dev`, minio `https://charts.min.io`, tempo `https://grafana-community.github.io/helm-charts` (Grafana's community-maintained charts repo, which carries current `tempo-distributed`).
+- Keep `prometheus-stack.defaultRules.create: true`. The bundled "Kubernetes / Compute Resources" Grafana dashboards (panels *and* their `workload`/`type` template variables) query kubernetes-mixin recording rules such as `namespace_workload_pod:kube_pod_owner:relabel`, so disabling default rules blanks those dashboards even though raw metrics are still scraped.
 
 ## Naming and references
 
