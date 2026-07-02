@@ -127,7 +127,7 @@ Moreh Inference Framework
 | nfd.worker.tolerations | list | `[{"effect":"NoSchedule","key":"amd.com/gpu","operator":"Exists"},{"effect":"NoSchedule","key":"nvidia.com/gpu","operator":"Exists"},{"effect":"NoExecute","key":"amd-dcm","operator":"Equal","value":"up"},{"effect":"NoSchedule","key":"amd-gpu-unhealthy","operator":"Exists"}]` | NFD Worker Tolerations to allow NFD workers to deploy to GPU nodes |
 | prometheus-stack.alertmanager.enabled | bool | `false` |  |
 | prometheus-stack.coreDns.enabled | bool | `false` |  |
-| prometheus-stack.defaultRules.create | bool | `false` |  |
+| prometheus-stack.defaultRules.create | bool | `true` |  |
 | prometheus-stack.enabled | bool | `true` | Enable prometheus-community/kube-prometheus-stack. Set to false if already deployed. |
 | prometheus-stack.grafana.enabled | bool | `true` |  |
 | prometheus-stack.grafana.sidecar.alerts.enabled | bool | `true` |  |

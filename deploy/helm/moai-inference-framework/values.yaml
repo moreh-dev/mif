@@ -20,7 +20,7 @@ prometheus-stack:
   enabled: true
 
   defaultRules:
-    create: false
+    create: true
   windowsMonitoring:
     enabled: false
   alertmanager:
