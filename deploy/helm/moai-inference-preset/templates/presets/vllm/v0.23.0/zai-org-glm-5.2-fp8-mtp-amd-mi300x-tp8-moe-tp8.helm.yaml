@@ -1,0 +1,68 @@
+apiVersion: odin.moreh.io/v1alpha1
+kind: InferenceServiceTemplate
+metadata:
+  name: vllm-v0.23.0-zai-org-glm-5.2-fp8-mtp-amd-mi300x-tp8-moe-tp8
+  namespace: {{ include "common.names.namespace" . }}
+  labels:
+    {{- include "mif.preset.labels" . | nindent 4 }}
+    mif.moreh.io/model.org: zai-org
+    mif.moreh.io/model.name: glm-5.2-fp8
+    mif.moreh.io/model.mtp: "true"
+    mif.moreh.io/role: e2e
+    mif.moreh.io/accelerator.vendor: amd
+    mif.moreh.io/accelerator.model: mi300x
+    mif.moreh.io/parallelism: "tp8-moe-tp8"
+spec:
+  framework: vllm
+  model:
+    name: zai-org/GLM-5.2-FP8
+  parallelism:
+    tensor: 8
+  template:
+    spec:
+      containers:
+        - name: main
+          # GLM-5.2 (GlmMoeDsaForCausalLM, DeepSeek-style sparse attention) is a native
+          # vLLM arch from v0.23.0, so no --trust-remote-code is needed (mirrors the
+          # nvidia-b300 GLM-5.2 preset). Flags follow the vLLM MI300X recipe + AMD specifics:
+          #   - upstream ROCm image: vLLM ships no tagged v0.23.0 ROCm release, so this uses
+          #     the recipe's pinned nightly (vLLM 0.23.0-era, GLM-5.2 + DSA support).
+          #   - --linear-backend/--moe-backend aiter + VLLM_ROCM_USE_AITER* (recipe env)
+          #   - -cc.pass_config.fuse_allreduce_rms=False: the fuse_allreduce_rms compile pass
+          #     hangs on ROCm during engine init; the recipe disables it (required, not optional).
+          #   - --kv-cache-dtype fp8_e4m3 + --max-num-seqs 32 to fit the KV cache; MTP num=5.
+          image: vllm/vllm-openai-rocm:nightly-4c626633159887b0f2c962058c17c78f1434556d
+          env:
+            - name: VLLM_ROCM_USE_AITER
+              value: "1"
+            - name: VLLM_ROCM_USE_AITER_FUSION_SHARED_EXPERTS
+              value: "1"
+            - name: ISVC_EXTRA_ARGS
+              value: >-
+                --tool-call-parser glm47
+                --reasoning-parser glm45
+                --enable-auto-tool-choice
+                --max-model-len 262144
+                --gpu-memory-utilization 0.85
+                --kv-cache-dtype fp8_e4m3
+                --speculative-config.method mtp
+                --speculative-config.num_speculative_tokens 5
+                --max-num-seqs 32
+                --linear-backend aiter
+                --moe-backend aiter
+                -cc.pass_config.fuse_allreduce_rms=False
+                --chat-template-content-format string
+                --disable-uvicorn-access-log
+                --no-enable-log-requests
+          resources:
+            requests:
+              amd.com/gpu: "8"
+            limits:
+              amd.com/gpu: "8"
+      nodeSelector:
+        moai.moreh.io/accelerator.vendor: amd
+        moai.moreh.io/accelerator.model: mi300x
+      tolerations:
+        - key: amd.com/gpu
+          operator: Exists
+          effect: NoSchedule
