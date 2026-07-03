@@ -4,137 +4,145 @@ sidebar_label: API Reference
 sidebar_position: 1
 ---
 
-## odin.moreh.io/v1alpha1
+Odin serves models on Kubernetes through two custom resources in the `odin.moreh.io/v1alpha1` API group: `InferenceService` (a running inference deployment) and `InferenceServiceTemplate` (a reusable spec fragment that an `InferenceService` can reference).
 
-- [InferenceService](#inferenceservice)
-- [InferenceServiceTemplate](#inferenceservicetemplate)
+## InferenceService
 
-### InferenceService
+An `InferenceService` describes a model deployment — the inference engine, the model, parallelism, and the pod templates that run it. The pod templates (`template`, `workerTemplate`) are standard Kubernetes [`PodTemplateSpec`](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core) objects.
 
-```shell
-kubectl explain --api-version odin.moreh.io/v1alpha1 inferenceservice
-```
+**Spec**
 
-| Field        | Type                                                | Description                                                                   |
-| :----------- | :-------------------------------------------------- | :---------------------------------------------------------------------------- |
-| `apiVersion` | `string`                                            | APIVersion defines the versioned schema of this representation of an object.  |
-| `kind`       | `string`                                            | Kind is a string value representing the REST resource this object represents. |
-| `metadata`   | `object`                                            | Standard object's metadata.                                                   |
-| `spec`       | [`InferenceServiceSpec`](#inferenceservicespec)     | Specification of the desired behavior of the InferenceService.                |
-| `status`     | [`InferenceServiceStatus`](#inferenceservicestatus) | Most recently observed status of the InferenceService.                        |
+{/* AUTO-GENERATED:odin-crd-inferenceservice START */}
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `framework` | string | no | Framework specifies the inference engine (e.g. vllm, sglang). |
+| `inferencePoolRefs` | [array](#inferenceservice-inferencepoolrefs) | no | InferencePoolRefs is a list of references to InferencePools. |
+| `model` | [object](#inferenceservice-model) | no | Model identifies the model to serve. |
+| `parallelism` | [object](#inferenceservice-parallelism) | no | Parallelism defines the parallelism parameters for distributed inference. |
+| `replicas` | integer | no | Number of replicas for Deployments or LeaderWorkerSets. |
+| `rolloutStrategy` | [object](#inferenceservice-rolloutstrategy) | no | RolloutStrategy defines rollout settings for Deployment or LeaderWorkerSet. |
+| `service` | [object](#inferenceservice-service) | no | Service defines configuration for the Kubernetes Service associated with the InferenceService. |
+| `template` | [object](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core) | no | Template describes the pod template for Deployment or LeaderWorkerSet leader. |
+| `templateRefs` | [array](#inferenceservice-templaterefs) | no | TemplateRefs is a list of references to InferenceServiceTemplates. |
+| `workerTemplate` | [object](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core) | no | WorkerTemplate describes the pod template for LeaderWorkerSet workers. |
 
-#### InferenceServiceSpec
+### `inferencePoolRefs` {#inferenceservice-inferencepoolrefs}
 
-```shell
-kubectl explain --api-version odin.moreh.io/v1alpha1 inferenceservice.spec
-```
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `name` | string | no | Name of the referent. This field is effectively required, but due to backwards compatibility is allowed to be empty. Instances of this type with an empty value here are almost certainly wrong. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names |
 
-| Field               | Type                                                                                                              | Description                                                                                    |
-| :------------------ | :---------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------- |
-| `framework`         | `string`                                                                                                          | Framework specifies the inference engine. Enum: `vllm`, `sglang`.                              |
-| `inferencePoolRefs` | [`[]LocalObjectReference`](#localobjectreference)                                                                 | InferencePoolRefs is a list of references to InferencePools.                                   |
-| `model`             | [`ModelSpec`](#modelspec)                                                                                         | Model identifies the model to serve.                                                           |
-| `parallelism`       | [`Parallelism`](#parallelism)                                                                                     | Parallelism defines the parallelism parameters for distributed inference.                      |
-| `replicas`          | `integer`                                                                                                         | Number of replicas for Deployments or LeaderWorkerSets. Default is 1.                          |
-| `service`           | [`ServiceSpec`](#servicespec)                                                                                     | Service defines configuration for the Kubernetes Service associated with the InferenceService. |
-| `template`          | [`PodTemplateSpec`](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core) | Template describes the pod template for Deployment or LeaderWorkerSet leader.                  |
-| `templateRefs`      | [`[]TemplateReference`](#templatereference)                                                                       | TemplateRefs is a list of references to InferenceServiceTemplates.                             |
-| `workerTemplate`    | [`PodTemplateSpec`](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core) | WorkerTemplate describes the pod template for LeaderWorkerSet workers.                         |
+### `model` {#inferenceservice-model}
 
-#### LocalObjectReference
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `name` | string | yes | Name is the model identifier (e.g. HuggingFace model ID). |
 
-| Field  | Type     | Description                                     |
-| :----- | :------- | :---------------------------------------------- |
-| `name` | `string` | Name is the name of the referent. **Required**. |
+### `parallelism` {#inferenceservice-parallelism}
 
-#### TemplateReference
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `data` | integer | no | Data parallelism size. |
+| `dataLocal` | integer | no | DataLocal data local parallelism size. |
+| `dataRPCPort` | integer | no | DataRPCPort is the data parallelism RPC port. |
+| `expert` | boolean | no | Expert enables expert parallelism. |
+| `pipeline` | integer | no | Pipeline parallelism size. |
+| `tensor` | integer | no | Tensor parallelism size. |
 
-```shell
-kubectl explain --api-version odin.moreh.io/v1alpha1 inferenceservice.spec.templateRefs
-```
+### `rolloutStrategy` {#inferenceservice-rolloutstrategy}
 
-| Field   | Type     | Description                                     |
-| :------ | :------- | :---------------------------------------------- |
-| `group` | `string` | Group is the group of the referent.             |
-| `kind`  | `string` | Kind is the kind of the referent.               |
-| `name`  | `string` | Name is the name of the referent. **Required**. |
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `rollingUpdate` | object | no | RollingUpdate defines the parameters for RollingUpdate strategy. |
+| `type` | string | no | Type defines the rollout strategy. |
 
-#### Parallelism
+### `service` {#inferenceservice-service}
 
-```shell
-kubectl explain --api-version odin.moreh.io/v1alpha1 inferenceservice.spec.parallelism
-```
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `target` | string | no | Target specifies which pods receive the InferenceService label for Service endpoint selection. For LeaderWorkerSet: leader (rank-0 only), workers (worker pods only), all, or auto. For Deployment: target is ignored; label is always applied. |
 
-| Field         | Type      | Description                                   |
-| :------------ | :-------- | :-------------------------------------------- |
-| `data`        | `integer` | Data parallelism size.                        |
-| `dataLocal`   | `integer` | DataLocal data local parallelism size.        |
-| `dataRPCPort` | `integer` | DataRPCPort is the data parallelism RPC port. |
-| `expert`      | `boolean` | Expert enables expert parallelism.            |
-| `pipeline`    | `integer` | Pipeline parallelism size.                    |
-| `tensor`      | `integer` | Tensor parallelism size.                      |
+### `templateRefs` {#inferenceservice-templaterefs}
 
-#### ModelSpec
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `group` | string | no | Group is the group of the referent. |
+| `kind` | string | no | Kind is the kind of the referent. |
+| `name` | string | yes | Name is the name of the referent. |
+{/* AUTO-GENERATED:odin-crd-inferenceservice END */}
 
-```shell
-kubectl explain --api-version odin.moreh.io/v1alpha1 inferenceservice.spec.model
-```
+**Status**
 
-| Field  | Type     | Description                                                             |
-| :----- | :------- | :---------------------------------------------------------------------- |
-| `name` | `string` | Name is the model identifier (e.g. HuggingFace model ID). **Required**. |
+{/* AUTO-GENERATED:odin-crd-inferenceservice-status START */}
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `conditions` | [array](#inferenceservice-conditions) | no | Conditions represent the latest available observations of an object's state. |
+| `hpaPodSelector` | string | no | HPAPodSelector for pods that belong to the InferenceService object, this is needed for HPA to know what pods belong to the InferenceService object. |
+| `observedGeneration` | integer | no | ObservedGeneration reflects the InferenceService's metadata.generation that this status was reconciled against. Set at end of a successful reconcile only. |
+| `readyReplicas` | integer | no | ReadyReplicas track the number of groups that are in ready state (updated or not). |
+| `renderedSpec` | object | no | RenderedSpec contains the fully resolved InferenceServiceSpec after merging templateRefs and applying template rendering. NOTE: Schemaless + PreserveUnknownFields prevent controller-gen from expanding the full InferenceServiceSpec schema inline, which would exceed CRD size limits. Go type safety is preserved at compile time; API-server-level validation is omitted. |
+| `replicas` | integer | no | Replicas track the total number of groups that have been created (updated or not, ready or not) |
+| `updatedReplicas` | integer | no | UpdatedReplicas track the number of groups that have been updated (ready or not). |
+| `workload` | [object](#inferenceservice-workload) | no | Workload describes the active child workload (Deployment or LeaderWorkerSet) and surfaces a single diagnostic signal explaining the current state when not Ready. Rebuilt from scratch every reconcile; not preserved across workload-kind swaps. |
 
-#### ServiceSpec
+### `conditions` {#inferenceservice-conditions}
 
-```shell
-kubectl explain --api-version odin.moreh.io/v1alpha1 inferenceservice.spec.service
-```
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `lastTransitionTime` | string | yes | lastTransitionTime is the last time the condition transitioned from one status to another. This should be when the underlying condition changed. If that is not known, then using the time when the API field changed is acceptable. |
+| `message` | string | yes | message is a human readable message indicating details about the transition. This may be an empty string. |
+| `observedGeneration` | integer | no | observedGeneration represents the .metadata.generation that the condition was set based upon. For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date with respect to the current state of the instance. |
+| `reason` | string | yes | reason contains a programmatic identifier indicating the reason for the condition's last transition. Producers of specific condition types may define expected values and meanings for this field, and whether the values are considered a guaranteed API. The value should be a CamelCase string. This field may not be empty. |
+| `status` | string | yes | status of the condition, one of True, False, Unknown. |
+| `type` | string | yes | type of condition in CamelCase or in foo.example.com/CamelCase. |
 
-| Field    | Type     | Description                                                                                                                                                                                                            |
-| :------- | :------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `target` | `string` | Specifies which pods receive the `mif.moreh.io/inferenceservice` label for Service endpoint selection. For LeaderWorkerSet: `leader`, `workers`, `all`, or `auto`. For Deployment: target is ignored. Default: `auto`. |
+### `workload` {#inferenceservice-workload}
 
-#### InferenceServiceStatus
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `conditions` | array | no | Conditions is a verbatim snapshot of the child's status.conditions at reconcile time. Consumers needing raw child state read this; consumers wanting a summary read InferenceService.status.conditions[Ready] + .workload.diagnostic. |
+| `diagnostic` | object | no | Diagnostic is a single picked failure signal explaining why the workload is not Ready. Absent when Ready=True or when no qualifying signal exists. |
+| `kind` | string | yes | Kind is the kind of the active child workload. |
+| `name` | string | yes | Name is the name of the active child workload. |
+| `observedGeneration` | integer | no | ObservedGeneration is the child workload's status.observedGeneration. Absent when the child has not yet been created or has not reported a status. |
+{/* AUTO-GENERATED:odin-crd-inferenceservice-status END */}
 
-```shell
-kubectl explain --api-version odin.moreh.io/v1alpha1 inferenceservice.status
-```
+## InferenceServiceTemplate
 
-| Field             | Type                                            | Description                                                                                                      |
-| :---------------- | :---------------------------------------------- | :--------------------------------------------------------------------------------------------------------------- |
-| `replicas`        | `integer`                                       | Total number of groups that have been created (updated or not, ready or not).                                     |
-| `updatedReplicas` | `integer`                                       | Number of groups that have been updated (ready or not).                                                           |
-| `readyReplicas`   | `integer`                                       | Number of groups that are in a ready state (updated or not).                                                      |
-| `hpaPodSelector`  | `string`                                        | Pod selector string for HPA to identify pods belonging to this InferenceService.                                  |
-| `renderedSpec`    | [`InferenceServiceSpec`](#inferenceservicespec) | Fully resolved InferenceServiceSpec after merging templateRefs and template rendering.                            |
-| `conditions`      | `[]Condition`                                   | Conditions represent the latest available observations of an object's state.                                      |
+An `InferenceServiceTemplate` is a reusable fragment of `InferenceService` spec. An `InferenceService` references one or more templates through `spec.templateRefs`; the referenced templates are merged into its rendered spec.
 
----
+**Spec**
 
-### InferenceServiceTemplate
+{/* AUTO-GENERATED:odin-crd-inferenceservicetemplate START */}
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `framework` | string | no | Framework specifies the inference engine (e.g. vllm, sglang). |
+| `model` | [object](#inferenceservicetemplate-model) | no | Model identifies the model to serve. |
+| `parallelism` | [object](#inferenceservicetemplate-parallelism) | no | Parallelism defines the parallelism parameters for distributed inference. |
+| `service` | [object](#inferenceservicetemplate-service) | no | Service defines configuration for the Kubernetes Service associated with the InferenceService. |
+| `template` | [object](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core) | no | Template describes the pod template for Deployment or LeaderWorkerSet leader. |
+| `workerTemplate` | [object](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core) | no | WorkerTemplate describes the pod template for LeaderWorkerSet workers. |
 
-```shell
-kubectl explain --api-version odin.moreh.io/v1alpha1 inferenceservicetemplate
-```
+### `model` {#inferenceservicetemplate-model}
 
-| Field        | Type                                                            | Description                                                                   |
-| :----------- | :-------------------------------------------------------------- | :---------------------------------------------------------------------------- |
-| `apiVersion` | `string`                                                        | APIVersion defines the versioned schema of this representation of an object.  |
-| `kind`       | `string`                                                        | Kind is a string value representing the REST resource this object represents. |
-| `metadata`   | `object`                                                        | Standard object's metadata.                                                   |
-| `spec`       | [`InferenceServiceTemplateSpec`](#inferenceservicetemplatespec) | Specification of the desired behavior of the InferenceServiceTemplate.        |
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `name` | string | yes | Name is the model identifier (e.g. HuggingFace model ID). |
 
-#### InferenceServiceTemplateSpec
+### `parallelism` {#inferenceservicetemplate-parallelism}
 
-```shell
-kubectl explain --api-version odin.moreh.io/v1alpha1 inferenceservicetemplate.spec
-```
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `data` | integer | no | Data parallelism size. |
+| `dataLocal` | integer | no | DataLocal data local parallelism size. |
+| `dataRPCPort` | integer | no | DataRPCPort is the data parallelism RPC port. |
+| `expert` | boolean | no | Expert enables expert parallelism. |
+| `pipeline` | integer | no | Pipeline parallelism size. |
+| `tensor` | integer | no | Tensor parallelism size. |
 
-| Field            | Type                                                                                                              | Description                                                                                    |
-| :--------------- | :---------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------- |
-| `framework`      | `string`                                                                                                          | Framework specifies the inference engine. Enum: `vllm`, `sglang`.                              |
-| `model`          | [`ModelSpec`](#modelspec)                                                                                         | Model identifies the model to serve.                                                           |
-| `parallelism`    | [`Parallelism`](#parallelism)                                                                                     | Parallelism defines the parallelism parameters for distributed inference.                      |
-| `service`        | [`ServiceSpec`](#servicespec)                                                                                     | Service defines configuration for the Kubernetes Service associated with the InferenceService. |
-| `template`       | [`PodTemplateSpec`](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core) | Template describes the pod template for Deployment or LeaderWorkerSet leader.                  |
-| `workerTemplate` | [`PodTemplateSpec`](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core) | WorkerTemplate describes the pod template for LeaderWorkerSet workers.                         |
+### `service` {#inferenceservicetemplate-service}
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `target` | string | no | Target specifies which pods receive the InferenceService label for Service endpoint selection. For LeaderWorkerSet: leader (rank-0 only), workers (worker pods only), all, or auto. For Deployment: target is ignored; label is always applied. |
+{/* AUTO-GENERATED:odin-crd-inferenceservicetemplate END */}
