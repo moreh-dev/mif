@@ -9,5 +9,21 @@ A `SchedulingProfile` composes the gateway's routing decision from scorer and pi
 The following plugins are available.
 
 {/* AUTO-GENERATED:aigateway-plugins START */}
-{/* The plugin catalog (scorers and pickers) is generated from source. */}
+**Scorers**
+
+- `constant-scorer`
+- `inflight-requests-scorer`
+- `kv-cache-utilization-scorer`
+- `kv-utilization-scorer`
+- `prefix-cache-scorer`
+- `running-requests-scorer`
+- `token-length-scorer`
+- `waiting-requests-scorer`
+
+**Pickers**
+
+- `max-score-picker`
+- `random-picker`
+- `weighted-random-picker`
+- `x-round-robin-picker`
 {/* AUTO-GENERATED:aigateway-plugins END */}

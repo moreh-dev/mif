@@ -11,7 +11,100 @@ Heimdall AIGateway is the request entrypoint of the MoAI Inference Framework. Th
 An `AIGateway` (group `heimdall.moreh.io/v1alpha1`, namespaced) describes a gateway deployment. The Heimdall operator reconciles it into a gateway `Deployment` and `Service` and binds request models to scheduling profiles through `spec.schedulingProfiles`. The reserved model name `default` is the gateway-wide fallback.
 
 {/* AUTO-GENERATED:aigateway-crd START */}
-{/* The AIGateway spec field table is generated from source. */}
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `affinity` | object | no | Affinity for the gateway pod. |
+| `extraArgs` | array | no | ExtraArgs are merged onto the gateway container's chart-default args by flag key (see "Args Merge Contract"). |
+| `extraEnvVars` | [array](#aigateway-extraenvvars) | no | ExtraEnvVars is a list of additional environment variables to inject into the gateway container. User-defined entries override controller-managed defaults when names collide. |
+| `extraVolumeMounts` | [array](#aigateway-extravolumemounts) | no | ExtraVolumeMounts is a list of additional volume mounts for the gateway container, merged onto chart defaults by mountPath (whole-entry replacement on collision). |
+| `extraVolumes` | array | no | ExtraVolumes is a list of additional volumes for the gateway pods, merged onto chart defaults by name (whole-entry replacement on collision). |
+| `image` | [object](#aigateway-image) | no | Image specifies the container image configuration for the gateway. |
+| `nodeSelector` | object | no | NodeSelector for the gateway pod. |
+| `replicas` | integer | no | Replicas is the number of desired gateway pods. |
+| `resources` | [object](#aigateway-resources) | no | Resources specifies the compute resource requirements for the gateway pods. |
+| `schedulingProfiles` | [array](#aigateway-schedulingprofiles) | no | SchedulingProfiles binds request models to SchedulingProfile names, evaluated and preserved in list order. The reserved model name "default" is the lowest-priority fallback regardless of its position; every other entry is a per-model override. |
+| `service` | [object](#aigateway-service) | no | Service configures the Service fronting the gateway pods. |
+| `sidecar` | [object](#aigateway-sidecar) | no | Sidecar overrides for the sidecar init container injected into bound InferenceService pods by the pod mutating webhook. |
+| `tolerations` | [array](#aigateway-tolerations) | no | Tolerations for the gateway pod. |
+| `updateStrategy` | [object](#aigateway-updatestrategy) | no | UpdateStrategy is the Deployment rollout strategy for the gateway pods. |
+
+### `extraEnvVars` {#aigateway-extraenvvars}
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `name` | string | yes | Name of the environment variable. May consist of any printable ASCII characters except '='. |
+| `value` | string | no | Variable references $(VAR_NAME) are expanded using the previously defined environment variables in the container and any service environment variables. If a variable cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. "$$(VAR_NAME)" will produce the string literal "$(VAR_NAME)". Escaped references will never be expanded, regardless of whether the variable exists or not. Defaults to "". |
+| `valueFrom` | object | no | Source for the environment variable's value. Cannot be used if value is not empty. |
+
+### `extraVolumeMounts` {#aigateway-extravolumemounts}
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `mountPath` | string | yes | Path within the container at which the volume should be mounted. Must not contain ':'. |
+| `mountPropagation` | string | no | mountPropagation determines how mounts are propagated from the host to container and the other way around. When not set, MountPropagationNone is used. This field is beta in 1.10. When RecursiveReadOnly is set to IfPossible or to Enabled, MountPropagation must be None or unspecified (which defaults to None). |
+| `name` | string | yes | This must match the Name of a Volume. |
+| `readOnly` | boolean | no | Mounted read-only if true, read-write otherwise (false or unspecified). Defaults to false. |
+| `recursiveReadOnly` | string | no | RecursiveReadOnly specifies whether read-only mounts should be handled recursively. If ReadOnly is false, this field has no meaning and must be unspecified. If ReadOnly is true, and this field is set to Disabled, the mount is not made recursively read-only. If this field is set to IfPossible, the mount is made recursively read-only, if it is supported by the container runtime. If this field is set to Enabled, the mount is made recursively read-only if it is supported by the container runtime, otherwise the pod will not be started and an error will be generated to indicate the reason. If this field is set to IfPossible or Enabled, MountPropagation must be set to None (or be unspecified, which defaults to None). If this field is not specified, it is treated as an equivalent of Disabled. |
+| `subPath` | string | no | Path within the volume from which the container's volume should be mounted. Defaults to "" (volume's root). |
+| `subPathExpr` | string | no | Expanded path within the volume from which the container's volume should be mounted. Behaves similarly to SubPath but environment variable references $(VAR_NAME) are expanded using the container's environment. Defaults to "" (volume's root). SubPathExpr and SubPath are mutually exclusive. |
+
+### `image` {#aigateway-image}
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `pullPolicy` | string | no | PullPolicy is the image pull policy. |
+| `pullSecrets` | array | no | PullSecrets are added to pod.spec.imagePullSecrets. |
+| `registry` | string | no | Registry is the container image registry. Empty means no prefix. |
+| `repository` | string | no | Repository is the image name (no registry, no tag). |
+| `tag` | string | no | Tag is the container image tag. |
+
+### `resources` {#aigateway-resources}
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `claims` | array | no | Claims lists the names of resources, defined in spec.resourceClaims, that are used by this container. This field depends on the DynamicResourceAllocation feature gate. This field is immutable. It can only be set for containers. |
+| `limits` | object | no | Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/ |
+| `requests` | object | no | Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. Requests cannot exceed Limits. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/ |
+
+### `schedulingProfiles` {#aigateway-schedulingprofiles}
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `model` | string | yes | Model is the request model name, or the reserved value "default" for the gateway-wide default profile. |
+| `profile` | string | yes | Profile is the SchedulingProfile name to use for this model. |
+
+### `service` {#aigateway-service}
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `annotations` | object | no | Annotations to set on the Service, merged onto any annotations already present on the Service (CR entries win on collision). |
+| `type` | string | no | Type is the Service type. Defaults to ClusterIP. |
+
+### `sidecar` {#aigateway-sidecar}
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `extraArgs` | array | no | ExtraArgs are merged onto the sidecar container's chart-default args by flag key (see "Args Merge Contract"). |
+| `extraEnvVars` | array | no | ExtraEnvVars are env vars for the sidecar container, merged onto chart defaults by Name; CR entries win on collision. |
+| `image` | object | no | Image is the sidecar container image config. Each unset field falls back at render time per "Sidecar Image Resolution" in the spec PRD: registry / tag / pullPolicy / pullSecrets fall back to the gateway image; repository falls back to the constant "heimdall-aigateway-sidecar". The defaulting webhook does NOT persist these fallbacks. |
+| `resources` | object | no | Resources are compute requirements for the sidecar container, merged per resource name. |
+
+### `tolerations` {#aigateway-tolerations}
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `effect` | string | no | Effect indicates the taint effect to match. Empty means match all taint effects. When specified, allowed values are NoSchedule, PreferNoSchedule and NoExecute. |
+| `key` | string | no | Key is the taint key that the toleration applies to. Empty means match all taint keys. If the key is empty, operator must be Exists; this combination means to match all values and all keys. |
+| `operator` | string | no | Operator represents a key's relationship to the value. Valid operators are Exists, Equal, Lt, and Gt. Defaults to Equal. Exists is equivalent to wildcard for value, so that a pod can tolerate all taints of a particular category. Lt and Gt perform numeric comparisons (requires feature gate TaintTolerationComparisonOperators). |
+| `tolerationSeconds` | integer | no | TolerationSeconds represents the period of time the toleration (which must be of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default, it is not set, which means tolerate the taint forever (do not evict). Zero and negative values will be treated as 0 (evict immediately) by the system. |
+| `value` | string | no | Value is the taint value the toleration matches to. If the operator is Exists, the value should be empty, otherwise just a regular string. |
+
+### `updateStrategy` {#aigateway-updatestrategy}
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `rollingUpdate` | object | no | Rolling update config params. Present only if DeploymentStrategyType = RollingUpdate. |
+| `type` | string | no | Type of deployment. Can be "Recreate" or "RollingUpdate". Default is RollingUpdate. |
 {/* AUTO-GENERATED:aigateway-crd END */}
 
 ## SchedulingProfile
@@ -21,7 +114,19 @@ A `SchedulingProfile` (group `heimdall.moreh.io/v1alpha1`, cluster-scoped) defin
 If no `SchedulingProfile` is bound, the gateway falls back to a built-in default profile. For the available scorer and picker plugins, see [Plugins](./plugins.mdx).
 
 {/* AUTO-GENERATED:aigateway-crd-schedulingprofile START */}
-{/* The SchedulingProfile spec field table is generated from source. */}
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `plugins` | [array](#schedulingprofile-plugins) | yes | Plugins declares the available scorer and picker plugins. (Role filtering for prefill/decode profiles is applied internally and is not configured here.) |
+| `profileHandler` | string | yes | ProfileHandler selects the scheduling mode: "e2e" for a single profile, "pd" for separate prefill and decode profiles. |
+| `profiles` | object | yes | Profiles maps profile names (e.g., "default", "prefill", "decode") to their plugin reference lists. For "e2e" mode a single "default" profile is expected; for "pd" mode, "prefill" and "decode" profiles are expected. |
+
+### `plugins` {#schedulingprofile-plugins}
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `config` | object | no | Config holds arbitrary plugin-specific configuration (e.g., &#123;"blockSize": 16&#125; for "prefix-cache-scorer"). |
+| `name` | string | no | Name is an optional alias for this plugin instance; it must be non-empty when set. Defaults to Type when omitted. |
+| `type` | string | yes | Type is the plugin type identifier (e.g., "running-requests-scorer", "max-score-picker"). |
 {/* AUTO-GENERATED:aigateway-crd-schedulingprofile END */}
 
 ## InferenceWorker
@@ -31,5 +136,31 @@ An `InferenceWorker` (group `heimdall.moreh.io/v1alpha1`, namespaced) advertises
 An inference pod joins a gateway through the `mif.moreh.io/aigateway` label, whose value is the target AIGateway's name. You set this label on the `InferenceService`; Odin propagates it to the pods, and the Heimdall operator injects the gateway sidecar into the labeled pods. The sidecar then registers each pod as an `InferenceWorker`, and the gateway routes requests to the workers that carry its name in that label.
 
 {/* AUTO-GENERATED:aigateway-crd-inferenceworker START */}
-{/* The InferenceWorker spec field table is generated from source. */}
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `framework` | string | yes | Framework is the inference engine running on this pod (e.g., "vllm", "trt-llm"). |
+| `gpuKvCacheBlocks` | integer | no | GpuKvCacheBlocks is the total number of GPU KV cache blocks the engine allocated (vLLM `num_gpu_blocks`). Fixed at engine init; sourced by the sidecar from the engine cache-config metric. Used by the kv-cache-utilization scorer as the occupancy denominator. Optional — unset means "no advertised capacity" (scorer is neutral for this worker). |
+| `instances` | [array](#inferenceworker-instances) | yes | Instances is the list of serving instances on this pod, one per listening port. A data-parallel deployment has multiple instances on a single pod. |
+| `modelCard` | [object](#inferenceworker-modelcard) | yes | ModelCard pins the codec policy for the base model this worker serves. |
+| `optimalMinTokens` | integer | no | OptimalMinTokens is the smallest prompt (in tokens) this worker is well-suited for. Sourced from the pod label `mif.moreh.io/aigateway.optimal-min-tokens`. Omitting the field or setting it to 0 are equivalent — both mean "no advertised minimum" to the token-length scorer. |
+| `podIP` | string | yes | PodIP is the IP address of the inference worker pod. |
+| `role` | string | no | Role indicates whether this worker handles prefill, decode, or both (e2e). |
+
+### `instances` {#inferenceworker-instances}
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `models` | array | yes | Models is the list of models served by this instance. |
+| `port` | integer | yes | Port is the TCP port this instance listens on. |
+
+### `modelCard` {#inferenceworker-modelcard}
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `kvCacheBlockSize` | integer | no | KvCacheBlockSize is the engine's KV block size in tokens per block; it must match the serving engine's configured block size. Defaults to 16. |
+| `maxModelLen` | integer | no | MaxModelLen overrides `config.json::max_position_embeddings`. |
+| `name` | string | yes | Name is the base model identifier (e.g., "meta-llama/Llama-3-8B"). |
+| `reasoningParser` | string | no | ReasoningParser selects the reasoning parser, if any. |
+| `renderer` | string | yes | Renderer selects the prompt renderer. |
+| `toolCallParser` | string | no | ToolCallParser selects the tool-call parser, if any. |
 {/* AUTO-GENERATED:aigateway-crd-inferenceworker END */}
