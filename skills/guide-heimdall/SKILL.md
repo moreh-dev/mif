@@ -302,15 +302,15 @@ helm repo update moreh
 - **cert-manager** — required by the operator's admission webhooks.
 - **CRDs** (packaged separately so their lifecycle is independent of the operators):
   ```shell
-  helm upgrade -i heimdall-crd moreh/heimdall-crd --version <version> -n mif --create-namespace  # AIGateway
-  helm upgrade -i heimdall-aigateway-crd moreh/heimdall-aigateway-crd --version <version> -n mif  # SchedulingProfile, InferenceWorker
+  helm upgrade -i heimdall-crd moreh/heimdall-crd --version <heimdall-crd-version> -n mif --create-namespace  # AIGateway
+  helm upgrade -i heimdall-aigateway-crd moreh/heimdall-aigateway-crd --version <heimdall-aigateway-crd-version> -n mif  # SchedulingProfile, InferenceWorker
   ```
 - **Heimdall operator** — reconciles `AIGateway` and injects the gateway sidecar. Install it after Odin's `InferenceService` CRD (it injects sidecars into Odin-managed pods):
   ```shell
-  helm upgrade -i heimdall moreh/heimdall --version <version> -n mif
+  helm upgrade -i heimdall moreh/heimdall --version <heimdall-version> -n mif
   ```
 
-Pin `--version` per your release; see `website/docs/getting-started/prerequisites.mdx` for the full ordered install (cert-manager → moai-inference-framework → CRDs → Odin → Heimdall → presets).
+Each chart is versioned independently — pin every `--version` to the matching entry in your release's chart list (see `website/docs/getting-started/prerequisites.mdx` for the full ordered install: cert-manager → moai-inference-framework → CRDs → Odin → Heimdall → presets).
 
 ### Deploy the routing resources
 
