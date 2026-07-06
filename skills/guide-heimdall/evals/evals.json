@@ -3,7 +3,7 @@
   "evals": [
     {
       "id": 0,
-      "prompt": "Write the Heimdall resources for a prefill/decode (pd) disaggregated deployment with KV-cache awareness: a cluster-scoped SchedulingProfile with prefill and decode profiles that use inflight-requests-scorer and kv-cache-utilization-scorer, and an AIGateway named 'mif' that binds the default model to that profile.",
+      "prompt": "Write the Heimdall resources for a prefill/decode (pd) disaggregated deployment with KV-cache awareness: a cluster-scoped SchedulingProfile with prefill and decode profiles that use inflight-requests-scorer and kv-cache-utilization-scorer with max-score-picker as the picker, and an AIGateway named 'mif' that binds the default model to that profile.",
       "expected_output": "A SchedulingProfile (heimdall.moreh.io/v1alpha1) with profileHandler: pd, a plugins list declaring inflight-requests-scorer, kv-cache-utilization-scorer, and max-score-picker, and profiles.prefill / profiles.decode each referencing both scorers and max-score-picker via pluginRefs (weights are optional). Plus an AIGateway (heimdall.moreh.io/v1alpha1) named 'mif' whose spec.schedulingProfiles binds model 'default' to the profile. role-filter is applied internally and is NOT declared.",
       "files": [],
       "assertions": [
