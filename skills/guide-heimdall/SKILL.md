@@ -79,7 +79,7 @@ An inference pod joins a gateway through the `mif.moreh.io/aigateway` label, who
 
 ## Configuration
 
-Heimdall is configured with two custom resources — there is no `heimdall-values.yaml` plugin config.
+Heimdall is configured by authoring two custom resources — `AIGateway` and `SchedulingProfile` (the third, `InferenceWorker`, is created automatically by the gateway sidecar). There is no `heimdall-values.yaml` plugin config.
 
 ### SchedulingProfile (cluster-scoped)
 
