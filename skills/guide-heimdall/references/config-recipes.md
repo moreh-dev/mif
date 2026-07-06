@@ -170,3 +170,8 @@ spec:
 
 Then bind inference pods to the gateway with the `mif.moreh.io/aigateway: mif`
 label on the `InferenceService` (add `mif.moreh.io/role: prefill|decode` in pd mode).
+
+The `AIGateway` is namespaced: apply it in the same namespace as the
+`InferenceService` pods it binds. The operator only injects the gateway sidecar
+into pods in the `AIGateway`'s own namespace, so a gateway in the wrong namespace
+silently routes nothing.

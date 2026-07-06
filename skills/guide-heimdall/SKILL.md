@@ -284,6 +284,7 @@ spec:
 ```
 
 - `mif.moreh.io/aigateway` binds the pods to the AIGateway; routing and sidecar injection rely on it.
+- The `InferenceService` must live in the **same namespace** as its `AIGateway` — the operator only injects the gateway sidecar into pods in the `AIGateway`'s own namespace, so a cross-namespace label silently routes nothing.
 - In `pd` mode, the pod must also carry `mif.moreh.io/role` (`prefill` or `decode`) — set it on the `InferenceService` or let its prefill/decode preset supply it; the role filter uses this label to place the pod.
 
 ---
