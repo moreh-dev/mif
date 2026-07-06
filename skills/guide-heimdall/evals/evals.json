@@ -20,13 +20,13 @@
     {
       "id": 1,
       "prompt": "I run a chatbot on MIF where users share long system prompts. I want a request whose prefix is already cached to prefer the pod holding it, while still balancing by in-flight load. All pods serve both prefill and decode. Which plugins and SchedulingProfile should I use, and what must match the engine?",
-      "expected_output": "Recommend an e2e SchedulingProfile with inflight-requests-scorer, prefix-cache-scorer, and max-score-picker, weighting prefix-cache-scorer higher than inflight-requests-scorer. Explain that the KV block size is sourced from each pod's InferenceWorker (modelCard.kvCacheBlockSize, read from the engine) rather than set as config.blockSize on the scorer, so nothing needs to be matched by hand. Note that session-affinity / lora-affinity plugins do not exist in this architecture.",
+      "expected_output": "Recommend an e2e SchedulingProfile with inflight-requests-scorer, prefix-cache-scorer, and max-score-picker, weighting prefix-cache-scorer higher than inflight-requests-scorer. Explain that the prefix-cache-scorer's block size must match the engine's KV block size, which is handled automatically because each pod's InferenceWorker advertises modelCard.kvCacheBlockSize (read from the engine) and the scorer uses it — so you do not set config.blockSize by hand (it is deprecated and ignored). Note that session-affinity / lora-affinity plugins do not exist in this architecture.",
       "files": [],
       "assertions": [
         "Recommends profileHandler e2e (all pods serve both roles)",
         "Recommends prefix-cache-scorer for prefix locality",
         "Recommends inflight-requests-scorer for in-flight load balancing",
-        "Explains the KV block size comes from the InferenceWorker modelCard (kvCacheBlockSize), not a config.blockSize on the scorer",
+        "Explains the prefix-cache-scorer's block size must match the engine and is sourced automatically from the InferenceWorker modelCard (kvCacheBlockSize), not set via config.blockSize",
         "Suggests weighting prefix-cache-scorer higher than inflight-requests-scorer",
         "Recommends max-score-picker (or weighted-random-picker) as the picker",
         "Does NOT recommend nonexistent plugins such as session-affinity-scorer or lora-affinity-scorer"

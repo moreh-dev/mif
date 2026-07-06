@@ -179,7 +179,7 @@ plugins:
       x0: 0.7
 ```
 
-The block size is **not** configured here — it comes from the pod's `InferenceWorker` (`modelCard.kvCacheBlockSize`). A `config.blockSize` key is deprecated and ignored.
+The scorer's block size must match the engine's KV block size, and this is handled automatically: each pod's `InferenceWorker` advertises `modelCard.kvCacheBlockSize` (read from the engine) and the scorer uses that value. You do not set it on the scorer — a `config.blockSize` key is deprecated and ignored (the gateway logs a warning and uses the InferenceWorker value).
 
 **Combining scorers:** give each a `weight` in the profile's `pluginRefs`; a higher weight has more influence on the final score.
 
@@ -366,6 +366,6 @@ Expect a `Running` gateway pod. The operator also creates the gateway `Service`.
 1. **Start simple.** `inflight-requests-scorer` + `max-score-picker` in an `e2e` profile covers most cases; add scorers only when metrics show a need.
 2. **Declare, then reference.** Every plugin in a profile's `pluginRefs` must be declared in `spec.plugins`.
 3. **Set weights explicitly** when combining scorers — the relative weights encode your routing priority.
-4. **Don't set `blockSize` on `prefix-cache-scorer`.** It is deprecated and ignored — the block size comes from the pod's `InferenceWorker` (`modelCard.kvCacheBlockSize`). Tune the scorer via `transform`/`k`/`x0` instead.
+4. **Don't set `blockSize` on `prefix-cache-scorer`.** The block size that must match the engine is sourced automatically from the pod's `InferenceWorker` (`modelCard.kvCacheBlockSize`); a `config.blockSize` key is deprecated and ignored (the gateway warns and uses the InferenceWorker value). Tune the scorer via `transform`/`k`/`x0` instead.
 5. **Use one binding label.** Route pods to a gateway only through `mif.moreh.io/aigateway`; add `mif.moreh.io/role` for pd.
 6. **Let the operator manage the gateway image.** Pin `spec.image.tag` only when you must; otherwise the operator keeps it current.

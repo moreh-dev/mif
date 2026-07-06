@@ -116,8 +116,9 @@ spec:
 ## Recipe 4: End-to-end, prefix-cache-aware [unverified]
 
 Adds `prefix-cache-scorer` for prompts that share prefixes (system prompts,
-few-shot templates). The block size comes from the pod's `InferenceWorker`
-(`modelCard.kvCacheBlockSize`) — it is not set on the scorer.
+few-shot templates). The block size that must match the engine is sourced
+automatically from the pod's `InferenceWorker` (`modelCard.kvCacheBlockSize`) —
+it is not set on the scorer (`config.blockSize` is deprecated and ignored).
 Weights are illustrative — tune to your workload.
 Use for: shared-prefix / templated-prompt workloads.
 
