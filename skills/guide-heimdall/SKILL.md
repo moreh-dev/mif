@@ -246,7 +246,7 @@ spec:
         - name: max-score-picker
 ```
 
-Bind either profile from an `AIGateway`:
+Bind either `SchedulingProfile` (the e2e or pd example above) from an `AIGateway` — `schedulingProfiles[].profile` names the whole `SchedulingProfile`, not its internal `prefill`/`decode` profiles:
 
 ```yaml
 apiVersion: heimdall.moreh.io/v1alpha1
