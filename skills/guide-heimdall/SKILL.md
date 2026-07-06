@@ -1,6 +1,6 @@
 ---
 name: guide-heimdall
-description: Expert guide for configuring and deploying Heimdall, the request-routing subsystem of the MoAI Inference Framework. Use this skill when working with the AIGateway and SchedulingProfile custom resources, scheduling plugins (scorers, pickers, the role filter), e2e vs pd (prefill/decode) routing, binding InferenceServices to a gateway via the mif.moreh.io/aigateway label, deploying the Heimdall operator, or troubleshooting request routing across inference pods in Kubernetes.
+description: Expert guide for configuring and deploying Heimdall, the request-routing subsystem of the MoAI Inference Framework. Use this skill when working with the AIGateway and SchedulingProfile custom resources, scheduling plugins (scorers and pickers), e2e vs pd (prefill/decode) routing with its internal role filtering, binding InferenceServices to a gateway via the mif.moreh.io/aigateway label, deploying the Heimdall operator, or troubleshooting request routing across inference pods in Kubernetes.
 ---
 
 # Heimdall — Expert Guide
@@ -17,7 +17,7 @@ Heimdall works with three custom resources in the `heimdall.moreh.io/v1alpha1` g
 | Resource | Scope | Who writes it | Purpose |
 | --- | --- | --- | --- |
 | `AIGateway` | namespaced | operator user | one gateway deployment; binds request models to scheduling profiles |
-| `SchedulingProfile` | cluster | operator user | routing rules: which scorers/picker choose the destination pod |
+| `SchedulingProfile` | cluster-scoped | operator user | routing rules: which scorers/picker choose the destination pod |
 | `InferenceWorker` | namespaced | the gateway sidecar (not authored by hand) | advertises one inference pod (address, framework, role, models) to the gateway |
 
 **This skill covers:** authoring `SchedulingProfile` and `AIGateway`, choosing scheduling plugins, e2e vs pd routing, binding InferenceServices to a gateway, deploying the Heimdall operator, and troubleshooting routing.
@@ -26,7 +26,7 @@ Heimdall works with three custom resources in the `heimdall.moreh.io/v1alpha1` g
 
 **References — when to consult:**
 
-For field- and parameter-level detail beyond this guide, consult the reference docs. Prefer the local path when filesystem access is available; use the URL as a fallback.
+For field-level CRD detail and the full plugin catalog beyond this guide, consult the reference docs. Prefer the local path when filesystem access is available; use the URL as a fallback.
 
 | Topic | Local path | URL (fallback) |
 | --- | --- | --- |
