@@ -25,7 +25,7 @@ To enable prefix cache-aware routing, configure the `prefix-cache-scorer` plugin
 
 The following `SchedulingProfile` enables the scorer in an end-to-end (`e2e`) profile and selects the highest-scoring pod with `max-score-picker`:
 
-```yaml title="prefix-cache-profile.yaml" {12}
+```yaml title="prefix-cache-profile.yaml"
 apiVersion: heimdall.moreh.io/v1alpha1
 kind: SchedulingProfile
 metadata:
@@ -34,10 +34,6 @@ spec:
   profileHandler: e2e
   plugins:
     - type: prefix-cache-scorer
-      config:
-        # blockSize is required and must match the engine's --block-size
-        # (the value vLLM is started with on the inference pods).
-        blockSize: 32
     - type: max-score-picker
   profiles:
     default:
@@ -51,11 +47,7 @@ spec:
 kubectl apply -f prefix-cache-profile.yaml
 ```
 
-The `prefix-cache-scorer` accepts the following `config` fields:
-
-- **`blockSize`** (required): the KV block size in tokens. It must match the engine's `--block-size`, otherwise the scorer's block hashes will not align with the engine's and no cache hits will be detected.
-- **`normalization`** (optional, default `longestPrefix`): how the matched-block count is normalized into a `0`–`1` score. `longestPrefix` scores against the length of the matched prefix; `input` scores against the full input length.
-- **`transform`** (optional, default `linear`): reshapes the normalized score before it enters the composite. `linear` is the identity; `logistic` applies a sigmoid (tunable via `k` and `x_0`) to sharpen the preference around a cache-hit threshold.
+The `prefix-cache-scorer` takes optional `config` fields for score normalization and transform — see the [Plugins reference](../reference/heimdall/plugins.mdx#prefix-cache-scorer) for the full table with defaults. The KV block size is **not** set on the scorer: it is sourced from each pod's `InferenceWorker` (`modelCard.kvCacheBlockSize`), so the scorer always uses the same block size as the engine.
 
 Bind this `SchedulingProfile` to the gateway through the `AIGateway`'s `schedulingProfiles` field, as shown in the [deployment example](#3-bind-the-profile-to-the-gateway) below.
 
@@ -65,7 +57,7 @@ Bind this `SchedulingProfile` to the gateway through the `AIGateway`'s `scheduli
 
 ### Token processor
 
-vLLM uses block hashes to look up prefixes. The scorer emulates this by hashing the request's tokens into blocks of size `B` (`blockSize`). The `blockSize` must match the InferenceService's `--block-size` (the value vLLM is started with on the inference pods); otherwise the scorer's block hashes will not align with the engine's and no cache hits will be detected.
+vLLM uses block hashes to look up prefixes. The scorer emulates this by hashing the request's tokens into blocks of the model's KV block size. That block size is sourced from each pod's `InferenceWorker` (`modelCard.kvCacheBlockSize`, which the sidecar reads from the engine), so the scorer's block hashes stay aligned with the engine's without any manual configuration.
 
 ### KV block index
 
@@ -97,7 +89,7 @@ In production environments, it is highly recommended to use **offline hub templa
 
 :::
 
-The `mif.moreh.io/aigateway` label binds these pods to an `AIGateway` named `mif`. The `--block-size 32` value matches the `blockSize: 32` set in the `SchedulingProfile` above.
+The `mif.moreh.io/aigateway` label binds these pods to an `AIGateway` named `mif`. The engine's `--block-size` is advertised to the gateway through the pod's `InferenceWorker`, so the `prefix-cache-scorer` automatically uses the same block size — no value is set on the profile.
 
 ```yaml title="llama-prefix-cache.yaml" {6,22}
 apiVersion: odin.moreh.io/v1alpha1
