@@ -43,13 +43,13 @@ For field- and parameter-level detail beyond this guide, consult the reference d
 
 ```mermaid
 flowchart LR
-    Client -->|single endpoint| Gateway["AIGateway<br>(gateway runtime)"]
-    subgraph Gateway
+    Client -->|single endpoint| GW
+    SP["SchedulingProfile<br>(routing rules)"] -. selected per request .-> GW
+    subgraph GW["AIGateway (gateway runtime)"]
         direction LR
         Scorers --> Picker
     end
-    SP["SchedulingProfile<br>(routing rules)"] -. selected per request .-> Gateway
-    Gateway --> Pod["vLLM pod"]
+    GW --> Pod["vLLM pod"]
 ```
 
 1. The **gateway** (run from an `AIGateway`) receives the request.
@@ -302,12 +302,12 @@ helm repo update moreh
 - **cert-manager** — required by the operator's admission webhooks.
 - **CRDs** (packaged separately so their lifecycle is independent of the operators):
   ```shell
-  helm upgrade -i heimdall-crd moreh/heimdall-crd -n mif                    # AIGateway
-  helm upgrade -i heimdall-aigateway-crd moreh/heimdall-aigateway-crd -n mif # SchedulingProfile, InferenceWorker
+  helm upgrade -i heimdall-crd moreh/heimdall-crd --version <version> -n mif --create-namespace  # AIGateway
+  helm upgrade -i heimdall-aigateway-crd moreh/heimdall-aigateway-crd --version <version> -n mif  # SchedulingProfile, InferenceWorker
   ```
 - **Heimdall operator** — reconciles `AIGateway` and injects the gateway sidecar. Install it after Odin's `InferenceService` CRD (it injects sidecars into Odin-managed pods):
   ```shell
-  helm upgrade -i heimdall moreh/heimdall -n mif
+  helm upgrade -i heimdall moreh/heimdall --version <version> -n mif
   ```
 
 Pin `--version` per your release; see `website/docs/getting-started/prerequisites.mdx` for the full ordered install (cert-manager → moai-inference-framework → CRDs → Odin → Heimdall → presets).
