@@ -170,13 +170,15 @@ Start simple; add scorers only when metrics justify it. All scorers are declared
 | `x0` | logistic center (default `0.7`; used when `transform: logistic`) |
 
 ```yaml
-plugins:
-  - type: prefix-cache-scorer
-    config:
-      normalization: longestPrefix
-      transform: logistic
-      k: 14.0
-      x0: 0.7
+# excerpt of a SchedulingProfile
+spec:
+  plugins:
+    - type: prefix-cache-scorer
+      config:
+        normalization: longestPrefix
+        transform: logistic
+        k: 14.0
+        x0: 0.7
 ```
 
 The scorer's block size must match the engine's KV block size, and this is handled automatically: each pod's `InferenceWorker` advertises `modelCard.kvCacheBlockSize` (read from the engine) and the scorer uses that value. You do not set it on the scorer — a `config.blockSize` key is deprecated and ignored (the gateway logs a warning and uses the InferenceWorker value).
