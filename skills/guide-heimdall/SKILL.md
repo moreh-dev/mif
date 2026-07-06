@@ -97,9 +97,9 @@ spec:
         <key>: <value>
   profiles:                      # e2e -> { default: ... }; pd -> { prefill:, decode: }
     default:
-      pluginRefs:                # references into spec.plugins (by name/type)
-        - name: <pluginType>
-          weight: <number>       # optional scorer weight
+      pluginRefs:                # each entry references a plugin by its effective name
+        - name: <pluginName>     # = spec.plugins[].name (its alias, or the type if unset)
+          weight: <number>       # optional scorer weight (default 1)
 ```
 
 - `spec.plugins` declares the available plugins; `spec.profiles.<name>.pluginRefs` lists which of them run (and each scorer's `weight`) for that profile.

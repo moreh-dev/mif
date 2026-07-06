@@ -41,7 +41,7 @@ spec:
 
 ## Recipe 2: Prefill/decode disaggregated [verified]
 
-Source: heimdall `test/examples/pd-dp/schedulingprofile.yaml`
+Source: heimdall-aigateway `tests/scenarios/routing-pd-dp/pd-profile.yaml`
 
 Separate prefill and decode pods. The `role-filter` is applied internally per
 sub-profile — you declare only scorers and a picker. Each prefill pod must carry
@@ -58,17 +58,27 @@ spec:
   profileHandler: pd
   plugins:
     - type: inflight-requests-scorer
+    - type: waiting-requests-scorer
+    - type: kv-utilization-scorer
     - type: max-score-picker
   profiles:
     prefill:
       pluginRefs:
         - name: inflight-requests-scorer
-          weight: 100
+          weight: 50
+        - name: waiting-requests-scorer
+          weight: 30
+        - name: kv-utilization-scorer
+          weight: 20
         - name: max-score-picker
     decode:
       pluginRefs:
         - name: inflight-requests-scorer
-          weight: 100
+          weight: 50
+        - name: waiting-requests-scorer
+          weight: 30
+        - name: kv-utilization-scorer
+          weight: 20
         - name: max-score-picker
 ```
 

@@ -4,14 +4,14 @@
     {
       "id": 0,
       "prompt": "Write the Heimdall resources for a prefill/decode (pd) disaggregated deployment with KV-cache awareness: a cluster-scoped SchedulingProfile with prefill and decode profiles that use inflight-requests-scorer and kv-cache-utilization-scorer, and an AIGateway named 'mif' that binds the default model to that profile.",
-      "expected_output": "A SchedulingProfile (heimdall.moreh.io/v1alpha1) with profileHandler: pd, a plugins list declaring inflight-requests-scorer, kv-cache-utilization-scorer, and max-score-picker, and profiles.prefill / profiles.decode each referencing both scorers (with weights) and max-score-picker via pluginRefs. Plus an AIGateway (heimdall.moreh.io/v1alpha1) named 'mif' whose spec.schedulingProfiles binds model 'default' to the profile. role-filter is applied internally and is NOT declared.",
+      "expected_output": "A SchedulingProfile (heimdall.moreh.io/v1alpha1) with profileHandler: pd, a plugins list declaring inflight-requests-scorer, kv-cache-utilization-scorer, and max-score-picker, and profiles.prefill / profiles.decode each referencing both scorers and max-score-picker via pluginRefs (weights are optional). Plus an AIGateway (heimdall.moreh.io/v1alpha1) named 'mif' whose spec.schedulingProfiles binds model 'default' to the profile. role-filter is applied internally and is NOT declared.",
       "files": [],
       "assertions": [
         "SchedulingProfile uses apiVersion heimdall.moreh.io/v1alpha1 and kind SchedulingProfile",
         "profileHandler is set to pd",
         "spec.plugins declares inflight-requests-scorer, kv-cache-utilization-scorer, and max-score-picker",
         "spec.profiles has both prefill and decode keys, each with a pluginRefs list",
-        "both profiles reference inflight-requests-scorer and kv-cache-utilization-scorer with weight values",
+        "both profiles reference inflight-requests-scorer and kv-cache-utilization-scorer via pluginRefs",
         "Does NOT declare prefill-filter/decode-filter or a profile-handler plugin (role filtering is internal to pd mode)",
         "An AIGateway (kind AIGateway) named 'mif' binds model 'default' to the profile via spec.schedulingProfiles",
         "Does NOT use EndpointPickerConfig, InferencePool, or a heimdall-values.yaml config section"
