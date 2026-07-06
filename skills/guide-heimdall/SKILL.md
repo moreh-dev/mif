@@ -17,7 +17,7 @@ Heimdall works with three custom resources in the `heimdall.moreh.io/v1alpha1` g
 | Resource | Scope | Who writes it | Purpose |
 | --- | --- | --- | --- |
 | `AIGateway` | namespaced | operator user | one gateway deployment; binds request models to scheduling profiles |
-| `SchedulingProfile` | cluster-scoped | operator user | routing rules: which scorers/picker choose the destination pod |
+| `SchedulingProfile` | cluster-scoped | operator user | routing rules: the scorers and picker that select the destination pod |
 | `InferenceWorker` | namespaced | the gateway sidecar (not authored by hand) | advertises one inference pod (address, framework, role, models) to the gateway |
 
 **This skill covers:** authoring `SchedulingProfile` and `AIGateway`, choosing scheduling plugins, e2e vs pd routing, binding InferenceServices to a gateway, deploying the Heimdall operator, and troubleshooting routing.

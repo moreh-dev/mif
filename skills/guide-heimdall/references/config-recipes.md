@@ -5,7 +5,7 @@ replace `<...>` placeholders, and `kubectl apply` it (SchedulingProfile is
 cluster-scoped). Bind it from an `AIGateway` as shown at the end.
 
 **Verification status:**
-- **[verified]** — sourced from the docs or the product example CRs
+- **[verified]** — the plugin composition matches the docs or a product example CR (the source's `metadata.name` may be adapted for the recipe)
 - **[unverified]** — constructed from the plugin catalog; functionally valid but not tested here
 
 The available plugins are generated from source — see `website/docs/reference/heimdall/plugins.mdx` for the authoritative catalog.
@@ -14,7 +14,7 @@ The available plugins are generated from source — see `website/docs/reference/
 
 ## Recipe 1: End-to-end, in-flight scoring (quickstart) [verified]
 
-Source: `website/docs/getting-started/quickstart.mdx`
+Adapted from: `website/docs/getting-started/quickstart.mdx`
 
 All pods serve both roles. Score by in-flight requests and pick the highest.
 Use for: getting started, small deployments, homogeneous pods.
@@ -41,7 +41,7 @@ spec:
 
 ## Recipe 2: Prefill/decode disaggregated [verified]
 
-Source: heimdall-aigateway `tests/scenarios/routing-pd-dp/pd-profile.yaml`
+Adapted from: heimdall-aigateway `tests/scenarios/routing-pd-dp/pd-profile.yaml`
 
 Separate prefill and decode pods. The `role-filter` is applied internally per
 sub-profile — you declare only scorers and a picker. Each prefill pod must carry
