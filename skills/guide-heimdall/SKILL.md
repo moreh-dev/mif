@@ -143,7 +143,7 @@ The plugin catalog is generated from source — see `website/docs/reference/heim
 | End-to-end | `e2e` | `default` | All pods serve both prefill and decode |
 | Prefill/decode disaggregated | `pd` | `prefill`, `decode` | Separate prefill and decode pods |
 
-In `pd` mode, label prefill pods `mif.moreh.io/role: prefill` and decode pods `mif.moreh.io/role: decode`; the internal `role-filter` routes each sub-profile to the matching pods.
+In `pd` mode, each pod must carry `mif.moreh.io/role` (`prefill` or `decode`) — the label lives on the `InferenceService` (set directly or supplied by its prefill/decode preset) and Odin propagates it to the pods; the internal `role-filter` then routes each sub-profile to the matching pods.
 
 ### Step 2 — choose scorer(s)
 
@@ -160,22 +160,26 @@ Start simple; add scorers only when metrics justify it. All scorers are declared
 | `prefix-cache-scorer` | pod likely holding the prompt's prefix | **takes config** (below) |
 | `constant-scorer` | (fixed score) | testing / tie-breaking |
 
-`prefix-cache-scorer` config keys (set under the plugin's `config:`):
+`prefix-cache-scorer` config keys (set under the plugin's `config:`; unknown keys are rejected):
 
 | Key | Meaning |
 | --- | --- |
-| `blockSize` | required; must match the engine's `--block-size` |
 | `normalization` | `longestPrefix` (default) or `input` |
 | `transform` | `linear` (default) or `logistic` |
-| `k`, `x0` | logistic-curve parameters |
+| `k` | logistic steepness (default `14.0`; used when `transform: logistic`) |
+| `x0` | logistic center (default `0.7`; used when `transform: logistic`) |
 
 ```yaml
 plugins:
   - type: prefix-cache-scorer
     config:
-      blockSize: 16
       normalization: longestPrefix
+      transform: logistic
+      k: 14.0
+      x0: 0.7
 ```
+
+The block size is **not** configured here — it comes from the pod's `InferenceWorker` (`modelCard.kvCacheBlockSize`). A `config.blockSize` key is deprecated and ignored.
 
 **Combining scorers:** give each a `weight` in the profile's `pluginRefs`; a higher weight has more influence on the final score.
 
@@ -280,7 +284,7 @@ spec:
 ```
 
 - `mif.moreh.io/aigateway` binds the pods to the AIGateway; routing and sidecar injection rely on it.
-- In `pd` mode, also set `mif.moreh.io/role` (`prefill` or `decode`) so the role filter can place the pod.
+- In `pd` mode, the pod must also carry `mif.moreh.io/role` (`prefill` or `decode`) — set it on the `InferenceService` or let its prefill/decode preset supply it; the role filter uses this label to place the pod.
 
 ---
 
@@ -332,7 +336,7 @@ Expect a `Running` gateway pod. The operator also creates the gateway `Service`.
 
 1. **Binding label:** the `InferenceService` (and therefore its pods) must carry `mif.moreh.io/aigateway: <gatewayName>`.
    ```shell
-   kubectl get pods -n <namespace> --show-labels | grep aigateway
+   kubectl get pods -n <namespace> -l mif.moreh.io/aigateway=<gatewayName>
    ```
 2. **Sidecar not injected:** confirm the Heimdall operator is running and its webhook is healthy; the gateway sidecar must be present on the inference pods.
 3. **No InferenceWorker:** the sidecar registers an `InferenceWorker` per pod — check they exist.
@@ -347,7 +351,7 @@ Expect a `Running` gateway pod. The operator also creates the gateway `Service`.
 
 ### pd routing sends nothing to prefill/decode
 
-1. **Role labels:** prefill pods need `mif.moreh.io/role: prefill`, decode pods `mif.moreh.io/role: decode`.
+1. **Role labels:** confirm prefill pods carry `mif.moreh.io/role: prefill` and decode pods `mif.moreh.io/role: decode` (the label is set on the `InferenceService` — directly or via its preset — and propagated to pods by Odin).
 2. **Mode:** the bound `SchedulingProfile` must use `profileHandler: pd` with both `prefill` and `decode` profiles.
 
 ### Gateway pod not starting
@@ -362,6 +366,6 @@ Expect a `Running` gateway pod. The operator also creates the gateway `Service`.
 1. **Start simple.** `inflight-requests-scorer` + `max-score-picker` in an `e2e` profile covers most cases; add scorers only when metrics show a need.
 2. **Declare, then reference.** Every plugin in a profile's `pluginRefs` must be declared in `spec.plugins`.
 3. **Set weights explicitly** when combining scorers — the relative weights encode your routing priority.
-4. **Match `blockSize` to the engine.** `prefix-cache-scorer.config.blockSize` must equal the engine's `--block-size`, or prefix scoring is wrong.
+4. **Don't set `blockSize` on `prefix-cache-scorer`.** It is deprecated and ignored — the block size comes from the pod's `InferenceWorker` (`modelCard.kvCacheBlockSize`). Tune the scorer via `transform`/`k`/`x0` instead.
 5. **Use one binding label.** Route pods to a gateway only through `mif.moreh.io/aigateway`; add `mif.moreh.io/role` for pd.
 6. **Let the operator manage the gateway image.** Pin `spec.image.tag` only when you must; otherwise the operator keeps it current.

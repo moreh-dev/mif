@@ -44,8 +44,9 @@ spec:
 Source: heimdall `test/examples/pd-dp/schedulingprofile.yaml`
 
 Separate prefill and decode pods. The `role-filter` is applied internally per
-sub-profile — you declare only scorers and a picker. Label prefill pods
-`mif.moreh.io/role: prefill` and decode pods `mif.moreh.io/role: decode`.
+sub-profile — you declare only scorers and a picker. Each prefill pod must carry
+`mif.moreh.io/role: prefill` and each decode pod `mif.moreh.io/role: decode` (the
+label is set on the `InferenceService`, directly or via its prefill/decode preset).
 Use for: large-scale deployments with distinct prefill/decode resource profiles.
 
 ```yaml
@@ -105,7 +106,8 @@ spec:
 ## Recipe 4: End-to-end, prefix-cache-aware [unverified]
 
 Adds `prefix-cache-scorer` for prompts that share prefixes (system prompts,
-few-shot templates). `blockSize` **must** match the engine's `--block-size`.
+few-shot templates). The block size comes from the pod's `InferenceWorker`
+(`modelCard.kvCacheBlockSize`) — it is not set on the scorer.
 Weights are illustrative — tune to your workload.
 Use for: shared-prefix / templated-prompt workloads.
 
@@ -120,8 +122,10 @@ spec:
     - type: inflight-requests-scorer
     - type: prefix-cache-scorer
       config:
-        blockSize: 16              # must equal the engine's --block-size
         normalization: longestPrefix
+        transform: logistic
+        k: 14.0
+        x0: 0.7
     - type: max-score-picker
   profiles:
     default:
