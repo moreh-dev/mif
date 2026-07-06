@@ -3,51 +3,46 @@
   "evals": [
     {
       "id": 0,
-      "prompt": "Write a complete heimdall-values.yaml for a production PD-disaggregated deployment with KV cache awareness. The deployment uses Istio as the gateway controller, the Gateway resource is named 'mif', and the namespace has a moreh-registry image pull secret. Include both prefill and decode scheduling profiles with queue-scorer and kv-cache-utilization-scorer.",
-      "expected_output": "A complete heimdall-values.yaml with global, config (EndpointPickerConfig with pd-profile-handler, prefill-filter, decode-filter, queue-scorer, kv-cache-utilization-scorer, max-score-picker), gateway (gatewayClassName: istio), and inferencePool sections. Should have two scheduling profiles (prefill and decode) each with their respective filter, both scorers with weights, and max-score-picker.",
+      "prompt": "Write the Heimdall resources for a prefill/decode (pd) disaggregated deployment with KV-cache awareness: a cluster-scoped SchedulingProfile with prefill and decode profiles that use inflight-requests-scorer and kv-cache-utilization-scorer, and an AIGateway named 'mif' that binds the default model to that profile.",
+      "expected_output": "A SchedulingProfile (heimdall.moreh.io/v1alpha1) with profileHandler: pd, a plugins list declaring inflight-requests-scorer, kv-cache-utilization-scorer, and max-score-picker, and profiles.prefill / profiles.decode each referencing both scorers (with weights) and max-score-picker via pluginRefs. Plus an AIGateway (heimdall.moreh.io/v1alpha1) named 'mif' whose spec.schedulingProfiles binds model 'default' to the profile. role-filter is applied internally and is NOT declared.",
       "files": [],
       "assertions": [
-        "Config uses apiVersion: inference.networking.x-k8s.io/v1alpha1 and kind: EndpointPickerConfig",
-        "Uses pd-profile-handler (not single-profile-handler) as the profile handler",
-        "Includes both prefill-filter and decode-filter in plugins list",
-        "Includes both queue-scorer and kv-cache-utilization-scorer",
-        "Has two scheduling profiles named 'prefill' and 'decode'",
-        "The prefill profile includes prefill-filter, and the decode profile includes decode-filter",
-        "Both profiles include queue-scorer and kv-cache-utilization-scorer with weight values",
-        "Gateway section has gatewayClassName set to istio (not kgateway)",
-        "Gateway name is 'mif'",
-        "InferencePool targetPorts includes port 8000",
-        "Global section includes imagePullSecrets with moreh-registry"
+        "SchedulingProfile uses apiVersion heimdall.moreh.io/v1alpha1 and kind SchedulingProfile",
+        "profileHandler is set to pd",
+        "spec.plugins declares inflight-requests-scorer, kv-cache-utilization-scorer, and max-score-picker",
+        "spec.profiles has both prefill and decode keys, each with a pluginRefs list",
+        "both profiles reference inflight-requests-scorer and kv-cache-utilization-scorer with weight values",
+        "Does NOT declare prefill-filter/decode-filter or a profile-handler plugin (role filtering is internal to pd mode)",
+        "An AIGateway (kind AIGateway) named 'mif' binds model 'default' to the profile via spec.schedulingProfiles",
+        "Does NOT use EndpointPickerConfig, InferencePool, or a heimdall-values.yaml config section"
       ]
     },
     {
       "id": 1,
-      "prompt": "I'm deploying a multi-turn chatbot service on MIF using Heimdall. The chatbot uses vLLM with prefix caching enabled. Users have long conversations and I want to: (1) keep sessions sticky to the same pod, (2) benefit from shared prefix caching, (3) still consider queue depth for load balancing. All pods serve both prefill and decode (aggregate mode). Which Heimdall plugins should I use, how should I configure the scheduling profile, and what should the relative scorer weights be?",
-      "expected_output": "Recommendation to use single-profile-handler, queue-scorer, prefix-cache-scorer, session-affinity-scorer, and max-score-picker. The scheduling profile should weight session-affinity-scorer highest (e.g., 5), prefix-cache-scorer medium (e.g., 3), and queue-scorer lowest (e.g., 1). Should mention that clients need to send x-session-token header for session affinity to work.",
+      "prompt": "I run a chatbot on MIF where users share long system prompts. I want a request whose prefix is already cached to prefer the pod holding it, while still balancing by in-flight load. All pods serve both prefill and decode. Which plugins and SchedulingProfile should I use, and what must match the engine?",
+      "expected_output": "Recommend an e2e SchedulingProfile with inflight-requests-scorer, prefix-cache-scorer (with config.blockSize matching the engine's --block-size), and max-score-picker, weighting prefix-cache-scorer higher than inflight-requests-scorer. Note that session-affinity / lora-affinity plugins do not exist in this architecture.",
       "files": [],
       "assertions": [
-        "Recommends single-profile-handler (not pd-profile-handler) since all pods serve both roles",
-        "Recommends session-affinity-scorer for session stickiness",
-        "Recommends prefix-cache-scorer for prefix caching benefit",
-        "Recommends queue-scorer for load balancing",
-        "Suggests session-affinity-scorer should have the highest weight among the three scorers",
-        "Mentions that prefix-cache-scorer requires --enable-prefix-caching in vLLM",
-        "Mentions that session-affinity-scorer requires clients to send x-session-token header",
-        "Recommends max-score-picker or weighted-random-picker as the picker"
+        "Recommends profileHandler e2e (all pods serve both roles)",
+        "Recommends prefix-cache-scorer for prefix locality",
+        "Recommends inflight-requests-scorer for in-flight load balancing",
+        "States prefix-cache-scorer config.blockSize must match the engine's --block-size",
+        "Suggests weighting prefix-cache-scorer higher than inflight-requests-scorer",
+        "Recommends max-score-picker (or weighted-random-picker) as the picker",
+        "Does NOT recommend nonexistent plugins such as session-affinity-scorer or lora-affinity-scorer"
       ]
     },
     {
       "id": 2,
-      "prompt": "I've deployed Heimdall with PD-disaggregated configuration but requests are not being routed to prefill pods at all. All requests seem to go to decode pods only. The Heimdall pod itself is running fine. How do I diagnose and fix this issue?",
-      "expected_output": "A systematic troubleshooting guide covering: checking pod labels (mif.moreh.io/role must be 'prefill'), verifying pd-profile-handler is used (not single-profile-handler), confirming prefill-filter is included in the prefill scheduling profile, and checking InferencePool selector matches pod labels.",
+      "prompt": "I deployed a pd (prefill/decode) SchedulingProfile but requests never reach the prefill pods — only decode pods serve. The gateway pod is running fine. How do I diagnose and fix this?",
+      "expected_output": "A systematic troubleshooting guide: check that prefill pods carry mif.moreh.io/role: prefill; verify the bound SchedulingProfile uses profileHandler: pd with a prefill profile; verify the InferenceService (and its pods) carry mif.moreh.io/aigateway matching the AIGateway name; confirm the gateway sidecar was injected and an InferenceWorker exists per pod.",
       "files": [],
       "assertions": [
-        "Suggests checking pod labels for mif.moreh.io/role set to 'prefill'",
-        "Suggests verifying pd-profile-handler is the profile handler (not single-profile-handler)",
-        "Suggests confirming prefill-filter is in the prefill scheduling profile",
-        "Suggests checking InferencePool selector matches pod labels (mif.moreh.io/pool)",
-        "Mentions that decode-filter allows pods with role 'decode', 'both', or unlabeled - which explains why decode still works",
-        "Provides kubectl commands for diagnosis (e.g., checking pod labels, inspecting InferencePool)"
+        "Suggests checking prefill pods have the label mif.moreh.io/role set to prefill",
+        "Suggests verifying the bound SchedulingProfile uses profileHandler: pd with a prefill profile",
+        "Suggests checking the mif.moreh.io/aigateway binding label on the InferenceService/pods",
+        "Suggests confirming the gateway sidecar was injected and an InferenceWorker was created per pod",
+        "Provides kubectl commands for diagnosis (e.g. checking pod labels, listing inferenceworker resources)"
       ]
     }
   ]

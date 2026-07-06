@@ -1,245 +1,157 @@
 # Heimdall Configuration Recipes
 
-Complete `heimdall-values.yaml` examples for common deployment patterns.
-Copy a recipe, replace `<...>` placeholders, and save as your `heimdall-values.yaml`.
+Complete `SchedulingProfile` examples for common routing patterns. Copy a recipe,
+replace `<...>` placeholders, and `kubectl apply` it (SchedulingProfile is
+cluster-scoped). Bind it from an `AIGateway` as shown at the end.
 
 **Verification status:**
-- **[verified]** — Directly sourced from docs, test configs, or chart defaults
-- **[unverified]** — Constructed from plugin specs; functionally valid but not tested in production
+- **[verified]** — sourced from the docs or the product example CRs
+- **[unverified]** — constructed from the plugin catalog; functionally valid but not tested here
+
+The available plugins are generated from source — see `website/docs/reference/heimdall/plugins.mdx` for the authoritative catalog.
 
 ---
 
-## Recipe 1: Basic aggregate (quickstart) [verified]
+## Recipe 1: End-to-end, in-flight scoring (quickstart) [verified]
 
 Source: `website/docs/getting-started/quickstart.mdx`
 
-All pods are equal. Route to the pod with the shortest waiting queue.
+All pods serve both roles. Score by in-flight requests and pick the highest.
 Use for: getting started, small deployments, homogeneous pods.
 
 ```yaml
-global:
-  imagePullSecrets:
-    - name: moreh-registry
-
-config:
-  apiVersion: inference.networking.x-k8s.io/v1alpha1
-  kind: EndpointPickerConfig
+apiVersion: heimdall.moreh.io/v1alpha1
+kind: SchedulingProfile
+metadata:
+  name: e2e-basic
+spec:
+  profileHandler: e2e
   plugins:
-    - type: single-profile-handler
-    - type: queue-scorer
+    - type: inflight-requests-scorer
     - type: max-score-picker
-  schedulingProfiles:
-    - name: default
-      plugins:
-        - pluginRef: queue-scorer
-        - pluginRef: max-score-picker
-
-gateway:
-  name: mif
-  gatewayClassName: istio        # or kgateway
-
-inferencePool:
-  targetPorts:
-    - number: 8000
+  profiles:
+    default:
+      pluginRefs:
+        - name: inflight-requests-scorer
+          weight: 100
+        - name: max-score-picker
 ```
 
 ---
 
-:::warning
-`pd-profile-handler` is legacy and has been replaced by [`disagg-profile-handler`](../../../website/docs/reference/heimdall/plugins.mdx#disagg-profile-handler).
-:::
+## Recipe 2: Prefill/decode disaggregated [verified]
 
-## Recipe 2: Disaggregated with queue scoring [verified]
+Source: heimdall `test/examples/pd-dp/schedulingprofile.yaml`
 
-Separate prefill and decode pods. Each phase gets its own scheduling profile.
-Pods must have label `mif.moreh.io/role` set to `prefill`, `decode`, or `both`.
+Separate prefill and decode pods. The `role-filter` is applied internally per
+sub-profile — you declare only scorers and a picker. Label prefill pods
+`mif.moreh.io/role: prefill` and decode pods `mif.moreh.io/role: decode`.
 Use for: large-scale deployments with distinct prefill/decode resource profiles.
 
 ```yaml
-global:
-  imagePullSecrets:
-    - name: moreh-registry
-
-config:
-  apiVersion: inference.networking.x-k8s.io/v1alpha1
-  kind: EndpointPickerConfig
+apiVersion: heimdall.moreh.io/v1alpha1
+kind: SchedulingProfile
+metadata:
+  name: pd-basic
+spec:
+  profileHandler: pd
   plugins:
-    - type: always-disagg-pd-decider  # must precede disagg-profile-handler (factory-time lookup)
-    - type: disagg-headers-handler    # must precede disagg-profile-handler (factory-time lookup)
-    - type: disagg-profile-handler
-      parameters:
-        deciders:
-          prefill: always-disagg-pd-decider
-    - type: prefill-filter
-    - type: decode-filter
-    - type: queue-scorer
+    - type: inflight-requests-scorer
     - type: max-score-picker
-  schedulingProfiles:
-    - name: prefill
-      plugins:
-        - pluginRef: prefill-filter
-        - pluginRef: queue-scorer
-        - pluginRef: max-score-picker
-    - name: decode
-      plugins:
-        - pluginRef: decode-filter
-        - pluginRef: queue-scorer
-        - pluginRef: max-score-picker
-
-gateway:
-  name: mif
-  gatewayClassName: istio
-
-inferencePool:
-  targetPorts:
-    - number: 8000
+  profiles:
+    prefill:
+      pluginRefs:
+        - name: inflight-requests-scorer
+          weight: 100
+        - name: max-score-picker
+    decode:
+      pluginRefs:
+        - name: inflight-requests-scorer
+          weight: 100
+        - name: max-score-picker
 ```
 
 ---
 
-## Recipe 3: Production disaggregation with KV cache awareness [verified]
+## Recipe 3: End-to-end with KV-cache awareness [unverified]
 
-Disaggregated with `kv-cache-utilization-scorer` and optional saturation detection.
-This is the Helm chart's default configuration.
-Use for: production environments with varying workloads.
+Adds `kv-cache-utilization-scorer` so requests avoid pods under KV-cache pressure.
+Weights are illustrative — tune to your workload.
+Use for: workloads where KV-cache occupancy varies across pods.
 
 ```yaml
-global:
-  imagePullSecrets:
-    - name: moreh-registry
-
-config:
-  apiVersion: inference.networking.x-k8s.io/v1alpha1
-  kind: EndpointPickerConfig
+apiVersion: heimdall.moreh.io/v1alpha1
+kind: SchedulingProfile
+metadata:
+  name: e2e-kv
+spec:
+  profileHandler: e2e
   plugins:
-    - type: always-disagg-pd-decider  # must precede disagg-profile-handler (factory-time lookup)
-    - type: disagg-headers-handler    # must precede disagg-profile-handler (factory-time lookup)
-    - type: disagg-profile-handler
-      parameters:
-        deciders:
-          prefill: always-disagg-pd-decider
-    - type: prefill-filter
-    - type: decode-filter
-    - type: queue-scorer
+    - type: inflight-requests-scorer
     - type: kv-cache-utilization-scorer
     - type: max-score-picker
-  schedulingProfiles:
-    - name: prefill
-      plugins:
-        - pluginRef: prefill-filter
-        - pluginRef: queue-scorer
+  profiles:
+    default:
+      pluginRefs:
+        - name: inflight-requests-scorer
           weight: 1
-        - pluginRef: kv-cache-utilization-scorer
+        - name: kv-cache-utilization-scorer
           weight: 1
-        - pluginRef: max-score-picker
-    - name: decode
-      plugins:
-        - pluginRef: decode-filter
-        - pluginRef: queue-scorer
-          weight: 1
-        - pluginRef: kv-cache-utilization-scorer
-          weight: 1
-        - pluginRef: max-score-picker
-  # Optional: saturation detection (not in chart defaults)
-  # saturationDetector:
-  #   queueDepthThreshold: 128
-  #   kvCacheUtilThreshold: 0.9
-  #   metricsStalenessThreshold: 30s
-
-gateway:
-  name: mif
-  gatewayClassName: istio
-
-serviceMonitor:
-  labels:
-    release: <prometheusStackRelease>
-
-inferencePool:
-  targetPorts:
-    - number: 8000
+        - name: max-score-picker
 ```
 
 ---
 
-## Recipe 4: Prefix-cache-aware with session affinity [unverified]
+## Recipe 4: End-to-end, prefix-cache-aware [unverified]
 
-Constructed from plugin specs. Combines prefix locality with session stickiness for
-multi-turn workloads. Weight values are illustrative and should be tuned based on
-your workload characteristics.
-Requires vLLM `--enable-prefix-caching` and client `x-session-token` management.
-Weights: session affinity (5) > prefix locality (3) > queue depth (1).
-Use for: chatbot / multi-turn conversational applications.
+Adds `prefix-cache-scorer` for prompts that share prefixes (system prompts,
+few-shot templates). `blockSize` **must** match the engine's `--block-size`.
+Weights are illustrative — tune to your workload.
+Use for: shared-prefix / templated-prompt workloads.
 
 ```yaml
-global:
-  imagePullSecrets:
-    - name: moreh-registry
-
-config:
-  apiVersion: inference.networking.x-k8s.io/v1alpha1
-  kind: EndpointPickerConfig
+apiVersion: heimdall.moreh.io/v1alpha1
+kind: SchedulingProfile
+metadata:
+  name: e2e-prefix
+spec:
+  profileHandler: e2e
   plugins:
-    - type: single-profile-handler
-    - type: queue-scorer
+    - type: inflight-requests-scorer
     - type: prefix-cache-scorer
-    - type: session-affinity-scorer
+      config:
+        blockSize: 16              # must equal the engine's --block-size
+        normalization: longestPrefix
     - type: max-score-picker
-  schedulingProfiles:
-    - name: default
-      plugins:
-        - pluginRef: queue-scorer
+  profiles:
+    default:
+      pluginRefs:
+        - name: inflight-requests-scorer
           weight: 1
-        - pluginRef: prefix-cache-scorer
+        - name: prefix-cache-scorer
           weight: 3
-        - pluginRef: session-affinity-scorer
-          weight: 5
-        - pluginRef: max-score-picker
-
-gateway:
-  name: mif
-  gatewayClassName: istio
-
-inferencePool:
-  targetPorts:
-    - number: 8000
+        - name: max-score-picker
 ```
 
 ---
 
-## Recipe 5: LoRA affinity routing [unverified]
+## Binding a profile from an AIGateway
 
-Constructed from plugin specs. Routes requests to pods that already have the required
-LoRA adapter loaded, reducing adapter swap overhead. Weight values are illustrative
-and should be tuned based on your workload characteristics.
-Use for: multi-LoRA serving with adapter-aware routing.
+A `SchedulingProfile` takes effect only when an `AIGateway` binds a model to it
+(`default` is the gateway-wide fallback):
 
 ```yaml
-global:
-  imagePullSecrets:
-    - name: moreh-registry
-
-config:
-  apiVersion: inference.networking.x-k8s.io/v1alpha1
-  kind: EndpointPickerConfig
-  plugins:
-    - type: single-profile-handler
-    - type: queue-scorer
-    - type: lora-affinity-scorer
-    - type: max-score-picker
-  schedulingProfiles:
-    - name: default
-      plugins:
-        - pluginRef: queue-scorer
-          weight: 1
-        - pluginRef: lora-affinity-scorer
-          weight: 3
-        - pluginRef: max-score-picker
-
-gateway:
+apiVersion: heimdall.moreh.io/v1alpha1
+kind: AIGateway
+metadata:
   name: mif
-  gatewayClassName: istio
-
-inferencePool:
-  targetPorts:
-    - number: 8000
+spec:
+  replicas: 1
+  schedulingProfiles:
+    - model: default
+      profile: e2e-basic          # the SchedulingProfile name
+    # - { model: <modelName>, profile: <otherProfile> }   # optional per-model override
 ```
+
+Then bind inference pods to the gateway with the `mif.moreh.io/aigateway: mif`
+label on the `InferenceService` (add `mif.moreh.io/role: prefill|decode` in pd mode).
