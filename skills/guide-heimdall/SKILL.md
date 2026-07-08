@@ -1,42 +1,39 @@
 ---
 name: guide-heimdall
-description: Expert guide for configuring and deploying Heimdall, the MoAI Inference Framework scheduler. Use this skill when working with Heimdall scheduling profiles, plugins (filters, scorers, pickers, profile handlers), EndpointPickerConfig, InferencePool resources, heimdall-values.yaml files, Gateway API Inference Extension integration, or troubleshooting Heimdall routing behavior in Kubernetes clusters. Also use when questions involve inference request routing, load balancing across inference pods, choosing which pod serves a request, or scheduling latency optimization.
+description: Expert guide for configuring and deploying Heimdall, the request-routing subsystem of the MoAI Inference Framework. Use this skill when working with the AIGateway and SchedulingProfile custom resources, scheduling plugins (scorers and pickers), e2e vs pd (prefill/decode) routing with its internal role filtering, binding InferenceServices to a gateway via the mif.moreh.io/aigateway label, deploying the Heimdall operator, or troubleshooting request routing across inference pods in Kubernetes.
 ---
 
-# Heimdall Scheduler — Expert Guide
+# Heimdall — Expert Guide
 
 ## Identity and Scope
 
-Heimdall is the request-routing and scheduling component of the MoAI Inference Framework (MIF). It implements the Kubernetes [Gateway API Inference Extension](https://gateway-api-inference-extension.sigs.k8s.io/) Endpoint Picker Protocol (EPP), deciding which inference pod each incoming request should be sent to.
+Heimdall is the request-routing subsystem of the MoAI Inference Framework (MIF). It has two parts:
 
-Heimdall is Moreh's implementation of the EPP within the broader Kubernetes inference ecosystem. The Gateway API Inference Extension defines standard CRDs (`InferencePool`, `EndpointPickerConfig`) that decouple scheduling logic from the gateway controller (Istio, Kgateway, etc.). Heimdall implements the EPP protocol with MIF-specific features such as `disagg-profile-handler` for prefill-decode and encode disaggregation, `lora-affinity-scorer`, and deep integration with Odin's InferenceService operator. The core plugin types (filters, scorers, pickers) follow the Gateway API Inference Extension specification.
+- **Heimdall operator** — reconciles an `AIGateway` resource into a gateway `Deployment` and `Service`, and injects the gateway sidecar into the inference pods bound to that gateway.
+- **Gateway runtime** — the request entrypoint. It receives every request through a single endpoint and routes each one to an inference pod according to the selected `SchedulingProfile`.
 
-**This skill covers:**
-- Heimdall plugin selection and configuration
-- `heimdall-values.yaml` authoring
-- EndpointPickerConfig and InferencePool resources
-- Deployment via Helm
-- Integration with Odin InferenceService
-- Monitoring and troubleshooting
+Heimdall works with three custom resources in the `heimdall.moreh.io/v1alpha1` group:
 
-**Out of scope:** Odin operator internals, vLLM engine tuning, Gateway controller setup (Istio/Kgateway), cluster-level infrastructure.
+| Resource | Scope | Who writes it | Purpose |
+| --- | --- | --- | --- |
+| `AIGateway` | namespaced | operator user | one gateway deployment; binds request models to scheduling profiles |
+| `SchedulingProfile` | cluster-scoped | operator user | routing rules: the scorers and picker that select the destination pod |
+| `InferenceWorker` | namespaced | the gateway sidecar (not authored by hand) | advertises one inference pod (address, framework, role, models) to the gateway |
 
-**Key codebase paths:**
-- `website/docs/reference/heimdall/` — API reference and plugin docs
-- `website/docs/getting-started/quickstart.mdx` — end-to-end deployment example
-- `test/e2e/*/config/heimdall-values.yaml.tmpl` — real-world config templates
-- `test/utils/heimdall.go` — Helm install/uninstall test utilities
+**This skill covers:** authoring `SchedulingProfile` and `AIGateway`, choosing scheduling plugins, e2e vs pd routing, binding InferenceServices to a gateway, deploying the Heimdall operator, and troubleshooting routing.
 
-**Additional references — when to consult:**
+**Out of scope:** Odin operator internals, vLLM engine tuning, cluster-level infrastructure.
 
-When you need parameter-level details beyond this guide (e.g., exact plugin parameters, scorer formulas, default values), consult the reference docs below. Prefer the local file path when filesystem access is available (faster, complete). Use the URL as a fallback when filesystem access is unavailable.
+**References — when to consult:**
+
+For field-level CRD detail and the full plugin catalog beyond this guide, consult the reference docs. Prefer the local path when filesystem access is available; use the URL as a fallback.
 
 | Topic | Local path | URL (fallback) |
 | --- | --- | --- |
-| Plugin parameters & scoring details | `website/docs/reference/heimdall/plugins.mdx` | https://test-docs.moreh.io/dev/reference/heimdall/plugins/ |
-| API field reference (CRD spec) | `website/docs/reference/heimdall/api-reference.mdx` | https://test-docs.moreh.io/dev/reference/heimdall/api-reference/ |
+| CRD field reference (`AIGateway`, `SchedulingProfile`, `InferenceWorker`) | `website/docs/reference/heimdall/usage.mdx` | https://test-docs.moreh.io/dev/reference/heimdall/usage/ |
+| Plugin catalog (scorers, pickers) | `website/docs/reference/heimdall/plugins.mdx` | https://test-docs.moreh.io/dev/reference/heimdall/plugins/ |
 | End-to-end quickstart | `website/docs/getting-started/quickstart.mdx` | https://test-docs.moreh.io/dev/getting-started/quickstart/ |
-| Monitoring & metrics | `website/docs/operations/monitoring/metrics/index.mdx` | https://test-docs.moreh.io/dev/operations/monitoring/metrics/ |
+| Operator install (prerequisites) | `website/docs/getting-started/prerequisites.mdx` | https://test-docs.moreh.io/dev/getting-started/prerequisites/ |
 
 ---
 
@@ -46,466 +43,332 @@ When you need parameter-level details beyond this guide (e.g., exact plugin para
 
 ```mermaid
 flowchart LR
-    Client -->|:80| Gateway
-    Gateway --> Heimdall
-    subgraph Heimdall
+    Client -->|single endpoint| GW
+    SP["SchedulingProfile<br>(routing rules)"] -. selected per request .-> GW
+    subgraph GW["AIGateway (gateway runtime)"]
         direction LR
-        PH[Profile Handler] --> Filter --> Scorer --> Picker
+        Scorers --> Picker
     end
-    Heimdall --> Pod
+    GW --> Pod["vLLM pod"]
 ```
 
-The detailed control flow:
+1. The **gateway** (run from an `AIGateway`) receives the request.
+2. The `AIGateway` binds the request's model to a `SchedulingProfile` (the reserved model `default` is the fallback).
+3. The profile's **scorers** each assign a score to every candidate pod; the **picker** selects the destination.
+4. In `pd` mode the profile first splits into `prefill` and `decode` sub-profiles (an internal `role-filter` keeps the pods of the matching role).
+5. The gateway forwards the request to the chosen pod.
 
-1. **Gateway** receives the client request and forwards it to Heimdall.
-2. **Profile handler** plugin selects which scheduling profile(s) to invoke.
-3. **Filter** plugins narrow down the candidate pods.
-4. **Scorer** plugins assign a numeric score to each remaining candidate.
-5. **Picker** plugin selects the final target pod based on scores.
-6. **Pre-request** plugins (if any) transform the request before delivery.
-7. **Gateway** forwards the request to the chosen pod.
-8. **Post-response** plugins (if any) enrich the response before returning to the client.
+### How pods join a gateway (sidecar injection)
+
+An inference pod joins a gateway through the `mif.moreh.io/aigateway` label, whose value is the target `AIGateway` name:
+
+1. You set `mif.moreh.io/aigateway: <name>` on the `InferenceService`.
+2. Odin propagates the label to the vLLM pods.
+3. The Heimdall operator's mutating webhook injects the gateway sidecar into the labeled pods.
+4. The sidecar registers each pod as an `InferenceWorker`, and the gateway discovers the workers that carry its name.
 
 ### Plugin categories
 
 | Category | Role | Activation |
 | --- | --- | --- |
-| Profile handler | Selects scheduling profile(s) per request | Auto-invoked; exactly one must be instantiated |
-| Pre-request | Transforms request before pod delivery | Auto-invoked once instantiated |
-| Post-response | Transforms response before client delivery | Auto-invoked once instantiated |
-| Filter | Restricts candidate pod set | Active only when included in a scheduling profile |
-| Scorer | Assigns score to each candidate pod | Active only when included in a scheduling profile |
-| Picker | Selects final target from scored candidates | Active only when included in a scheduling profile |
+| Scorer | Assigns a score to each candidate pod | Active only when referenced from a profile's `pluginRefs` |
+| Picker | Selects the final pod from the scored candidates | Active only when referenced from a profile's `pluginRefs` |
+| Filter (`role-filter`) | Restricts candidates by prefill/decode role | Injected automatically in `pd` mode; not user-declared |
 
 ---
 
-## Configuration Structure
+## Configuration
 
-A `heimdall-values.yaml` has four core sections and several optional sections:
+Heimdall is configured by authoring two custom resources — `AIGateway` and `SchedulingProfile` (the third, `InferenceWorker`, is created automatically by the gateway sidecar). There is no `heimdall-values.yaml` plugin config.
 
-```yaml
-# Core sections
-global:           # Image pull secrets
-config:           # EndpointPickerConfig (plugins + scheduling profiles)
-gateway:          # Gateway resource reference
-inferencePool:    # Target ports for inference pods
-
-# Optional sections
-serviceMonitor:   # Prometheus ServiceMonitor (enabled by default)
-poolPodMonitor:   # PodMonitor for model serving pods (enabled by default)
-tracing:          # OpenTelemetry tracing (disabled by default)
-udsTokenizer:     # UDS tokenizer sidecar (disabled by default)
-replicas:         # Number of Heimdall pods (default: 1)
-extraVolumes:     # Additional volumes (e.g., model PVC for tokenizer access)
-extraVolumeMounts: # Mount points for extra volumes
-extraArgs:        # Additional CLI arguments for the Heimdall container
-extraManifests:   # Arbitrary additional Kubernetes manifests
-```
-
-### API versions
-
-Heimdall uses two Kubernetes API groups from the Gateway API Inference Extension ecosystem:
-
-| Resource | API Group | Version | Status |
-| --- | --- | --- | --- |
-| `InferencePool` | `inference.networking.k8s.io` | `v1` | Graduated (stable) |
-| `EndpointPickerConfig` | `inference.networking.x-k8s.io` | `v1alpha1` | Extension (experimental) |
-
-Note the different API groups: `k8s.io` (graduated) vs. `x-k8s.io` (extension). This distinction matters when installing CRDs and configuring RBAC.
-
-### `config` section
-
-The `config` section is the core of Heimdall configuration. It maps directly to an `EndpointPickerConfig` resource.
+### SchedulingProfile (cluster-scoped)
 
 ```yaml
-config:
-  apiVersion: inference.networking.x-k8s.io/v1alpha1
-  kind: EndpointPickerConfig
-  featureGates: []            # optional, experimental EPP feature flags
-  plugins:              # Plugin instantiation list
-    - type: <pluginType>
-      name: <instanceName>        # optional, defaults to type
-      parameters:                 # optional, plugin-specific
+apiVersion: heimdall.moreh.io/v1alpha1
+kind: SchedulingProfile
+metadata:
+  name: <profileName>
+spec:
+  profileHandler: e2e            # "e2e" (one profile) or "pd" (prefill + decode)
+  plugins:                       # declare the available scorer/picker plugins
+    - type: <pluginType>         # e.g. inflight-requests-scorer, max-score-picker
+      name: <alias>              # optional; defaults to the type
+      config:                    # optional; only some plugins take config
         <key>: <value>
-  schedulingProfiles:   # Scheduling profile definitions
-    - name: <profileName>
-      plugins:
-        - pluginRef: <instanceName>
-          weight: <number>        # optional, scorer weight (float, default: 1)
-  saturationDetector:   # optional
-    queueDepthThreshold: <int>
-    kvCacheUtilThreshold: <float>  # 0.0-1.0
-    metricsStalenessThreshold: <duration>
-  data:                 # optional, DataLayer for precise-prefix-cache-scorer
-    sources:
-      - pluginRef: <instanceName>
-        extractors:
-          - pluginRef: <instanceName>
+  profiles:                      # e2e -> { default: ... }; pd -> { prefill:, decode: }
+    default:
+      pluginRefs:                # each entry references a plugin by its effective name
+        - name: <pluginName>     # = spec.plugins[].name (its alias, or the type if unset)
+          weight: <number>       # optional scorer weight (default 1)
 ```
 
-The `featureGates` field enables experimental EPP features (empty by default). The `data` section configures the DataLayer for `precise-prefix-cache-scorer` — each source references a plugin instance, and extractors define how data is extracted. See the API reference (`website/docs/reference/heimdall/api-reference.mdx`) for the full `DataLayerConfig` schema.
+- `spec.plugins` declares the available plugins; `spec.profiles.<name>.pluginRefs` lists which of them run (and each scorer's `weight`) for that profile.
+- **Role filtering for prefill/decode is applied internally** in `pd` mode and is not configured here.
 
-### `gateway` section
+### AIGateway (namespaced)
 
 ```yaml
-gateway:
-  name: <gatewayResourceName>       # must match the Gateway resource name
-  namespace: <namespace>            # optional, defaults to release namespace
-  gatewayClassName: <istio|kgateway> # default: kgateway
-  labels:                            # optional
-    istio.io/rev: <revision>         # only if using Istio revision
-  bbrHeader: "X-Gateway-Model-Name" # body-based routing header (default)
-  bbrModel: ""                       # model name to match; enables BBR when non-empty
+apiVersion: heimdall.moreh.io/v1alpha1
+kind: AIGateway
+metadata:
+  name: <gatewayName>
+spec:
+  replicas: 1
+  schedulingProfiles:            # bind request models to SchedulingProfile names
+    - model: default             # reserved: gateway-wide fallback
+      profile: <profileName>
+    # - { model: <modelName>, profile: <otherProfile> }   # per-model override
+  # image: { tag: <pin> }        # optional; the operator fills the tag by default
+  # extraEnvVars / extraVolumes / extraVolumeMounts: ...   # e.g. mount a model PVC
 ```
 
-> **Note:** The chart default for `gatewayClassName` is `kgateway`. The MIF quickstart overrides this to `istio`. Always set this to match your installed gateway controller.
+- The operator reconciles the `AIGateway` into a gateway `Deployment` and `Service`. The gateway pod is labeled `app.kubernetes.io/name=aigateway`, `app.kubernetes.io/instance=<gatewayName>`.
+- `schedulingProfiles` is evaluated in list order; `default` is the lowest-priority fallback regardless of position.
+- The gateway image tag is filled by the operator (`aigateway.defaultTag` chart value); set `spec.image.tag` only to pin a version.
 
-Body-based routing (`bbrHeader` + `bbrModel`): When `bbrModel` is set, the HTTPRoute is configured to match requests whose body (extracted via the header specified by `bbrHeader`) contains the given model name. This enables model-level routing through a single Gateway.
+### InferenceWorker (auto-created)
 
-### `inferencePool` section
-
-```yaml
-inferencePool:
-  matchLabels: {}     # custom pod selector; defaults to mif.moreh.io/pool: <poolName>
-  targetPorts:
-    - number: 8000    # vLLM default serving port
-```
-
-> **Note:** If `matchLabels` is empty (default), the InferencePool selector defaults to `mif.moreh.io/pool: <inferencePoolName>`. Override this only if your pods use a different label scheme.
-
-### `serviceMonitor` section (enabled by default)
-
-```yaml
-serviceMonitor:
-  enabled: true           # default: true
-  interval: 15s           # scrape interval
-  labels:
-    release: mif          # must match Prometheus operator's serviceMonitorSelector
-```
-
-### `poolPodMonitor` section (enabled by default)
-
-Monitors model serving pods (vLLM/SGLang) matching the InferencePool selector. Automatically relabels vLLM metrics with `llm_` prefix and extracts `role`, `pool`, `inference_service` labels.
-
-```yaml
-poolPodMonitor:
-  enabled: true           # default: true
-  interval: 15s           # scrape interval
-```
-
-### Other optional sections
-
-```yaml
-extraVolumes:       # additional volumes (e.g., model PVC for tokenizer access)
-extraVolumeMounts:  # mount points for extra volumes
-extraArgs:          # additional CLI arguments appended to container args
-extraManifests:     # arbitrary Kubernetes manifests deployed alongside
-tracing:            # OpenTelemetry configuration
-  enabled: false
-  samplerType: parentbased_traceidratio
-  samplerArgument: "0.1"
-udsTokenizer:       # UDS tokenizer sidecar for precise-prefix-cache-scorer
-  enabled: false
-```
+You do not author `InferenceWorker`. The gateway sidecar creates and maintains one per inference pod, advertising its address, framework, serving role, and hosted models. See the reference for its fields.
 
 ---
 
 ## Plugin Selection Guide
 
-Use this decision tree to choose the right plugins for your deployment.
+The plugin catalog is generated from source — see `website/docs/reference/heimdall/plugins.mdx` for the authoritative list. This section is a selection guide.
 
-:::warning
-`pd-profile-handler` is legacy and has been replaced by [`disagg-profile-handler`](../../website/docs/reference/heimdall/plugins.mdx#disagg-profile-handler). `prefill-header-handler` is a legacy alias of [`disagg-headers-handler`](../../website/docs/reference/heimdall/plugins.mdx#disagg-headers-handler).
-:::
+### Step 1 — pick the mode (`profileHandler`)
 
-### Step 1: Choose a profile handler
-
-| Deployment type | Profile handler | Profiles created |
-| --- | --- | --- |
-| **Aggregate** — all pods serve both prefill and decode | `single-profile-handler` | `default` |
-| **Disaggregated** — separate prefill (and optional encode) pools from decode | `disagg-profile-handler` | `prefill`, `decode` (and `encode` when configured) |
-
-- If using `disagg-profile-handler`, you **must** also instantiate `prefill-filter`, `decode-filter`, a PD decider plugin (`prefix-based-pd-decider` for cache-aware PD or `always-disagg-pd-decider` to disaggregate every request), and `disagg-headers-handler`. The filters must be present in the top-level `plugins` list because `schedulingProfiles[].plugins[].pluginRef` resolves against that list. The decider and `disagg-headers-handler` must appear **before** `disagg-profile-handler` in the top-level `plugins` list, because the profile handler's factory looks them up during initialization.
-- Prefill pods must be labeled with `mif.moreh.io/role: prefill`. Decode pods can be labeled `mif.moreh.io/role: decode` or `both`, and `decode-filter` also treats pods with no `mif.moreh.io/role` label as decode.
-
-### Step 2: Choose scorer(s)
-
-Start simple. Add complexity only when metrics justify it.
-
-| Scorer | Use when | Requires | Complexity |
+| Mode | `profileHandler` | Profiles | Use when |
 | --- | --- | --- | --- |
-| `queue-scorer` | Default choice — route to pod with shortest queue | Nothing extra | Low |
-| `load-aware-scorer` | Threshold-based scoring — empty queue gets high score, full queue gets zero | `threshold` parameter | Low |
-| `kv-cache-utilization-scorer` | KV cache pressure varies across pods | vLLM metrics endpoint | Medium |
-| `active-request-scorer` | Need time-windowed active request tracking | `requestTimeout` parameter | Medium |
-| `running-requests-size-scorer` | Score by currently running (not queued) requests | Nothing extra | Low |
-| `prefix-cache-scorer` | Prefix locality matters (shared prompts/system prompts) | `--enable-prefix-caching` in vLLM | Medium |
-| `precise-prefix-cache-scorer` | Production prefix-aware routing with indexer backend | Redis/Valkey + tokenizer + ZMQ | High |
-| `session-affinity-scorer` | Multi-turn conversations should stick to same pod | Client sends `x-session-token` header | Low |
-| `lora-affinity-scorer` | LoRA adapter routing — prefer pods with adapter loaded | LoRA-enabled vLLM | Medium |
-| `no-hit-lru-scorer` | Distribute cold (cache-miss) requests for even cache growth | Pair with `prefix-cache-scorer` | Medium |
+| End-to-end | `e2e` | `default` | All pods serve both prefill and decode |
+| Prefill/decode disaggregated | `pd` | `prefill`, `decode` | Separate prefill and decode pods |
 
-**Combining multiple scorers:** When using multiple scorers in one profile, set `weight` on each to control relative influence. Higher weight = more impact on final score.
+In `pd` mode, each pod must carry `mif.moreh.io/role` (`prefill` or `decode`) — the label lives on the `InferenceService` (set directly or supplied by its prefill/decode preset) and Odin propagates it to the pods; the internal `role-filter` then routes each sub-profile to the matching pods.
 
-### Step 3: Choose a picker
+### Step 2 — choose scorer(s)
+
+Start simple; add scorers only when metrics justify it. All scorers are declared under `spec.plugins` and referenced (with an optional `weight`) from a profile.
+
+| Scorer | Route toward | Notes |
+| --- | --- | --- |
+| `inflight-requests-scorer` | pod with fewest in-flight requests | good default |
+| `running-requests-scorer` | pod with fewest running requests | |
+| `waiting-requests-scorer` | pod with the shortest wait queue | |
+| `kv-utilization-scorer` | pod with lower KV utilization | |
+| `kv-cache-utilization-scorer` | pod with lower KV cache occupancy | uses the worker's advertised cache capacity |
+| `token-length-scorer` | pod suited to the prompt length | |
+| `prefix-cache-scorer` | pod likely holding the prompt's prefix | **takes config** (below) |
+| `constant-scorer` | (fixed score) | testing / tie-breaking |
+
+`prefix-cache-scorer` config keys (set under the plugin's `config:`; unknown keys are rejected):
+
+| Key | Meaning |
+| --- | --- |
+| `normalization` | `longestPrefix` (default) or `input` |
+| `transform` | `linear` (default) or `logistic` |
+| `k` | logistic steepness (default `14.0`; used when `transform: logistic`) |
+| `x0` | logistic center (default `0.7`; used when `transform: logistic`) |
+
+```yaml
+# excerpt of a SchedulingProfile
+spec:
+  plugins:
+    - type: prefix-cache-scorer
+      config:
+        normalization: longestPrefix
+        transform: logistic
+        k: 14.0
+        x0: 0.7
+```
+
+The scorer's block size must match the engine's KV block size, and this is handled automatically: each pod's `InferenceWorker` advertises `modelCard.kvCacheBlockSize` (read from the engine) and the scorer uses that value. You do not set it on the scorer — a `config.blockSize` key is deprecated and ignored (the gateway logs a warning and uses the InferenceWorker value).
+
+**Combining scorers:** give each a `weight` in the profile's `pluginRefs`; a higher weight has more influence on the final score.
+
+### Step 3 — choose a picker
 
 | Picker | Behavior | Best for |
 | --- | --- | --- |
-| `max-score-picker` | Always picks highest-scored pod (deterministic) | Predictable routing; debugging |
-| `weighted-random-picker` | Score-proportional random selection | Load distribution with score influence |
-| `random-picker` | Uniform random, ignores scores | Pure round-robin-like distribution |
+| `max-score-picker` | always picks the highest score (deterministic) | predictable routing, debugging |
+| `weighted-random-picker` | score-proportional random selection | stochastic load spreading |
+| `random-picker` | uniform random, ignores scores | even distribution |
 
-All pickers support a `maxNumOfEndpoints` parameter (default: `1`, type: `int`) that controls how many endpoints are returned per pick. Increase this when the gateway supports multi-endpoint routing.
-
-**Recommendation:** Start with `max-score-picker`. Switch to `weighted-random-picker` if you need stochastic load balancing.
-
-### Step 4: Add filters (if needed)
-
-| Filter | Purpose |
-| --- | --- |
-| `prefill-filter` | Required with `disagg-profile-handler` — keeps `mif.moreh.io/role: prefill` pods |
-| `decode-filter` | Required with `disagg-profile-handler` — keeps `role: decode`, `both`, or unlabeled |
-| `by-label` | Custom filtering by any label key/values |
-| `by-label-selector` | Custom filtering by `matchLabels` map |
-
-### Step 5: Add lifecycle plugins (optional)
-
-The architecture supports pre-request and post-response plugins. Currently, only one post-response plugin is available:
-
-| Plugin | Category | Purpose |
-| --- | --- | --- |
-| `response-header-handler` | Post-response | Adds `x-decoder-host-port` and `x-prefiller-host-port` headers to response |
-
-> **Note:** When heimdall-proxy is deployed with `--response-header`, the proxy natively adds `X-Decoder-Host-Port` and `X-Prefiller-Host-Port` headers, making the `response-header-handler` plugin unnecessary.
+**Recommendation:** start with `max-score-picker`; switch to `weighted-random-picker` for stochastic balancing.
 
 ---
 
 ## Configuration Patterns
 
-> **Note:** The Helm chart's default values.yaml ships with Pattern 3 (PD-disaggregated + KV cache awareness). Pattern 1 is the quickstart override for simplicity. Choose the pattern that matches your deployment topology.
+### Pattern 1 — end-to-end (aggregate)
 
-### Pattern 1: Basic aggregate (quickstart) [verified]
-
-The simplest configuration. All pods are equal; route to the one with the shortest queue.
+All pods serve both roles; score by in-flight requests and pick the highest.
 
 ```yaml
-config:
-  apiVersion: inference.networking.x-k8s.io/v1alpha1
-  kind: EndpointPickerConfig
+apiVersion: heimdall.moreh.io/v1alpha1
+kind: SchedulingProfile
+metadata:
+  name: e2e-basic
+spec:
+  profileHandler: e2e
   plugins:
-    - type: single-profile-handler
-    - type: queue-scorer
+    - type: inflight-requests-scorer
     - type: max-score-picker
-  schedulingProfiles:
-    - name: default
-      plugins:
-        - pluginRef: queue-scorer
-        - pluginRef: max-score-picker
+  profiles:
+    default:
+      pluginRefs:
+        - name: inflight-requests-scorer
+          weight: 100
+        - name: max-score-picker
 ```
 
-**When to use:** Getting started, small deployments, homogeneous pods.
+### Pattern 2 — prefill/decode disaggregated
 
-### Pattern 2: Disaggregated [verified]
-
-Separate prefill and decode pods for higher throughput. Each phase has its own scheduling profile.
+Separate prefill and decode pods. `role-filter` is applied internally per sub-profile; you only declare scorers/picker.
 
 ```yaml
-config:
-  apiVersion: inference.networking.x-k8s.io/v1alpha1
-  kind: EndpointPickerConfig
+apiVersion: heimdall.moreh.io/v1alpha1
+kind: SchedulingProfile
+metadata:
+  name: pd-basic
+spec:
+  profileHandler: pd
   plugins:
-    - type: always-disagg-pd-decider  # must precede disagg-profile-handler (factory-time lookup)
-    - type: disagg-headers-handler    # must precede disagg-profile-handler (factory-time lookup)
-    - type: disagg-profile-handler
-      parameters:
-        deciders:
-          prefill: always-disagg-pd-decider
-    - type: prefill-filter
-    - type: decode-filter
-    - type: queue-scorer
+    - type: inflight-requests-scorer
     - type: max-score-picker
-  schedulingProfiles:
-    - name: prefill
-      plugins:
-        - pluginRef: prefill-filter
-        - pluginRef: queue-scorer
-        - pluginRef: max-score-picker
-    - name: decode
-      plugins:
-        - pluginRef: decode-filter
-        - pluginRef: queue-scorer
-        - pluginRef: max-score-picker
+  profiles:
+    prefill:
+      pluginRefs:
+        - name: inflight-requests-scorer
+          weight: 100
+        - name: max-score-picker
+    decode:
+      pluginRefs:
+        - name: inflight-requests-scorer
+          weight: 100
+        - name: max-score-picker
 ```
 
-**When to use:** Large-scale deployments where prefill and decode have distinct resource profiles.
+Bind either `SchedulingProfile` (the e2e or pd example above) from an `AIGateway` — `schedulingProfiles[].profile` names the whole `SchedulingProfile`, not its internal `prefill`/`decode` profiles:
 
-### Pattern 3: Production PD with KV cache awareness [verified]
+```yaml
+apiVersion: heimdall.moreh.io/v1alpha1
+kind: AIGateway
+metadata:
+  name: mif
+spec:
+  replicas: 1
+  schedulingProfiles:
+    - model: default
+      profile: pd-basic
+```
 
-Extends Pattern 2 with `kv-cache-utilization-scorer` to avoid routing to pods with high KV cache pressure. This is the **Helm chart default configuration**. Optionally add a `saturationDetector` block to reject requests to overloaded pods. See [references/config-recipes.md](references/config-recipes.md#recipe-3-production-pd-with-kv-cache-awareness-verified) for the full YAML.
-
-### Pattern 4: Prefix-cache-aware with session affinity [unverified]
-
-Combines `prefix-cache-scorer` + `session-affinity-scorer` + `queue-scorer` for multi-turn chatbot workloads. Requires vLLM `--enable-prefix-caching` and client-managed `x-session-token` headers. See [references/config-recipes.md](references/config-recipes.md#recipe-4-prefix-cache-aware-with-session-affinity-unverified) for the full YAML.
-
-### Pattern 5: LoRA affinity routing [unverified]
-
-Routes requests to pods with the required LoRA adapter already loaded, reducing swap overhead. See [references/config-recipes.md](references/config-recipes.md#recipe-5-lora-affinity-routing-unverified) for the full YAML.
+More recipes (KV-cache-aware, prefix-cache) are in [references/config-recipes.md](references/config-recipes.md).
 
 ---
 
-## Deployment
+## Binding an InferenceService to a gateway
 
-### Prerequisites
-
-- Helm repository added:
-  ```shell
-  helm repo add moreh https://moreh-dev.github.io/helm-charts
-  helm repo update moreh
-  ```
-- Gateway API CRDs + Inference Extension CRDs installed on the cluster
-- A Gateway controller (Istio or Kgateway) deployed
-- Target namespace created and labeled:
-  ```shell
-  kubectl create namespace <namespace>
-  kubectl label namespace <namespace> mif=enabled
-  ```
-- `moreh-registry` image pull secret available in the namespace
-
-### Install
-
-```shell
-helm upgrade -i heimdall-inference-scheduler moreh/heimdall-inference-scheduler \
-    --version <version> \
-    -n <namespace> \
-    -f heimdall-values.yaml
-```
-
-### Verify
-
-```shell
-kubectl get all -n <namespace> -l app.kubernetes.io/instance=heimdall-inference-scheduler
-```
-
-Expected: Pod `heimdall-inference-scheduler-*` (1/1 Running), Service with ports 9002 (gRPC), 9090 (metrics), 5557 (ZMQ), Deployment, ReplicaSet. The chart also creates ConfigMap, InferencePool, HTTPRoute, ClusterRole/Binding, and optionally ServiceMonitor, PodMonitor, and DestinationRule (Istio).
-
-### Uninstall
-
-```shell
-helm uninstall heimdall-inference-scheduler -n <namespace>
-```
-
----
-
-## Integration with Odin InferenceService
-
-### Linking InferenceService to Heimdall
-
-The `inferencePoolRefs` field in an InferenceService registers its pods with Heimdall's InferencePool:
+An `InferenceService` (Odin) joins a gateway through a single label:
 
 ```yaml
 apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceService
 metadata:
   name: <serviceName>
+  labels:
+    mif.moreh.io/aigateway: mif          # = AIGateway name
+    # mif.moreh.io/role: prefill         # only in pd mode (prefill | decode)
 spec:
-  replicas: <count>
-  inferencePoolRefs:
-    - name: heimdall-inference-scheduler    # must match Heimdall's InferencePool name
+  replicas: 2
   templateRefs:
-    - name: vllm        # runtime base
-    - name: <preset>    # model-specific template
-  parallelism:
-    tensor: <tp>
+    - name: vllm                         # runtime-base
+    - name: <preset>                     # model-specific template
 ```
 
-> **Note:** `inferencePoolRefs` currently supports a maximum of 1 entry (enforced by Odin's CRD validation). Each InferenceService can register with exactly one InferencePool.
-
-### Pod label conventions
-
-Heimdall and MIF use these labels for routing and observability:
-
-| Label | Purpose | Example values |
-| --- | --- | --- |
-| `mif.moreh.io/pool` | Pool membership | `heimdall-inference-scheduler` |
-| `mif.moreh.io/role` | PD role assignment | `prefill`, `decode`, `both` |
-| `app.kubernetes.io/name` | Application name | `vllm` |
-| `app.kubernetes.io/instance` | InferenceService name | `llama-3-2-1b` |
+- `mif.moreh.io/aigateway` binds the pods to the AIGateway; routing and sidecar injection rely on it.
+- The `InferenceService` must live in the **same namespace** as its `AIGateway` — the operator only injects the gateway sidecar into pods in the `AIGateway`'s own namespace, so a cross-namespace label silently routes nothing.
+- In `pd` mode, the pod must also carry `mif.moreh.io/role` (`prefill` or `decode`) — set it on the `InferenceService` or let its prefill/decode preset supply it; the role filter uses this label to place the pod.
 
 ---
 
-## Monitoring
+## Deployment
 
-### ServiceMonitor
+The gateway is **not** installed as its own chart — the Heimdall operator creates it from an `AIGateway`. Install the operator and its CRDs, then apply the resources.
 
-ServiceMonitor is **enabled by default** (`serviceMonitor.enabled: true`). The default label is `release: mif`. If your Prometheus operator uses a different `serviceMonitorSelector`, override the label:
+### Prerequisites (once per cluster)
 
-```yaml
-serviceMonitor:
-  labels:
-    release: <prometheus-stack-release-name>
+```shell
+helm repo add moreh https://moreh-dev.github.io/helm-charts
+helm repo update moreh
 ```
 
-### PodMonitor for model serving pods
+- **cert-manager** — required by the operator's admission webhooks.
+- **CRDs** (packaged separately so their lifecycle is independent of the operators):
+  ```shell
+  helm upgrade -i heimdall-crd moreh/heimdall-crd --version <heimdall-crd-version> -n mif --create-namespace  # AIGateway
+  helm upgrade -i heimdall-aigateway-crd moreh/heimdall-aigateway-crd --version <heimdall-aigateway-crd-version> -n mif  # SchedulingProfile, InferenceWorker
+  ```
+- **Heimdall operator** — reconciles `AIGateway` and injects the gateway sidecar. Install it after Odin's `InferenceService` CRD (it injects sidecars into Odin-managed pods):
+  ```shell
+  helm upgrade -i heimdall moreh/heimdall --version <heimdall-version> -n mif
+  ```
 
-Also enabled by default (`poolPodMonitor.enabled: true`). This monitors vLLM/SGLang pods matching the InferencePool selector and auto-relabels their metrics with `llm_` prefix.
+Each chart is versioned independently — pin every `--version` to the matching entry in your release's chart list (see `website/docs/getting-started/prerequisites.mdx` for the full ordered install: cert-manager → moai-inference-framework → CRDs → Odin → Heimdall → presets).
 
-### Grafana dashboard metrics
+### Deploy the routing resources
 
-The MIF Grafana dashboard includes these Heimdall-specific panels:
+```shell
+kubectl apply -f scheduling-profile.yaml          # cluster-scoped
+kubectl apply -n <namespace> -f aigateway.yaml
+```
 
-- **Ready Pods** — per namespace/pool
-- **Inference RPS** — requests per second through Heimdall
-- **Heimdall E2E Latency** — P50/P75/P95 scheduling latency
-- **KVCache Hit/Req Ratio** — prefix cache efficiency
-- **Queue Depth** — per-pod queue sizes
+### Verify the gateway is running
+
+```shell
+kubectl get pod -n <namespace> \
+  -l app.kubernetes.io/name=aigateway,app.kubernetes.io/instance=<gatewayName>
+```
+
+Expect a `Running` gateway pod. The operator also creates the gateway `Service`.
 
 ---
 
 ## Troubleshooting
 
-### Heimdall pod not starting
+### Requests not routed to a pod
 
-1. **Image pull failure:** Verify `moreh-registry` secret exists in the namespace.
+1. **Binding label:** the `InferenceService` (and therefore its pods) must carry `mif.moreh.io/aigateway: <gatewayName>`.
    ```shell
-   kubectl get secret moreh-registry -n <namespace>
+   kubectl get pods -n <namespace> -l mif.moreh.io/aigateway=<gatewayName>
    ```
-2. **CRD missing:** Ensure Gateway API and Inference Extension CRDs are installed.
+2. **Sidecar not injected:** confirm the Heimdall operator is running and its webhook is healthy; the gateway sidecar must be present on the inference pods.
+3. **No InferenceWorker:** the sidecar registers an `InferenceWorker` per pod — check they exist.
    ```shell
-   kubectl get crd inferencepools.inference.networking.k8s.io
+   kubectl get inferenceworker -n <namespace>
    ```
-3. **Version mismatch:** Check chart version compatibility with cluster Kubernetes version.
 
-### Requests not being routed
+### Profile not applied
 
-1. **InferencePool selector mismatch:** Verify pod labels match the InferencePool's `spec.selector.matchLabels`.
-   ```shell
-   kubectl get inferencepool -n <namespace> -o yaml
-   kubectl get pods -n <namespace> --show-labels
-   ```
-2. **Gateway name mismatch:** The `gateway.name` in values must match the actual Gateway resource name.
-3. **Gateway class mismatch:** Ensure `gateway.gatewayClassName` matches the installed gateway controller (`istio` or `kgateway`).
+1. **Model binding:** the model in the request must resolve to a profile via `AIGateway.spec.schedulingProfiles` (or fall through to `default`).
+2. **Name match:** `schedulingProfiles[].profile` must equal an existing `SchedulingProfile` name (cluster-scoped).
 
-### Latency spikes
+### pd routing sends nothing to prefill/decode
 
-1. **Check saturation:** If `saturationDetector` is configured, verify thresholds are not too aggressive.
-2. **Scorer weights:** Review relative weights — an overly dominant scorer may cause suboptimal routing.
-3. **KV cache pressure:** Check per-pod KV cache utilization in Grafana; add `kv-cache-utilization-scorer` if not present.
+1. **Role labels:** confirm prefill pods carry `mif.moreh.io/role: prefill` and decode pods `mif.moreh.io/role: decode` (the label is set on the `InferenceService` — directly or via its preset — and propagated to pods by Odin).
+2. **Mode:** the bound `SchedulingProfile` must use `profileHandler: pd` with both `prefill` and `decode` profiles.
 
-### Disaggregation pods not being selected
+### Gateway pod not starting
 
-1. **Missing role labels:** Ensure pods have `mif.moreh.io/role` set to `prefill`, `decode`, or `both`.
-2. **Wrong profile handler:** Verify `disagg-profile-handler` (not `single-profile-handler`) is instantiated.
-3. **Filters not in profile:** Both `prefill-filter` and `decode-filter` must be in their respective scheduling profiles.
+1. Check the AIGateway status and the Heimdall operator logs.
+2. Ensure the `heimdall-crd` / `heimdall-aigateway-crd` CRDs are installed and cert-manager is healthy.
 
 ---
 
 ## Best Practices
 
-1. **Start simple.** Begin with `queue-scorer` + `max-score-picker`. Add scorers only when metrics show a need.
-2. **One profile handler.** Exactly one profile handler must be instantiated. Using both `single-profile-handler` and `disagg-profile-handler` is invalid.
-3. **Disaggregation filters, decider, and header handler are mandatory.** When using `disagg-profile-handler`, always pair with `prefill-filter` (in the prefill profile), `decode-filter` (in the decode profile), a PD decider plugin (`always-disagg-pd-decider` or `prefix-based-pd-decider`), and `disagg-headers-handler` in the top-level `plugins` list.
-4. **Set scorer weights explicitly** when combining multiple scorers. Default weight of 1 for all scorers may not reflect your routing priorities.
-5. **Enable ServiceMonitor** in all non-development deployments for observability.
-6. **Use `saturationDetector`** in production to reject requests to overloaded pods rather than queueing indefinitely.
-7. **Prefer `prefix-cache-scorer` over `precise-prefix-cache-scorer`** unless you have a Redis/Valkey infrastructure and need block-level precision. The simpler scorer covers most prefix-caching use cases.
-8. **Mount model volumes** via `extraVolumes`/`extraVolumeMounts` when Heimdall's precise-prefix-cache-scorer needs local tokenizer access.
+1. **Start simple.** `inflight-requests-scorer` + `max-score-picker` in an `e2e` profile covers most cases; add scorers only when metrics show a need.
+2. **Declare, then reference.** Every plugin in a profile's `pluginRefs` must be declared in `spec.plugins`.
+3. **Set weights explicitly** when combining scorers — the relative weights encode your routing priority.
+4. **Don't set `blockSize` on `prefix-cache-scorer`.** The block size that must match the engine is sourced automatically from the pod's `InferenceWorker` (`modelCard.kvCacheBlockSize`); a `config.blockSize` key is deprecated and ignored (the gateway warns and uses the InferenceWorker value). Tune the scorer via `transform`/`k`/`x0` instead.
+5. **Use one binding label.** Route pods to a gateway only through `mif.moreh.io/aigateway`; add `mif.moreh.io/role` for pd.
+6. **Let the operator manage the gateway image.** Pin `spec.image.tag` only when you must; otherwise the operator keeps it current.
