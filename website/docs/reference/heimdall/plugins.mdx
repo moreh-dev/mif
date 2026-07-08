@@ -26,3 +26,20 @@ The following plugins are available.
 - `random-picker`
 - `weighted-random-picker`
 {/* AUTO-GENERATED:aigateway-plugins END */}
+
+## Plugin configuration
+
+Most plugins take no configuration. The plugins below accept a `config` block on their `spec.plugins` entry.
+
+### prefix-cache-scorer
+
+{/* AUTO-GENERATED:aigateway-plugin-config-prefix-cache START */}
+| Key | Type | Default | Options |
+| --- | --- | --- | --- |
+| `normalization` | string | `longestPrefix` | `longestPrefix`, `input` |
+| `transform` | string | `linear` | `linear`, `logistic` |
+| `k` | number | `14.0` |  |
+| `x0` | number | `0.7` |  |
+{/* AUTO-GENERATED:aigateway-plugin-config-prefix-cache END */}
+
+The KV block size is sourced from each pod's `InferenceWorker` (`modelCard.kvCacheBlockSize`, read from the engine) and is not set on the scorer.
