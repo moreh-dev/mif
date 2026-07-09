@@ -22,6 +22,7 @@ An `AIGateway` (group `heimdall.moreh.io/v1alpha1`, namespaced) describes a gate
 | `nodeSelector` | object | no | NodeSelector for the gateway pod. |
 | `replicas` | integer | no | Replicas is the number of desired gateway pods. |
 | `resources` | [object](#aigateway-resources) | no | Resources specifies the compute resource requirements for the gateway pods. |
+| `revisionHistoryLimit` | integer | no | RevisionHistoryLimit is the number of old ReplicaSets to retain for this gateway's Deployment. |
 | `schedulingProfiles` | [array](#aigateway-schedulingprofiles) | no | SchedulingProfiles binds request models to SchedulingProfile names, evaluated and preserved in list order. The reserved model name "default" is the lowest-priority fallback regardless of its position; every other entry is a per-model override. |
 | `service` | [object](#aigateway-service) | no | Service configures the Service fronting the gateway pods. |
 | `sidecar` | [object](#aigateway-sidecar) | no | Sidecar overrides for the sidecar init container injected into bound InferenceService pods by the pod mutating webhook. |
@@ -124,7 +125,7 @@ If no `SchedulingProfile` is bound, the gateway falls back to a built-in default
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `config` | object | no | Config holds arbitrary plugin-specific configuration (e.g., &#123;"blockSize": 16&#125; for "prefix-cache-scorer"). |
+| `config` | object | no | Config holds arbitrary plugin-specific configuration (e.g., &#123;"transform": "logistic"&#125; for "prefix-cache-scorer"). |
 | `name` | string | no | Name is an optional alias for this plugin instance; it must be non-empty when set. Defaults to Type when omitted. |
 | `type` | string | yes | Type is the plugin type identifier (e.g., "running-requests-scorer", "max-score-picker"). |
 {/* AUTO-GENERATED:aigateway-crd-schedulingprofile END */}
