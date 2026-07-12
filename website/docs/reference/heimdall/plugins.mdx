@@ -11,20 +11,20 @@ The following plugins are available.
 {/* AUTO-GENERATED:aigateway-plugins START */}
 **Scorers**
 
-- `constant-scorer`
-- `inflight-requests-scorer`
-- `kv-cache-utilization-scorer`
-- `kv-utilization-scorer`
-- `prefix-cache-scorer`
-- `running-requests-scorer`
-- `token-length-scorer`
-- `waiting-requests-scorer`
+- `constant-scorer` — Score every candidate `1.0`, regardless of metrics or context.
+- `inflight-requests-scorer` — Scores lower gateway-tracked inflight request counts higher with inverse min-max normalization.
+- `kv-cache-utilization-scorer` — Score by GPU KV cache occupancy: workers whose cache holds fewer reusable cached blocks score higher.
+- `kv-utilization-scorer` — Score by KV cache memory utilization.
+- `prefix-cache-scorer` — Scores by KV cache prefix affinity: workers with more contiguous cached blocks score higher.
+- `running-requests-scorer` — Scores lower running request counts higher with inverse min-max normalization.
+- `token-length-scorer` — Scores candidates by how well their advertised `optimal_min` matches the prompt length, max-normalized so the best candidate is `1.0`.
+- `waiting-requests-scorer` — Scores lower waiting request counts higher with inverse min-max normalization.
 
 **Pickers**
 
-- `max-score-picker`
-- `random-picker`
-- `weighted-random-picker`
+- `max-score-picker` — Selects the candidate with the highest score.
+- `random-picker` — Uniformly selects a candidate at random, ignoring scores entirely.
+- `weighted-random-picker` — Weighted random selection using scores as weights.
 {/* AUTO-GENERATED:aigateway-plugins END */}
 
 ## Plugin configuration
