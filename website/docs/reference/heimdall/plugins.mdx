@@ -38,7 +38,7 @@ Scores by KV cache prefix affinity: workers with more contiguous cached blocks s
 | `k` | number | `14.0` |  |
 | `x0` | number | `0.7` |  |
 
-Block size is not a config key here; it is taken from each pod's `InferenceWorker` `spec.modelCard.kvCacheBlockSize`.
+KV cache block size is not a config key here; it is taken from each pod's `InferenceWorker` (`modelCard.kvCacheBlockSize`).
 
 ### `running-requests-scorer`
 
