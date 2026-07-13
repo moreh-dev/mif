@@ -6,40 +6,61 @@ sidebar_position: 2
 
 A `SchedulingProfile` composes the gateway's routing decision from scorer and picker plugins. Scorers assign a score to each candidate inference pod; the picker selects a destination from the scored candidates. Each plugin is declared once under `spec.plugins` and referenced (with an optional `weight`) from a profile's `pluginRefs`.
 
-The following plugins are available.
+The following plugins are available. A plugin that lists a configuration table accepts a matching `config` block on its `spec.plugins` entry; the rest take no configuration.
 
 {/* AUTO-GENERATED:aigateway-plugins START */}
-**Scorers**
+## Scorers
 
-- `constant-scorer`
-- `inflight-requests-scorer`
-- `kv-cache-utilization-scorer`
-- `kv-utilization-scorer`
-- `prefix-cache-scorer`
-- `running-requests-scorer`
-- `token-length-scorer`
-- `waiting-requests-scorer`
+### `constant-scorer`
 
-**Pickers**
+Scores every candidate `1.0`, regardless of metrics or context.
 
-- `max-score-picker`
-- `random-picker`
-- `weighted-random-picker`
-{/* AUTO-GENERATED:aigateway-plugins END */}
+### `inflight-requests-scorer`
 
-## Plugin configuration
+Scores lower gateway-tracked inflight request counts higher with inverse min-max normalization.
 
-Most plugins take no configuration. The plugins below accept a `config` block on their `spec.plugins` entry.
+### `kv-cache-utilization-scorer`
 
-### prefix-cache-scorer
+Scores by GPU KV cache occupancy: workers whose cache holds fewer reusable cached blocks score higher.
 
-{/* AUTO-GENERATED:aigateway-plugin-config-prefix-cache START */}
+### `kv-utilization-scorer`
+
+Scores by KV cache memory utilization.
+
+### `prefix-cache-scorer`
+
+Scores by KV cache prefix affinity: workers with more contiguous cached blocks score higher.
+
 | Key | Type | Default | Options |
 | --- | --- | --- | --- |
 | `normalization` | string | `longestPrefix` | `longestPrefix`, `input` |
 | `transform` | string | `linear` | `linear`, `logistic` |
 | `k` | number | `14.0` |  |
 | `x0` | number | `0.7` |  |
-{/* AUTO-GENERATED:aigateway-plugin-config-prefix-cache END */}
 
-The KV block size is sourced from each pod's `InferenceWorker` (`modelCard.kvCacheBlockSize`, read from the engine) and is not set on the scorer.
+### `running-requests-scorer`
+
+Scores lower running request counts higher with inverse min-max normalization.
+
+### `token-length-scorer`
+
+Scores candidates by how well their advertised `optimalMinTokens` matches the prompt length, max-normalized so the best candidate is `1.0`.
+
+### `waiting-requests-scorer`
+
+Scores lower waiting request counts higher with inverse min-max normalization.
+
+## Pickers
+
+### `max-score-picker`
+
+Selects the candidate with the highest score.
+
+### `random-picker`
+
+Uniformly selects a candidate at random, ignoring scores entirely.
+
+### `weighted-random-picker`
+
+Weighted random selection using scores as weights.
+{/* AUTO-GENERATED:aigateway-plugins END */}
