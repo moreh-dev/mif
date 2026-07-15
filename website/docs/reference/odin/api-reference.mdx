@@ -20,6 +20,7 @@ An `InferenceService` describes a model deployment — the inference engine, the
 | `model` | [object](#inferenceservice-model) | no | Model identifies the model to serve. |
 | `parallelism` | [object](#inferenceservice-parallelism) | no | Parallelism defines the parallelism parameters for distributed inference. |
 | `replicas` | integer | no | Number of replicas for Deployments or LeaderWorkerSets. |
+| `revisionHistoryLimit` | integer | no | RevisionHistoryLimit is the number of old ReplicaSets to retain for this InferenceService's Deployment. Has no effect on LeaderWorkerSet-backed InferenceServices (WorkerTemplate set) — LWS has no equivalent field upstream. |
 | `rolloutStrategy` | [object](#inferenceservice-rolloutstrategy) | no | RolloutStrategy defines rollout settings for Deployment or LeaderWorkerSet. |
 | `service` | [object](#inferenceservice-service) | no | Service defines configuration for the Kubernetes Service associated with the InferenceService. |
 | `template` | [object](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core) | no | Template describes the pod template for Deployment or LeaderWorkerSet leader. |
@@ -66,8 +67,8 @@ An `InferenceService` describes a model deployment — the inference engine, the
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `group` | string | no | Group is the group of the referent. |
-| `kind` | string | no | Kind is the kind of the referent. |
+| `group` | string | no | Group is the group of the referent. When omitted, odin.moreh.io is assumed. |
+| `kind` | string | no | Kind is the kind of the referent. When omitted, the reference resolves to the ClusterInferenceServiceTemplate with the given name if one exists, otherwise to an InferenceServiceTemplate. |
 | `name` | string | yes | Name is the name of the referent. |
 {/* AUTO-GENERATED:odin-crd-inferenceservice END */}
 
