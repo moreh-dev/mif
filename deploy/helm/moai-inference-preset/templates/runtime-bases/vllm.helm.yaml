@@ -94,6 +94,8 @@ spec:
                   fieldPath: status.podIP
             - name: PYTHONHASHSEED
               value: "12345"
+            - name: VLLM_SERVER_DEV_MODE
+              value: "1"
           ports:
             - name: http
               containerPort: 8000
