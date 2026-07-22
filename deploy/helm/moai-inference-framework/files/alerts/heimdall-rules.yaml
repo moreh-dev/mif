@@ -6,7 +6,7 @@ groups:
     interval: 1m
     rules:
       - uid: heimdall-error-log-burst
-        title: Heimdall Error Log Burst
+        title: AIGateway Error Log Burst
         condition: B
         data:
           # LogQL: group by instance/namespace and extract the error message into a label_format.
@@ -67,9 +67,9 @@ groups:
         noDataState: OK
         execErrState: Error
         annotations:
-          summary: Heimdall error logs detected
+          summary: AIGateway error logs detected
           description: '{{ $values.A.Value }} error log entries detected in the last 5 minutes.'
-          # Grafana Explore deep link — pre-filled LogQL filtered to Heimdall error logs.
+          # Grafana Explore deep link — pre-filled LogQL filtered to AIGateway error logs.
           # `{{ externalURL }}` is substituted by Grafana at alert-evaluation time
           # from the configured `server.root_url`, so the link resolves to whichever
           # Grafana instance is fronting the cluster (no chart-side override needed).
