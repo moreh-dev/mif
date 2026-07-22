@@ -118,7 +118,7 @@ In production environments, it is highly recommended to use **offline hub templa
 
 This service uses the MI300X prefill preset and the `vllm-prefill-dp` runtime-base for data-parallel prefill.
 
-```yaml title="deepseek-r1-prefill.yaml" {6,24}
+```yaml title="deepseek-r1-prefill.yaml" {6,19}
 apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceService
 metadata:
@@ -148,7 +148,7 @@ spec:
 
 This service uses the MI308X decode preset and the `vllm-decode-dp` runtime-base for data-parallel decode.
 
-```yaml title="deepseek-r1-decode.yaml" {6,23}
+```yaml title="deepseek-r1-decode.yaml" {6,19}
 apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceService
 metadata:
