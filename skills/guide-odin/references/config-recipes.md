@@ -98,8 +98,10 @@ spec:
 Source: `test/e2e/performance/config/inference-service.yaml.tmpl`
 
 Separate InferenceServices for prefill and decode phases. Both bind to the same
-AIGateway via the `mif.moreh.io/aigateway` label. Requires an AIGateway with a `pd`
-SchedulingProfile (`spec.profileHandler: pd`).
+AIGateway via the `mif.moreh.io/aigateway` label. This also requires a cluster-scoped
+`pd` SchedulingProfile (`spec.profileHandler: pd`) that the AIGateway references
+through its `spec.schedulingProfiles` field — the label alone does not wire the
+gateway to the PD profile.
 
 ```yaml
 # Prefill InferenceService
