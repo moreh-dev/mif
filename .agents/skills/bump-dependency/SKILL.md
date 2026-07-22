@@ -65,7 +65,7 @@ Heimdall (the AIGateway operator) is deployed as a separate Helm chart (`moreh/h
 
 **Steps:**
 
-1. Update the `--version` in `website/docs/getting-started/prerequisites.mdx` (the `helm upgrade -i heimdall moreh/heimdall` command).
+1. Update the Heimdall `--version` flags in `website/docs/getting-started/prerequisites.mdx`. That page pins several Heimdall charts separately, so update every one that changes for the target release — not just the operator: the operator chart (`helm upgrade -i heimdall moreh/heimdall`), the CRD chart (`helm upgrade -i heimdall-crd moreh/heimdall-crd`), and the AIGateway CRD chart (`helm upgrade -i heimdall-aigateway-crd moreh/heimdall-aigateway-crd`). Leaving a CRD chart version stale while bumping only the operator is the failure this step guards against.
 2. Search `website/docs/` for other Heimdall version references and update them.
 3. Clone the Heimdall source repo with `--recurse-submodules` and review what changed between the old and new version tags. Heimdall uses Git submodules for its core components, so check both the main repo diff (`git diff <old-tag>..<new-tag>`) and the submodule commit ranges for plugin or API changes. Use `git ls-tree <tag> third_party/` to get the submodule commit SHAs at each tag, then diff within each submodule.
 4. **Verify plugin documentation against source structs.** Do not rely solely on the diff — diffs can miss pre-existing documentation gaps. For every plugin listed in `plugins.mdx`:
