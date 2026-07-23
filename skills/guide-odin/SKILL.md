@@ -20,7 +20,7 @@ Odin introduces a **template composition system** (`InferenceServiceTemplate`) t
 - Runtime-bases and preset selection
 - Odin Helm chart (operator) and inference-service chart
 - Rollout strategies
-- Heimdall integration (inferencePoolRefs)
+- AIGateway integration (the `mif.moreh.io/aigateway` label)
 - Monitoring and troubleshooting
 
 **Out of scope:** Heimdall plugin configuration (see `guide-heimdall`), vLLM engine internals, Gateway controller setup, cluster-level infrastructure.
@@ -59,9 +59,9 @@ flowchart TD
     VS -->|replace Go templates| WD{workerTemplate?}
     WD -->|nil| Deploy[Create Deployment]
     WD -->|not nil| LWS[Create LeaderWorkerSet]
-    Deploy --> IP[InferencePool Integration]
-    LWS --> IP
-    IP -->|inject pool selector labels| SP[Status Propagation]
+    Deploy --> GW[AIGateway Binding]
+    LWS --> GW
+    GW -->|propagate mif.moreh.io/aigateway label to pods| SP[Status Propagation]
     SP -->|reflect workload readiness| IS
 ```
 
@@ -81,10 +81,10 @@ apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceService
 metadata:
   name: <name>
+  labels:
+    mif.moreh.io/aigateway: <gatewayName> # binds this service's pods to the AIGateway
 spec:
   replicas: <int> # default: 1
-  inferencePoolRefs: # max 1 entry
-    - name: <poolName>
   templateRefs: # merged in order, later overrides earlier
     - name: <templateName>
   rolloutStrategy: # optional
@@ -110,9 +110,8 @@ spec:
 2. **`workerTemplate` requires parallelism** — if `workerTemplate` is specified, `parallelism.data` or `parallelism.pipeline` must be set.
 3. **Pipeline and data are mutually exclusive** — cannot set both `parallelism.pipeline` and `parallelism.data` simultaneously.
 4. **`data` and `dataLocal` are paired** — the validating webhook requires both to be set or both omitted. In practice, the user can set only `data`: the **mutating webhook** automatically defaults `dataLocal` to `data` before validation runs.
-5. **`inferencePoolRefs` max 1** — currently supports exactly one InferencePool reference.
-6. **Template references must exist** — validated against local namespace, then system namespace (`mif`).
-7. **Rollout constraints:**
+5. **Template references must exist** — validated against local namespace, then system namespace (`mif`).
+6. **Rollout constraints:**
    - LeaderWorkerSet: only `RollingUpdate` supported
    - Deployment: both `RollingUpdate` and `Recreate`
    - `partition` is only valid for LeaderWorkerSet
@@ -370,10 +369,10 @@ apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceService
 metadata:
   name: vllm-llama3-1b-instruct-tp2
+  labels:
+    mif.moreh.io/aigateway: mif
 spec:
   replicas: 2
-  inferencePoolRefs:
-    - name: heimdall-inference-scheduler
   templateRefs:
     - name: vllm
     - name: vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2
@@ -399,10 +398,10 @@ apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceService
 metadata:
   name: my-custom-model
+  labels:
+    mif.moreh.io/aigateway: mif
 spec:
   replicas: 1
-  inferencePoolRefs:
-    - name: heimdall-inference-scheduler
   templateRefs:
     - name: vllm-decode-dp
   parallelism:
@@ -472,22 +471,18 @@ The legacy `moreh/inference-service` Helm chart (not in this repository) bypasse
 
 ---
 
-## Heimdall Integration
+## AIGateway Integration
 
-### How inferencePoolRefs works
+### How the `mif.moreh.io/aigateway` label works
 
-When `inferencePoolRefs` is set on an InferenceService:
+An InferenceService binds to an AIGateway through the `mif.moreh.io/aigateway` label, whose value is the target AIGateway's name. Set it in the InferenceService's `metadata.labels`:
 
-1. Odin fetches the referenced InferencePool from the same namespace
-2. Reads `InferencePool.spec.selector.matchLabels`
-3. **For Deployment:** Injects all pool selector labels into the pod template
-4. **For LeaderWorkerSet:** Injects labels **only if** the template already has labels with `heimdall.moreh.io/` prefix (opt-in mechanism)
+1. Odin propagates the label from the InferenceService to every pod it creates (Deployment pods, or LeaderWorkerSet leader/workers).
+2. The Heimdall operator injects the gateway sidecar into the labeled pods.
+3. The sidecar registers each pod as an `InferenceWorker` under the named AIGateway.
+4. The gateway routes requests only to the workers that carry its name in that label.
 
-This opt-in mechanism prevents forced affinity injection on templates that don't expect it.
-
-### Pod labels injected
-
-The InferencePool's `matchLabels` are propagated to pods. Typically this includes `mif.moreh.io/pool: heimdall-inference-scheduler`, which Heimdall uses to discover routable pods.
+There is no separate pool resource to create — the single label is the whole binding. (The older `inferencePoolRefs` / InferencePool mechanism is deprecated; use the label.)
 
 ---
 
@@ -533,7 +528,7 @@ env:
     value: "true"
 ```
 
-When enabled, each pod publishes KV cache events via ZMQ to `tcp://<inferencePoolRef-name>:5557` with topic `kv@<POD_IP>:<port>@<model-name>`, where `<model-name>` is the value of `spec.model.name`. This requires `inferencePoolRefs` and `spec.model.name` to be set — the pod exits with an error if either is missing.
+When enabled, each pod publishes KV cache events via ZMQ on port `5557` with topic `kv@<POD_IP>:<port>@<model-name>`, where `<model-name>` is the value of `spec.model.name`. **Legacy coupling:** the current preset still resolves this ZMQ endpoint from `inferencePoolRefs` (`tcp://<inferencePoolRef-name>:5557`), so enabling KV events today still requires `inferencePoolRefs` and `spec.model.name` to be set — the pod exits with an error if either is missing. This is the one remaining use of the deprecated `inferencePoolRefs` field and is expected to migrate to the `mif.moreh.io/aigateway` binding.
 
 ### Pod role labels
 
@@ -631,7 +626,7 @@ kubectl get isvc --all-namespaces -o json | jq -r '
 
 1. **Use presets when available.** Check `kubectl get ist -n mif -l mif.moreh.io/template.type=preset` before manually configuring.
 2. **Match `template` vs. `workerTemplate` to the runtime-base.** See "Choosing template vs. workerTemplate" above for the quick-reference table.
-3. **Set `inferencePoolRefs` for Heimdall routing.** Without this, pods won't register with the InferencePool and won't receive traffic.
+3. **Set the `mif.moreh.io/aigateway` label for gateway routing.** Without it, Odin won't bind the pods to an AIGateway and they won't receive traffic.
 4. **Pre-download models for production.** Use PersistentVolumes with `HF_HOME` and `HF_HUB_OFFLINE=1` to avoid HuggingFace downloads at startup.
 5. **Override `ISVC_EXTRA_ARGS` carefully.** It completely replaces the preset's default args — copy the full default value and modify only what you need.
 6. **Use `--enable-prefix-caching` for chatbot workloads.** Many presets disable this by default; override via `ISVC_EXTRA_ARGS`.

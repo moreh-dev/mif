@@ -21,10 +21,10 @@ apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceService
 metadata:
   name: vllm-llama3-1b-instruct-tp2
+  labels:
+    mif.moreh.io/aigateway: mif
 spec:
   replicas: 2
-  inferencePoolRefs:
-    - name: heimdall-inference-scheduler
   templateRefs:
     - name: vllm
     - name: vllm-meta-llama-llama-3.2-1b-instruct-amd-mi250-tp2
@@ -53,10 +53,10 @@ apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceService
 metadata:
   name: my-custom-model
+  labels:
+    mif.moreh.io/aigateway: mif
 spec:
   replicas: 1
-  inferencePoolRefs:
-    - name: heimdall-inference-scheduler
   templateRefs:
     - name: vllm-decode-dp
   model:
@@ -97,8 +97,11 @@ spec:
 
 Source: `test/e2e/performance/config/inference-service.yaml.tmpl`
 
-Separate InferenceServices for prefill and decode phases. Both register with the same
-Heimdall InferencePool. Requires Heimdall with `pd-profile-handler` configured.
+Separate InferenceServices for prefill and decode phases. Both bind to the same
+AIGateway via the `mif.moreh.io/aigateway` label. This also requires a cluster-scoped
+`pd` SchedulingProfile (`spec.profileHandler: pd`) that the AIGateway references
+through its `spec.schedulingProfiles` field — the label alone does not wire the
+gateway to the PD profile.
 
 ```yaml
 # Prefill InferenceService
@@ -106,10 +109,10 @@ apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceService
 metadata:
   name: <name>-prefill
+  labels:
+    mif.moreh.io/aigateway: <gatewayName>
 spec:
   replicas: <prefillReplicas>
-  inferencePoolRefs:
-    - name: heimdall-inference-scheduler
   templateRefs:
     - name: vllm-prefill-dp        # or vllm-prefill for non-DP
     - name: <prefillPreset>
@@ -131,10 +134,10 @@ apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceService
 metadata:
   name: <name>-decode
+  labels:
+    mif.moreh.io/aigateway: <gatewayName>
 spec:
   replicas: <decodeReplicas>
-  inferencePoolRefs:
-    - name: heimdall-inference-scheduler
   templateRefs:
     - name: vllm-decode-dp          # or vllm-decode for non-DP
     - name: <decodePreset>
@@ -166,10 +169,10 @@ apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceService
 metadata:
   name: vllm-offline
+  labels:
+    mif.moreh.io/aigateway: mif
 spec:
   replicas: 2
-  inferencePoolRefs:
-    - name: heimdall-inference-scheduler
   templateRefs:
     - name: vllm
     - name: <preset>
@@ -239,10 +242,10 @@ apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceService
 metadata:
   name: my-prefill
+  labels:
+    mif.moreh.io/aigateway: mif
 spec:
   replicas: 1
-  inferencePoolRefs:
-    - name: heimdall-inference-scheduler
   templateRefs:
     - name: vllm-prefill-dp
     - name: custom-prefill-dp16ep
@@ -268,10 +271,10 @@ apiVersion: odin.moreh.io/v1alpha1
 kind: InferenceService
 metadata:
   name: vllm-pipeline
+  labels:
+    mif.moreh.io/aigateway: mif
 spec:
   replicas: 1
-  inferencePoolRefs:
-    - name: heimdall-inference-scheduler
   templateRefs:
     - name: vllm-pp
   model:
