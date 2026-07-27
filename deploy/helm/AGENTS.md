@@ -35,6 +35,7 @@ Instead, the regular `templates/minio/init-job.yaml` Job (not a hook) provisions
 
 ## Grafana dashboards
 
+- AIGateway dashboard coverage audits must include first-party metrics from gateway request metrics, gateway exposition, and sidecar metrics. Use `rate` for counters, guard derived ratios against zero denominators, and aggregate replica-local series deliberately before grouping by model or endpoint.
 - AIGateway metrics carry no `role` label; endpoint-role filtering joins Kubernetes metadata instead. `kube_pod_labels` exposes `label_mif_moreh_io_role` only because `prometheus-stack.kube-state-metrics.metricLabelsAllowlist` allowlists `pods=[mif.moreh.io/role]` — keep that allowlist and the dashboards in sync. Once a resource has any allowlist entry, KSM emits `kube_<resource>_labels` for **every** object of that resource (allowlisted labels appear only where set), so `=~".*"` keeps label-less objects while `=~".+"` or a specific value drops them.
 - A Grafana template variable built from a PromQL join (anything that is not a plain series selector) must use `query_result(<expr>)` plus a `regex` such as `/endpoint="([^"]+)"/`; `label_values(<expr>, <label>)` resolves through the series/label-values API and only accepts selectors.
 
