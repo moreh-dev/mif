@@ -55,6 +55,7 @@ prometheus-stack:
   kube-state-metrics:
     metricLabelsAllowlist:
       - "nodes=[moai.moreh.io/accelerator.vendor,moai.moreh.io/accelerator.model]"
+      - "pods=[mif.moreh.io/role]"
   nodeExporter:
     enabled: true
   prometheusOperator:

@@ -33,6 +33,12 @@ Use `minio/minio`. Do **not** set the sub-chart's `minio.users`/`minio.policies`
 
 Instead, the regular `templates/minio/init-job.yaml` Job (not a hook) provisions storage as soon as MinIO is reachable. For each enabled consumer it creates the bucket itself, a least-privilege policy scoped to that bucket, and a dedicated user (never the root user), via `mc admin`. The top-level `minio.buckets` only optionally pre-creates buckets via the sub-chart; it is not required and does not drive this scoped per-consumer provisioning. Per-consumer credentials live in a top-level `<consumer>Bucket` section (e.g. `lokiBucket`, `tempoBucket`) and are surfaced through a `<consumer>-bucket` Secret + ConfigMap (`templates/<consumer>/credentials.yaml`); both the init Job and the consumer's pods read them via `extraEnvFrom` + `-config.expand-env=true`.
 
+## Grafana dashboards
+
+- AIGateway dashboard coverage audits must include first-party metrics from gateway request metrics, gateway exposition, and sidecar metrics. Use `rate` for counters, guard derived ratios against zero denominators, and aggregate replica-local series deliberately before grouping by model or endpoint.
+- AIGateway metrics carry no `role` label; endpoint-role filtering joins Kubernetes metadata instead. `kube_pod_labels` exposes `label_mif_moreh_io_role` only because `prometheus-stack.kube-state-metrics.metricLabelsAllowlist` allowlists `pods=[mif.moreh.io/role]` — keep that allowlist and the dashboards in sync. Once a resource has any allowlist entry, KSM emits `kube_<resource>_labels` for **every** object of that resource (allowlisted labels appear only where set), so `=~".*"` keeps label-less objects while `=~".+"` or a specific value drops them.
+- A Grafana template variable built from a PromQL join (anything that is not a plain series selector) must use `query_result(<expr>)` plus a `regex` such as `/endpoint="([^"]+)"/`; `label_values(<expr>, <label>)` resolves through the series/label-values API and only accepts selectors.
+
 ## Alert provisioning
 
 The chart provisions Grafana Unified Alerting through ConfigMaps labelled `grafana_alert=1`, mounted by the `grafana-sc-alerts` sidecar into `/etc/grafana/provisioning/alerting/`. Two groups:
