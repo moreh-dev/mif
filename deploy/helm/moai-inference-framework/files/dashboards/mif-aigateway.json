@@ -2411,6 +2411,7 @@
         "type": "query"
       },
       {
+        "allValue": ".*",
         "current": {
           "selected": false,
           "text": "All",
@@ -2420,19 +2421,45 @@
           "type": "prometheus",
           "uid": "prometheus"
         },
-        "definition": "label_values(aigateway_endpoint_healthy{namespace=~\"$namespace\", aigateway=~\"$aigateway\"}, endpoint)",
+        "definition": "query_result(group by (label_mif_moreh_io_role) ((kube_pod_info{namespace=~\"$namespace\"} * on(namespace, pod) group_left(label_mif_moreh_io_role) group by (namespace, pod, label_mif_moreh_io_role) (kube_pod_labels{namespace=~\"$namespace\", label_mif_moreh_io_role=~\".+\"})) * on(namespace, pod_ip) group_left() group by (namespace, pod_ip) (label_replace(aigateway_endpoint_healthy{namespace=~\"$namespace\", aigateway=~\"$aigateway\"}, \"pod_ip\", \"$1\", \"endpoint\", \"(.+):[0-9]+\"))))",
+        "includeAll": true,
+        "label": "role",
+        "multi": true,
+        "name": "role",
+        "options": [],
+        "query": {
+          "qryType": 3,
+          "query": "query_result(group by (label_mif_moreh_io_role) ((kube_pod_info{namespace=~\"$namespace\"} * on(namespace, pod) group_left(label_mif_moreh_io_role) group by (namespace, pod, label_mif_moreh_io_role) (kube_pod_labels{namespace=~\"$namespace\", label_mif_moreh_io_role=~\".+\"})) * on(namespace, pod_ip) group_left() group by (namespace, pod_ip) (label_replace(aigateway_endpoint_healthy{namespace=~\"$namespace\", aigateway=~\"$aigateway\"}, \"pod_ip\", \"$1\", \"endpoint\", \"(.+):[0-9]+\"))))",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 2,
+        "regex": "/label_mif_moreh_io_role=\"([^\"]+)\"/",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "query_result(group by (endpoint) (label_replace(aigateway_endpoint_healthy{namespace=~\"$namespace\", aigateway=~\"$aigateway\"}, \"pod_ip\", \"$1\", \"endpoint\", \"(.+):[0-9]+\") * on(namespace, pod_ip) group_left() group by (namespace, pod_ip) (kube_pod_info{namespace=~\"$namespace\"} * on(namespace, pod) group_left() group by (namespace, pod) (kube_pod_labels{namespace=~\"$namespace\", label_mif_moreh_io_role=~\"$role\"}))))",
         "includeAll": true,
         "label": "endpoint",
         "multi": true,
         "name": "endpoint",
         "options": [],
         "query": {
-          "qryType": 0,
-          "query": "label_values(aigateway_endpoint_healthy{namespace=~\"$namespace\", aigateway=~\"$aigateway\"}, endpoint)",
-          "refId": "label_values(aigateway_endpoint_healthy{namespace=~\"$namespace\", aigateway=~\"$aigateway\"}, endpoint)"
+          "qryType": 3,
+          "query": "query_result(group by (endpoint) (label_replace(aigateway_endpoint_healthy{namespace=~\"$namespace\", aigateway=~\"$aigateway\"}, \"pod_ip\", \"$1\", \"endpoint\", \"(.+):[0-9]+\") * on(namespace, pod_ip) group_left() group by (namespace, pod_ip) (kube_pod_info{namespace=~\"$namespace\"} * on(namespace, pod) group_left() group by (namespace, pod) (kube_pod_labels{namespace=~\"$namespace\", label_mif_moreh_io_role=~\"$role\"}))))",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 2,
-        "regex": "",
+        "regex": "/endpoint=\"([^\"]+)\"/",
         "sort": 1,
         "type": "query"
       }
