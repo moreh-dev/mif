@@ -1625,7 +1625,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (model) (rate(aigateway_tokenizer_cache_hits_total{namespace=~\"$namespace\", aigateway=~\"$aigateway\", model=~\"$model\"}[$__rate_interval])) / clamp_min(sum by (model) (rate(aigateway_tokenizer_cache_hits_total{namespace=~\"$namespace\", aigateway=~\"$aigateway\", model=~\"$model\"}[$__rate_interval])) + sum by (model) (rate(aigateway_tokenizer_cache_misses_total{namespace=~\"$namespace\", aigateway=~\"$aigateway\", model=~\"$model\"}[$__rate_interval])), 1e-9)",
+          "expr": "sum by (model) (rate(aigateway_tokenizer_cache_hits_total{namespace=~\"$namespace\", aigateway=~\"$aigateway\", model=~\"$model\"}[$__rate_interval])) / ((sum by (model) (rate(aigateway_tokenizer_cache_hits_total{namespace=~\"$namespace\", aigateway=~\"$aigateway\", model=~\"$model\"}[$__rate_interval])) + sum by (model) (rate(aigateway_tokenizer_cache_misses_total{namespace=~\"$namespace\", aigateway=~\"$aigateway\", model=~\"$model\"}[$__rate_interval]))) > 0)",
           "legendFormat": "{{model}}",
           "refId": "A"
         }
@@ -1740,7 +1740,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (model) (rate(aigateway_tokenizer_cache_hit_prefix_tokens_total{namespace=~\"$namespace\", aigateway=~\"$aigateway\", model=~\"$model\"}[$__rate_interval])) / clamp_min(sum by (model) (rate(aigateway_tokenizer_cache_hits_total{namespace=~\"$namespace\", aigateway=~\"$aigateway\", model=~\"$model\"}[$__rate_interval])), 1e-9)",
+          "expr": "sum by (model) (rate(aigateway_tokenizer_cache_hit_prefix_tokens_total{namespace=~\"$namespace\", aigateway=~\"$aigateway\", model=~\"$model\"}[$__rate_interval])) / (sum by (model) (rate(aigateway_tokenizer_cache_hits_total{namespace=~\"$namespace\", aigateway=~\"$aigateway\", model=~\"$model\"}[$__rate_interval])) > 0)",
           "legendFormat": "{{model}}",
           "refId": "A"
         }
