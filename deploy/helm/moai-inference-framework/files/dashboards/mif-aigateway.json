@@ -91,8 +91,8 @@
             "uid": "prometheus"
           },
           "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "avg(gpu_gfx_activity{hostname=~\"$amd_hostname\"})",
+          "editorMode": "code",
+          "expr": "avg(gpu_gfx_activity{hostname=~\"$amd_hostname\"} or DCGM_FI_DEV_GPU_UTIL{Hostname=~\"$nvidia_hostname\"})",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "__auto",
