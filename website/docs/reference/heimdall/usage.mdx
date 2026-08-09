@@ -164,5 +164,6 @@ An inference pod joins a gateway through the `mif.moreh.io/aigateway` label, who
 | `reasoningParser` | string | no | ReasoningParser selects the reasoning parser, if any. |
 | `renderer` | string | yes | Renderer selects the prompt renderer. |
 | `servedName` | string | no | ServedName overrides the client-facing model identity for this worker's serving configuration. Unset means the base model name is served. |
+| `thinkingTemplateArgs` | object | no | ThinkingTemplateArgs projects thinking state into template arguments. |
 | `toolCallParser` | string | no | ToolCallParser selects the tool-call parser, if any. |
 {/* AUTO-GENERATED:aigateway-crd-inferenceworker END */}
