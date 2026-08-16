@@ -284,11 +284,5 @@ $RECYCLE.BIN/
 
 # End of https://www.toptal.com/developers/gitignore/api/vim,linux,macos,windows,visualstudiocode,python
 
-# E2E test temporary files (may contain sensitive credentials)
-test/tmp/
-
-# E2E test reports
-test-reports/
-
 # Prettier
 .prettierignore
