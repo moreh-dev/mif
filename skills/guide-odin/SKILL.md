@@ -30,9 +30,13 @@ Odin introduces a **template composition system** (`InferenceServiceTemplate`) t
 - `website/docs/reference/odin/api-reference.mdx` — API field reference
 - `website/docs/features/preset.mdx` — template composition guide
 - `website/docs/getting-started/quickstart.mdx` — end-to-end deployment
-- `deploy/helm/moai-inference-preset/templates/runtime-bases/` — runtime-base definitions
-- `deploy/helm/moai-inference-preset/templates/presets/` — model-specific presets
-- `test/e2e/*/config/inference-service.yaml.tmpl` — E2E test InferenceService patterns
+
+Runtime-base and preset `InferenceServiceTemplate` definitions are not stored in this repository. Inspect the ones installed in your cluster instead:
+
+```shell
+kubectl get inferenceservicetemplate -n mif -l mif.moreh.io/template.type=runtime-base
+kubectl get inferenceservicetemplate -n mif -l mif.moreh.io/template.type=preset
+```
 
 **Additional references — when to consult:**
 
@@ -219,7 +223,7 @@ For boolean flags, use `deref` directly in conditionals:
 ### Template lookup order
 
 1. **Local namespace** — where the InferenceService is created
-2. **System namespace** — typically `mif`, where presets are installed by the `moai-inference-preset` chart
+2. **System namespace** — typically `mif`, where presets are installed by the cluster administrator
 
 Templates in the local namespace take precedence. Templates in non-system namespaces are **only available within that namespace**.
 
@@ -305,7 +309,7 @@ parallelism:
 
 ### Available runtime-bases
 
-Runtime-bases define `spec.framework`, the container startup logic, parallelism wiring, and pod structure. They are installed in the `mif` namespace by the `moai-inference-preset` Helm chart.
+Runtime-bases define `spec.framework`, the container startup logic, parallelism wiring, and pod structure. They are installed in the `mif` namespace by the cluster administrator.
 
 | Runtime-base      | Workload type   | `template` / `workerTemplate` | Use case                                |
 | ----------------- | --------------- | ----------------------------- | --------------------------------------- |

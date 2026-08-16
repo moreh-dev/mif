@@ -52,7 +52,8 @@ The reserved model name `default` in `schedulingProfiles` is the gateway-wide fa
 
 ## Prerequisites
 
-- Complete the [Prerequisites](../getting-started/prerequisites.mdx) setup, including the MoAI Inference Framework and preset chart installation. This installs the Odin and Heimdall operators this guide builds on.
+- Complete the [Prerequisites](../getting-started/prerequisites.mdx) setup, including the MoAI Inference Framework installation. This installs the Odin and Heimdall operators this guide builds on.
+- Confirm with your cluster administrator that the presets used in this guide are installed in the `mif` namespace. See [Presets](../features/preset.mdx).
 - Pre-download the required models to a shared persistent volume by following the [HF Model Management (PV)](./hf-model-management-with-pv.mdx) guide. The `vllm-hf-hub-offline` template used in this guide requires a PVC named `models` in the deployment namespace.
 
 ---
@@ -155,7 +156,7 @@ Deploy four `InferenceService` instances: two models (Llama 3.2 1B and Qwen 3 1.
 
 :::info
 
-The `vllm-hf-hub-offline` template is installed by the `moai-inference-preset` chart in the `mif` namespace. It configures offline mode (`HF_HUB_OFFLINE=1`) and mounts the `models` PVC at `/mnt/models`. Ensure the PVC exists in the `multi-model-test` namespace with the required models pre-downloaded. See [HF Model Management (PV)](./hf-model-management-with-pv.mdx) for setup instructions.
+The `vllm-hf-hub-offline` template is installed in the `mif` namespace by your cluster administrator. It configures offline mode (`HF_HUB_OFFLINE=1`) and mounts the `models` PVC at `/mnt/models`. Ensure the PVC exists in the `multi-model-test` namespace with the required models pre-downloaded. See [HF Model Management (PV)](./hf-model-management-with-pv.mdx) for setup instructions.
 
 :::
 

@@ -84,9 +84,7 @@ git diff <prevVersion>..<releaseVersion> --stat | tail -5
 
 Group commits by scope to understand the breadth of changes:
 - `deploy` — Helm chart, infrastructure, dependency bumps
-- `preset` — inference service templates, quickstart presets
 - `website` — documentation
-- `e2e` / `test` — testing framework
 - `skills` — agent skills
 
 #### 3b. Dependency version changes
@@ -115,14 +113,8 @@ Check each major area for changes:
 # Helm chart changes
 git diff <prevVersion>..<releaseVersion> --stat -- deploy/helm/moai-inference-framework/
 
-# Preset changes
-git diff <prevVersion>..<releaseVersion> --stat -- deploy/helm/moai-inference-preset/
-
 # Website changes
 git diff <prevVersion>..<releaseVersion> --stat -- website/
-
-# Test changes
-git diff <prevVersion>..<releaseVersion> --stat -- test/
 
 # Skills changes
 git diff <prevVersion>..<releaseVersion> --stat -- skills/ .agents/skills/
@@ -140,7 +132,6 @@ Structure the release notes as follows:
 | Component | <prevVersion> | <releaseVersion> |
 |-----------|--------|--------|
 | moai-inference-framework | vX.Y.Z | **vA.B.C** |
-| moai-inference-preset | vX.Y.Z | **vA.B.C** |
 
 ### Core Components
 
@@ -149,9 +140,7 @@ Structure the release notes as follows:
 | Odin | vX.Y.Z | **vA.B.C** |
 | Odin CRD | vX.Y.Z | **vA.B.C** |
 | Heimdall | vX.Y.Z | **vA.B.C** |
-| heimdall-proxy | vX.Y.Z | **vA.B.C** |
 | LWS | X.Y.Z | **A.B.C** |
-| moreh-vLLM preset | X.Y.Z | **A.B.C** |
 | Istio | X.Y.Z | **A.B.C** |
 
 ### Infrastructure Dependencies
