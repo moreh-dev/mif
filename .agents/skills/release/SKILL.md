@@ -246,7 +246,7 @@ about:
 
 ```bash
 curl -s https://moreh-dev.github.io/helm-charts/index.yaml \
-  | grep -E '^\s+(name|version):'
+  | grep -E '^[[:space:]]+(name|version):'
 ```
 
 ### 6. Create GitHub Release
