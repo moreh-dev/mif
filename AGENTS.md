@@ -123,7 +123,6 @@ When updating knowledge in `skills/`, modify the relevant `SKILL.md` or its supp
 
 When working on a specific MIF component, consult the relevant skill:
 
-- **Dependency version updates**: [`.agents/skills/bump-dependency/SKILL.md`](.agents/skills/bump-dependency/SKILL.md)
 - **GitHub release**: [`.agents/skills/release/SKILL.md`](.agents/skills/release/SKILL.md)
 - **Heimdall scheduler**: [`skills/guide-heimdall/SKILL.md`](skills/guide-heimdall/SKILL.md)
 - **Odin inference operator**: [`skills/guide-odin/SKILL.md`](skills/guide-odin/SKILL.md)
