@@ -91,52 +91,23 @@ helm upgrade -i mif moreh/moai-inference-framework \
 
 ---
 
-## Chart versions
-
-The Heimdall and Odin charts installed below are pinned to the following released versions from the `moreh` Helm repository. The `helm upgrade` commands in the sections that follow use these same versions. (`moai-inference-framework` is pinned directly in its own install command.)
-
-### Heimdall
-
-{/* AUTO-GENERATED:heimdall-install-versions START */}
-| Chart | Version | App version |
-| --- | --- | --- |
-| `heimdall` | `v0.5.0` | `v0.5.0` |
-| `heimdall-aigateway-crd` | `v0.10.0` | `v0.10.0` |
-| `heimdall-crd` | `v0.5.0` | `v0.5.0` |
-{/* AUTO-GENERATED:heimdall-install-versions END */}
-
-### Odin
-
-{/* AUTO-GENERATED:odin-install-versions START */}
-| Chart | Version | App version |
-| --- | --- | --- |
-| `odin` | `v0.12.0` | `v0.12.0` |
-| `odin-crd` | `v0.12.0` | `v0.12.0` |
-{/* AUTO-GENERATED:odin-install-versions END */}
-
----
-
-## Custom resource definitions
-
-Install the custom resource definitions (CRDs) used by the operators. CRDs are packaged as separate charts so their lifecycle is independent of the operators.
-
-```shell
-helm upgrade -i odin-crd moreh/odin-crd --version v0.10.0 -n mif
-helm upgrade -i heimdall-crd moreh/heimdall-crd --version v0.4.0 -n mif
-helm upgrade -i heimdall-aigateway-crd moreh/heimdall-aigateway-crd --version v0.6.0 -n mif
-```
-
-This installs the custom resource definitions used by the operators, including `InferenceService` and `InferenceServiceTemplate` (Odin), `AIGateway` (Heimdall), and `SchedulingProfile` (Heimdall AIGateway).
-
----
-
 ## Odin
 
-Odin is the operator that manages inference services — the vLLM pods that serve a model. Install it after its CRDs and cert-manager.
+Odin is the operator that manages inference services — the vLLM pods that serve a model. Install it after cert-manager.
+
+Install the Odin CRDs first. CRDs are packaged as a separate chart so their lifecycle is independent of the operator.
+
+```shell
+helm upgrade -i odin-crd moreh/odin-crd --version v0.12.0 -n mif
+```
+
+This installs the `InferenceService` and `InferenceServiceTemplate` custom resource definitions.
+
+Then install the operator.
 
 ```shell
 helm upgrade -i odin moreh/odin \
-    --version v0.10.0 \
+    --version v0.12.0 \
     -n mif \
     --create-namespace
 ```
@@ -149,11 +120,22 @@ Odin installs [LeaderWorkerSet](https://github.com/kubernetes-sigs/lws) (LWS) as
 
 ## Heimdall
 
-Heimdall is the operator that runs the AI Gateway. It reconciles `AIGateway` resources into a gateway deployment and injects the gateway sidecar into inference pods. Because it injects sidecars into Odin-managed pods, install it after Odin's `InferenceService` CRD.
+Heimdall is the operator that runs the AI Gateway. It reconciles `AIGateway` resources into a gateway deployment and injects the gateway sidecar into inference pods. Because it injects sidecars into Odin-managed pods, install it after Odin.
+
+Install the Heimdall CRDs first.
+
+```shell
+helm upgrade -i heimdall-crd moreh/heimdall-crd --version v0.5.0 -n mif
+helm upgrade -i heimdall-aigateway-crd moreh/heimdall-aigateway-crd --version v0.10.0 -n mif
+```
+
+This installs the `AIGateway` and `SchedulingProfile` custom resource definitions.
+
+Then install the operator.
 
 ```shell
 helm upgrade -i heimdall moreh/heimdall \
-    --version v0.8.0 \
+    --version v0.5.0 \
     -n mif \
     --create-namespace
 ```
