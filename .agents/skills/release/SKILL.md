@@ -27,8 +27,8 @@ Since we're pre-1.0 (`v0.x.y`):
 | `feat` | minor |
 | `!` (breaking change) | minor (not major, because v0.x) |
 
-Release candidates are numbered `vX.Y.Z-rc.N` starting at `rc.1`. Several rcs per minor
-version is normal — v0.4.0 went through `rc.1` to `rc.5` before the stable tag.
+Release candidates are numbered `vX.Y.Z-rc.N` starting at `rc.1`. Multiple rcs per minor
+version are normal — v0.4.0 went through `rc.1` to `rc.5` before the stable tag.
 
 ## Release types
 
