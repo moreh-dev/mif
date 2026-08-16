@@ -51,8 +51,11 @@ Only the version decision and the tag apply. Skip versioned docs, release notes,
 GitHub release — no rc has ever had any of them.
 
 ```bash
-# 1. Confirm the working tree is clean and HEAD matches origin/main
-git rev-parse HEAD origin/main
+# 1. Refuse to tag a dirty tree, or a commit that is not the tip of origin/main.
+#    Each line exits non-zero rather than just printing state.
+git fetch origin main
+test -z "$(git status --porcelain)" || { echo "working tree is dirty"; exit 1; }
+test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || { echo "HEAD is not origin/main"; exit 1; }
 
 # 2. Annotated tag, message summarizing the delta since the previous rc
 git tag -a <version> -m "<summary>"
