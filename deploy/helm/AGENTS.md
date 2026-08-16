@@ -7,6 +7,14 @@ Rules specific to `deploy/helm/`. General contribution guidelines are in the roo
 - **YAGNI** — Add no value field or abstraction without a current, concrete use case. Prefer documenting workarounds over new code paths for non-default edge cases.
 - **Reject wrong designs early** — Standalone prerequisites, `enabled: false` defaults, deeply-nested config instead of top-level sections — redesign before writing code, never retrofit.
 
+## Scope of this directory
+
+`moai-inference-framework` is the only chart in this repository. Odin presets and runtime-bases (`InferenceServiceTemplate` resources) are **not** packaged here — they are installed into the `mif` namespace by the cluster administrator, either manually or by Odin from S3. Do not reintroduce a preset chart, and do not add preset or runtime-base template paths to docs or skills. When documentation needs to show a preset, direct readers to inspect the templates installed in their cluster:
+
+```shell
+kubectl get inferenceservicetemplate -n mif -l mif.moreh.io/template.type=preset
+```
+
 ## Verification
 
 After any chart change, run the narrowest sufficient check: `make helm-lint`, `helm lint <chart>`, or `helm template <chart>` with representative values; `make helm-dependency` when `Chart.yaml` deps change; `make helm-docs` when values/docs templates change. Don't claim a change complete without at least one render- or lint-level step; if skipped, state which and why.
@@ -47,32 +55,3 @@ The chart provisions Grafana Unified Alerting through ConfigMaps labelled `grafa
 - **Heimdall Slack contact point** — `heimdall-slack-configmap.yaml`. URL resolves from `alerts.heimdall.slack.existingSecret` + `slack.secretKeys.webhookUrlKey` (Bitnami secret-reference convention) via Helm `lookup`, falling back to inline `slack.webhookUrl`. `helm template` / `--dry-run` cannot read cluster state, so `existingSecret` renders empty under them — verify against a real cluster.
 
 Operators must set `prometheus-stack.grafana.grafana.ini.server.root_url` for Slack links to work; otherwise Grafana falls back to `http://localhost:3000`.
-
-## Odin presets (`moai-inference-preset`)
-
-A preset is a pair of `InferenceServiceTemplate` resources — a **runtime base** (shared launcher) and a **preset-specific template** (model/GPU args).
-
-**Naming**: `{image_tag}-{org}-{model}[-mtp][-prefill|-decode]-{vendor}-{accel}-{parallelism}[-moe-{moe_par}]`. Org/model in HF kebab-case. Combined parallelism order: `dp` → `pp` → `tp` → `cp`. MoE adds `-moe-{ep|tp}N`.
-
-**Responsibility split**:
-
-- Runtime bases — `spec.framework`, launch command and parallelism flag assembly (`--tensor-parallel-size` etc.), disaggregation env (`VLLM_NIXL_SIDE_CHANNEL_HOST`, `VLLM_IS_DECODE_WORKER`), shm/readiness, PD proxy sidecar.
-- Presets — `spec.parallelism` values, model-specific vLLM args (`--max-model-len`, `--gpu-memory-utilization`, …), logging args (must repeat — `ISVC_EXTRA_ARGS` is fully overridden, not merged), model-specific env, resources/tolerations/nodeSelector.
-- Utils (`*-hf-hub-offline` templates) — offline HF cache env (`HF_HOME`, `HF_HUB_OFFLINE`, `HF_MODULES_CACHE`), shared by runtime bases and presets.
-- Users — image tag, replicas, volumes / model loading method, HF token, `--no-enable-prefix-caching`.
-
-**Reserved `mif.moreh.io/*` labels**:
-
-| Key | Example |
-| --- | --- |
-| `template.type` | `runtime-base`, `preset` |
-| `model.org` / `model.name` | `meta-llama` / `llama-3.3-70b-instruct` |
-| `model.mtp` | `"true"` |
-| `role` | `e2e`, `prefill`, `decode` |
-| `accelerator.vendor` / `accelerator.model` | `amd` / `mi300x` |
-| `parallelism` | `tp4`, `dp8-moe-ep8` |
-| `pool` | `heimdall` |
-
-Logs/metrics filtering also uses stock Kubernetes labels `app.kubernetes.io/name` (e.g. `vllm`) and `app.kubernetes.io/instance` (inference service name).
-
-**PD decode proxy** — `heimdall-proxy --response-header` is a debug flag. Sim decode utils (`sim-decode*`) default it on; production runtime-bases (`vllm-decode*`) leave it off and users opt in via the decode `InferenceService`. When the flag is set, Heimdall's `response-header-handler` plugin is redundant.

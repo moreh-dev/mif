@@ -93,7 +93,7 @@ helm upgrade -i mif moreh/moai-inference-framework \
 
 ## Chart versions
 
-The Heimdall and Odin charts installed below are pinned to the following released versions from the `moreh` Helm repository. The `helm upgrade` commands in the sections that follow use these same versions. (`moai-inference-framework` and `moai-inference-preset` are pinned directly in their own install commands.)
+The Heimdall and Odin charts installed below are pinned to the following released versions from the `moreh` Helm repository. The `helm upgrade` commands in the sections that follow use these same versions. (`moai-inference-framework` is pinned directly in its own install command.)
 
 ### Heimdall
 
@@ -156,18 +156,6 @@ helm upgrade -i heimdall moreh/heimdall \
     --version v0.8.0 \
     -n mif \
     --create-namespace
-```
-
----
-
-## moai-inference-preset
-
-The `moai-inference-preset` Helm chart deploys the presets for the MoAI Inference Framework. The presets define preconfigured ways to run inference containers (e.g., Moreh vLLM containers) in the MoAI Inference Framework.
-
-```shell
-helm upgrade -i moai-inference-preset moreh/moai-inference-preset \
-    --version v0.5.0 \
-    -n mif
 ```
 
 ---

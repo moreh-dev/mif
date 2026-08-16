@@ -4,7 +4,6 @@ This guide serves as the unified source of truth for all contributors, both huma
 
 ## How to navigate this repo
 
-- For E2E test rules, see [`test/AGENTS.md`](test/AGENTS.md).
 - For Helm chart rules, see [`deploy/helm/AGENTS.md`](deploy/helm/AGENTS.md).
 - For website and documentation rules, see [`website/AGENTS.md`](website/AGENTS.md).
 - For agent workflow guides tied to specific domains, see [`skills/README.md`](skills/README.md) and the relevant `SKILL.md`.
@@ -44,9 +43,7 @@ The commit message should be structured as follows:
 - `workflow`: Changes related to CI/CD workflows.
 - `deploy`: Changes related to deployment (Helm charts, container files, etc.)
 - `config`: Changes related to files hard to manage within helm charts.
-- `preset`: Changes related to preset files.
 - `website`: Changes related to website.
-- `e2e`: Changes related to end-to-end tests.
 - `skills`: Changes related to agent skills.
 
 ### Code Style Guidelines
@@ -99,18 +96,14 @@ When a directory accumulates enough domain-specific rules to warrant separation,
 
 3. **Move the relevant sections** from the root `AGENTS.md` (or parent `AGENTS.md`) into the new file. Replace the moved content in the parent with a one-line reference:
    ```markdown
-   ### E2E Test
+   ### Website
 
-   See [`test/AGENTS.md`](test/AGENTS.md).
+   See [`website/AGENTS.md`](website/AGENTS.md).
    ```
 
 4. **Update the Agent Self-Improvement section** in the parent to mention the new file as a recording target.
 
 ## Domain References
-
-### E2E Test
-
-See [`test/AGENTS.md`](test/AGENTS.md).
 
 ### Helm Charts
 

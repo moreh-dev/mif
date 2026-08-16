@@ -95,8 +95,6 @@ spec:
 
 ## Recipe 3: PD-disaggregated (prefill + decode) [verified]
 
-Source: `test/e2e/performance/config/inference-service.yaml.tmpl`
-
 Separate InferenceServices for prefill and decode phases. Both bind to the same
 AIGateway via the `mif.moreh.io/aigateway` label. This also requires a cluster-scoped
 `pd` SchedulingProfile (`spec.profileHandler: pd`) that the AIGateway references
