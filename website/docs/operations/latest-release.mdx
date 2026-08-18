@@ -29,11 +29,11 @@ Installed as separate charts. See [Prerequisites](../getting-started/prerequisit
 | Odin CRD | v0.12.0 | `moreh/odin-crd` |
 {/* AUTO-GENERATED:operator-chart-versions END */}
 
-Odin installs LeaderWorkerSet (LWS) `0.9.0` as a dependency. The Heimdall AI Gateway runtime is not a Helm chart; the Heimdall operator deploys it as a container image from an `AIGateway` resource.
+The Heimdall AI Gateway runtime is not a Helm chart; the Heimdall operator deploys it as a container image from an `AIGateway` resource.
 
 ---
 
-## Bundled infrastructure dependencies
+## Bundled dependencies
 
 Bundled as sub-charts in `moai-inference-framework`:
 
@@ -46,3 +46,9 @@ Bundled as sub-charts in `moai-inference-framework`:
 | MinIO                  | 5.4.0   |
 | Node Feature Discovery | 0.18.3  |
 | kubernetes-replicator  | 2.12.2  |
+
+Bundled as sub-charts in `odin`:
+
+| Component              | Version |
+| :--------------------- | :------ |
+| LeaderWorkerSet (LWS)  | 0.9.0   |
