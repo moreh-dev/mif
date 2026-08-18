@@ -76,10 +76,14 @@ The header format is `00-<32-hex trace id>-<16-hex parent span id>-01`. The gate
 
 A gateway trace shows the routing and scheduling path of one request. An end-to-end request — like the one from the [Quickstart](/getting-started/quickstart.mdx) — produces a small span tree:
 
-```text title="Example AIGateway trace (end-to-end request)"
-aigateway.request            ← request received (root span)
-├─ aigateway.scheduler.run   ← scheduling decision (scores candidate pods, picks one)
-└─ aigateway.upstream.tito   ← call to the selected vLLM worker
+```mermaid
+graph TB
+    request["aigateway.request<br>(root span, request received)"]
+    scheduler["aigateway.scheduler.run<br>(scheduling decision: scores candidate pods, picks one)"]
+    upstream["aigateway.upstream.tito<br>(call to the selected vLLM worker)"]
+
+    request --> scheduler
+    request --> upstream
 ```
 
 In the waterfall, each span's bar shows where time is spent. Scheduling (`aigateway.scheduler.run`) takes microseconds, while almost all of the latency is the upstream worker call (`aigateway.upstream.tito`):
