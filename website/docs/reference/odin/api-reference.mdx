@@ -17,7 +17,7 @@ An `InferenceService` describes a model deployment — the inference engine, the
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `framework` | string | no | Framework specifies the inference engine (e.g. vllm, sglang). |
-| `inferencePoolRefs` | [array](#inferenceservice-inferencepoolrefs) | no | InferencePoolRefs is a list of references to InferencePools. |
+| `inferencePoolRefs` | [array](#inferenceservice-inferencepoolrefs) | no | InferencePoolRefs is a list of references to InferencePools. Deprecated: retained for API compatibility only. The field is ignored at runtime: references are neither resolved at admission nor reflected in the generated Deployment or LeaderWorkerSet. |
 | `model` | [object](#inferenceservice-model) | no | Model identifies the model to serve. |
 | `parallelism` | [object](#inferenceservice-parallelism) | no | Parallelism defines the parallelism parameters for distributed inference. |
 | `replicas` | integer | no | Number of replicas for Deployments or LeaderWorkerSets. |
