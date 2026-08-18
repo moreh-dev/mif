@@ -108,3 +108,29 @@ See [Docusaurus Admonitions](https://docusaurus.io/docs/markdown-features/admoni
   See [Prerequisites](../getting-started/prerequisites.mdx#moai-inference-framework) for the required values and install command.
   ```
   Duplication causes the two pages to diverge whenever the chart version or values change.
+
+## 5. Auto-generated blocks
+
+Some reference and release pages carry blocks delimited by MDX markers:
+
+```mdx
+{/* AUTO-GENERATED:<block-id> START */}
+...generated content...
+{/* AUTO-GENERATED:<block-id> END */}
+```
+
+An external automation regenerates the content between each pair from the product source repositories and opens a pull request whenever the result differs.
+
+- **Do not edit content inside a block.** The next run overwrites it.
+- **Do not remove, rename, or move a block on its own.** The automation looks a block up by its `<block-id>` and stops the whole run when it cannot find one, so deleting a single block also stops every other block from updating. Restructuring a page that holds one needs a matching change on the automation side.
+- Prose outside the markers is yours to write; the automation never touches it.
+
+### Chart versions in install commands
+
+The `--version` value in the `helm upgrade` commands of `getting-started/prerequisites.mdx` is maintained by the same automation for these charts:
+
+`heimdall`, `heimdall-crd`, `heimdall-aigateway-crd`, `odin`, `odin-crd`
+
+Those values are rewritten from the published Helm repository index, so do not bump them by hand.
+
+`moai-inference-framework` is deliberately excluded. Its pin may lead the published index so the guide can document an imminent release, so it stays hand-maintained in both its install command and `operations/latest-release.mdx`.
