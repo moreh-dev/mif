@@ -29,7 +29,7 @@ helm repo add harbor https://helm.goharbor.io
 helm repo update harbor
 ```
 
-Decide whether to configure Harbor over HTTP (insecure but simple) or HTTPS, depending on your environment. Then, deploy Harbor using the following command. **If you choose HTTPS, the `externalURL` must start with `https://` instead of `http://`. You also need to replace `<password>` and `<storageClass>` with your own values.**
+Decide whether to configure Harbor over HTTP (insecure but simple) or HTTPS, depending on your environment. Then, deploy Harbor using the following command, which exposes Harbor over HTTP on port 80. **You need to replace `<password>` and `<storageClass>` with your own values.**
 
 ```shell {5-10}
 helm upgrade -i harbor harbor/harbor \
@@ -43,6 +43,13 @@ helm upgrade -i harbor harbor/harbor \
     --set persistence.persistentVolumeClaim.redis.storageClass <storageClass> \
     --set persistence.persistentVolumeClaim.trivy.storageClass <storageClass> \
     --set externalURL http://harbor.harbor.svc.cluster.local \
+    --set expose.tls.enabled false
+```
+
+If you choose HTTPS, replace the `externalURL` and `expose.tls.enabled` flags above with the following. The `externalURL` scheme must match the scheme Harbor is exposed with, and `expose.tls.secret.secretName` refers to the `harbor-tls` certificate created in the HTTPS tab below.
+
+```shell
+    --set externalURL https://harbor.harbor.svc.cluster.local \
     --set expose.tls.enabled true \
     --set expose.tls.certSource secret \
     --set expose.tls.secret.secretName harbor-tls
