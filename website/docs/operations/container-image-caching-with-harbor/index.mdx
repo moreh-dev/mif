@@ -99,7 +99,7 @@ mkdir -p /etc/containerd/certs.d/harbor.harbor.svc.cluster.local:80
 
 ```shell
 cat > /etc/containerd/certs.d/harbor.harbor.svc.cluster.local:80/hosts.toml << 'EOF'
-server = "https://harbor.harbor.svc.cluster.local:80"
+server = "http://harbor.harbor.svc.cluster.local:80"
 
 [host."http://harbor.harbor.svc.cluster.local:80"]
   capabilities = ["pull","resolve","push"]
