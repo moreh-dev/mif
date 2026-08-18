@@ -352,7 +352,7 @@ kubectl get inferenceservicetemplate -n mif -l mif.moreh.io/template.type=preset
 | `ISVC_MODEL_PATH`         | Model ID/path to load (defaults to `spec.model.name`)                           | defaults to `spec.model.name`  |
 | `ISVC_EXTRA_ARGS`         | Additional vLLM engine arguments                                                | (set by preset)                |
 | `ISVC_PRE_PROCESS_SCRIPT` | Script to run before engine starts                                              | (none)                         |
-| `ISVC_USE_KV_EVENTS`      | Publish KV cache events to Heimdall via ZMQ (for `precise-prefix-cache-scorer`) | `false`                        |
+| `ISVC_ENABLE_PREFIX_CACHE` | Engine prefix cache and KV cache event publishing (for `precise-prefix-cache-scorer`) | `true`                   |
 | `ISVC_PRESET_PATH`        | Path to preset configuration file sourced at startup                            | (empty)                        |
 | `HF_TOKEN`                | HuggingFace API token                                                           | (user must provide)            |
 | `HF_HOME`                 | HuggingFace cache directory                                                     | `/mnt/models` (for PV usage)   |
@@ -486,7 +486,7 @@ An InferenceService binds to an AIGateway through the `mif.moreh.io/aigateway` l
 3. The sidecar registers each pod as an `InferenceWorker` under the named AIGateway.
 4. The gateway routes requests only to the workers that carry its name in that label.
 
-There is no separate pool resource to create — the single label is the whole binding. (The older `inferencePoolRefs` / InferencePool mechanism is deprecated; use the label.)
+There is no separate pool resource to create — the single label is the whole binding.
 
 ---
 
@@ -524,15 +524,15 @@ For data-parallel decode (`vllm-decode-dp`), the proxy receives `--data-parallel
 
 ### KV cache events
 
-All runtime-bases support publishing KV cache events to Heimdall for use with the `precise-prefix-cache-scorer` plugin. Enable via the `ISVC_USE_KV_EVENTS` environment variable:
+All runtime-bases publish KV cache events to Heimdall for use with the `precise-prefix-cache-scorer` plugin, together with the engine prefix cache. Both are on by default; `ISVC_ENABLE_PREFIX_CACHE` turns them off:
 
 ```yaml
 env:
-  - name: ISVC_USE_KV_EVENTS
-    value: "true"
+  - name: ISVC_ENABLE_PREFIX_CACHE
+    value: "false"
 ```
 
-When enabled, each pod publishes KV cache events via ZMQ on port `5557` with topic `kv@<POD_IP>:<port>@<model-name>`, where `<model-name>` is the value of `spec.model.name`. **Legacy coupling:** the current preset still resolves this ZMQ endpoint from `inferencePoolRefs` (`tcp://<inferencePoolRef-name>:5557`), so enabling KV events today still requires `inferencePoolRefs` and `spec.model.name` to be set — the pod exits with an error if either is missing. This is the one remaining use of the deprecated `inferencePoolRefs` field and is expected to migrate to the `mif.moreh.io/aigateway` binding.
+The runtime-base sets no endpoint for the events. vLLM publishes on port `5557` offset by data-parallel rank (`5557+rank`), and the gateway sidecar subscribes at the matching offset — which is why one constant configuration is correct for every rank, and a per-rank endpoint would double-offset. Nothing else has to be set on the `InferenceService` for this to work.
 
 ### Pod role labels
 
