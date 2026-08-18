@@ -524,13 +524,15 @@ For data-parallel decode (`vllm-decode-dp`), the proxy receives `--data-parallel
 
 ### KV cache events
 
-All runtime-bases publish KV cache events to Heimdall for use with the `precise-prefix-cache-scorer` plugin, together with the engine prefix cache. Both are on by default; `ISVC_ENABLE_PREFIX_CACHE` turns them off:
+All runtime-bases publish KV cache events to Heimdall for use with the `precise-prefix-cache-scorer` plugin, together with the engine prefix cache. Both are on by default. Set `ISVC_ENABLE_PREFIX_CACHE` to `"false"` to turn them off:
 
 ```yaml
 env:
   - name: ISVC_ENABLE_PREFIX_CACHE
     value: "false"
 ```
+
+The runtime-base enables them only when the value is exactly `true`, so any other value disables them — leaving the variable unset is what keeps them on.
 
 The runtime-base sets no endpoint for the events. vLLM publishes on port `5557` offset by data-parallel rank (`5557+rank`), and the gateway sidecar subscribes at the matching offset — which is why one constant configuration is correct for every rank, and a per-rank endpoint would double-offset. Nothing else has to be set on the `InferenceService` for this to work.
 
