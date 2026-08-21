@@ -81,8 +81,13 @@ git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1
 # Find the previous stable tag for comparison
 git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -2
 
-# List commits since last stable tag
-git log <latest-stable-tag>..HEAD --oneline --no-merges
+# Count first, so you know how many commits to expect
+git rev-list --no-merges --count <latest-stable-tag>..HEAD
+
+# List commits since last stable tag. Always pass an explicit -n larger than the
+# count above: git log is capped at 50 commits in some environments, and it
+# truncates silently, so commits simply vanish from the release notes.
+git log <latest-stable-tag>..HEAD --oneline --no-merges -n 200
 ```
 
 If the tag already exists, use it. Otherwise, analyze commit types to compute the recommended
@@ -122,8 +127,15 @@ Thoroughly research all changes between the previous stable tag and the release 
 #### 3a. Commit and PR analysis
 
 ```bash
-# Commits between releases
-git log <prevVersion>..<releaseVersion> --oneline --no-merges
+# Commits between releases. Verify the list length matches this count -- see step 1.
+git rev-list --no-merges --count <prevVersion>..<releaseVersion>
+git log <prevVersion>..<releaseVersion> --oneline --no-merges -n 200
+
+# Long subjects can get clipped in tool output, hiding the trailing PR number.
+# Pull the PR number per commit instead of trusting a wrapped subject line.
+for c in $(git log <prevVersion>..<releaseVersion> --no-merges -n 200 --format='%h'); do
+    echo "$c $(git log -1 "$c" --format='%s' | grep -oE '#[0-9]+' | head -1)"
+done
 
 # Overall change stats
 git diff <prevVersion>..<releaseVersion> --stat | tail -5
