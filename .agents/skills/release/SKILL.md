@@ -81,8 +81,22 @@ git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1
 # Find the previous stable tag for comparison
 git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -2
 
-# List commits since last stable tag
+# Count the commits first -- this count is the oracle for the listing below.
+git rev-list --no-merges --count <latest-stable-tag>..HEAD
+
+# List commits since last stable tag, then check the list is as long as the count
+# above. `git log` itself is not capped, but the terminal or agent tool rendering
+# its output may truncate it, which silently drops commits from the release notes.
 git log <latest-stable-tag>..HEAD --oneline --no-merges
+```
+
+If the listing is shorter than the count, do not work around it with `-n` -- the
+limit is in the rendering, not in `git log`. Redirect to a file and read the file,
+which is the only form that reliably survives:
+
+```bash
+git log <latest-stable-tag>..HEAD --oneline --no-merges > /tmp/mif-commits.txt
+wc -l < /tmp/mif-commits.txt   # must equal the rev-list count above
 ```
 
 If the tag already exists, use it. Otherwise, analyze commit types to compute the recommended
@@ -122,8 +136,18 @@ Thoroughly research all changes between the previous stable tag and the release 
 #### 3a. Commit and PR analysis
 
 ```bash
-# Commits between releases
+# Commits between releases. Cross-check the list length against this count, and
+# fall back to the file form from step 1 if the two disagree.
+git rev-list --no-merges --count <prevVersion>..<releaseVersion>
 git log <prevVersion>..<releaseVersion> --oneline --no-merges
+
+# Long subjects can get clipped where the output is rendered, hiding the trailing
+# PR number. Read the PR number from each commit rather than from a wrapped line,
+# going through a file so the commit list itself cannot be truncated.
+git log <prevVersion>..<releaseVersion> --no-merges --format='%h' > /tmp/mif-shas.txt
+while read -r c; do
+    echo "$c $(git log -1 "$c" --format='%s' | grep -oE '#[0-9]+' | head -1)"
+done < /tmp/mif-shas.txt
 
 # Overall change stats
 git diff <prevVersion>..<releaseVersion> --stat | tail -5
