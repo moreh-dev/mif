@@ -64,4 +64,18 @@ Uniformly selects a candidate at random, ignoring scores entirely.
 ### `weighted-random-picker`
 
 Weighted random selection using scores as weights.
+
+## Admissions
+
+### `admission-gate`
+
+Pre-dispatch admission gate: refuses a request when every endpoint in the role pool it would be scheduled onto is saturated.
+
+### `metric-saturation-detector`
+
+Saturation from the engine's scraped load gauges: an endpoint is saturated once its waiting-request depth or its KV-cache usage passes the configured threshold.
+
+### `slo-saturation-detector`
+
+Saturation as predicted latency against two targets: time-to-first-token from the prefill work queued on the endpoint plus this request's own prefill (discounted by the prefix the endpoint already holds cached), and time-per-output-token from the endpoint's total context plus this request's full input (never discounted — decode attention reads cached KV every step).
 {/* AUTO-GENERATED:aigateway-plugins END */}
