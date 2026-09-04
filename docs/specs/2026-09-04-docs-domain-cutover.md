@@ -64,7 +64,7 @@ Within Option B, MIF deploys to the `main` branch of `docs.moreh.io-published` a
 | `docs/specs/2026-09-04-docs-domain-cutover.md` | This plan | Create |
 | `website/static/CNAME` | The custom domain Pages reads from the published branch | Modify |
 | `website/docusaurus.config.ts` | Site URL, and the redirect map for retired Retype paths | Modify |
-| `website/package.json` | Adds `@docusaurus/plugin-client-redirects` | Modify |
+| `website/package.json`, `website/package-lock.json` | Adds `@docusaurus/plugin-client-redirects` | Modify |
 | `.github/workflows/cd-docs.yaml` | Deployment target repository, manual trigger | Modify |
 | `skills/guide-heimdall/SKILL.md` | Documentation URLs cited by the skill | Modify |
 | `skills/guide-odin/SKILL.md` | Documentation URLs cited by the skill | Modify |
@@ -117,20 +117,35 @@ The Retype site uses `snake_case` paths with no `/docs/` prefix; the Docusaurus 
 
 **Files:**
 - Modify: `website/package.json`
+- Modify: `website/package-lock.json`
 - Modify: `website/docusaurus.config.ts`
 
-- [ ] **Step 1: Install the plugin**
+- [x] **Step 1: Install the plugin at the exact version the tree already runs**
+
+Read the core version and install that exact version. Passing a range makes npm resolve to the newest patch while the lockfile holds the rest of the tree at the older one, and npm then installs a second copy of `@docusaurus/core` and its siblings nested under the plugin. A Docusaurus plugin has to share the host's core instance.
 
 ```bash
 cd website
-npm install --save @docusaurus/plugin-client-redirects@^3.10.0
+CORE=$(node -p "require('@docusaurus/core/package.json').version")
+echo "$CORE"
+npm install --save "@docusaurus/plugin-client-redirects@$CORE"
 ```
 
-Expected: `package.json` gains `"@docusaurus/plugin-client-redirects": "^3.10.0"` under `dependencies`, and `package-lock.json` updates. The caret matches how the other `@docusaurus/*` dependencies are pinned in this file.
+Expected: `$CORE` prints `3.10.0`, and `package.json` gains `"@docusaurus/plugin-client-redirects": "^3.10.0"`. npm writes the caret by default, which matches how the sibling `@docusaurus/*` dependencies are declared, while the lockfile pins the exact version that `npm ci` installs in CI.
 
-If `npm ls @docusaurus/core` reports a version other than `3.10.0`, install the matching version instead — the redirects plugin must track the core version.
+- [x] **Step 1b: Confirm the tree holds exactly one core**
 
-- [ ] **Step 2: Declare the redirect map**
+```bash
+cd website
+npm ls @docusaurus/core @docusaurus/plugin-client-redirects
+git diff --stat package.json package-lock.json
+```
+
+Expected: every `@docusaurus/core` line reads the same version, each occurrence after the first marked `deduped`, and a lockfile diff of roughly 25 added lines. A diff in the hundreds means a nested duplicate was installed — recover with `git checkout -- package.json package-lock.json && npm ci`, then redo Step 1.
+
+Observed 2026-09-04: installing `@^3.10.0` resolved to 3.10.2 and added 403 lockfile lines carrying nested `@docusaurus/core`, `bundler`, `mdx-loader` and `utils` copies. Reinstalling at `3.10.0` gave a single deduped core and a 25-line lockfile diff.
+
+- [x] **Step 2: Declare the redirect map**
 
 In `website/docusaurus.config.ts`, insert this constant immediately after the `getLastStableVersion()` function and before `const config: Config = {`:
 
@@ -186,7 +201,7 @@ const retypeRedirects = [
 
 Six Retype paths get no entry because the Docusaurus site has no corresponding page: `/features/auto_scaling`, `/features/context_length_aware_routing`, `/features/expert_parallelism`, `/features/load_aware_routing`, `/best_practices/resource_allocation`, and `/benchmarking/more_benchmarking_for_deepseek_r1_671b_on_amd_mi300x_gpus/performance_with_prefix_cache_and_load_aware_routing`. They will return 404.
 
-- [ ] **Step 3: Register the plugin**
+- [x] **Step 3: Register the plugin**
 
 In the same file, add this entry to the `plugins` array, after the `docusaurus-plugin-image-zoom` entry:
 
@@ -199,7 +214,7 @@ In the same file, add this entry to the `plugins` array, after the `docusaurus-p
     ],
 ```
 
-- [ ] **Step 4: Build and verify the redirect pages are emitted**
+- [x] **Step 4: Build and verify the redirect pages are emitted**
 
 ```bash
 cd website
@@ -216,24 +231,51 @@ grep -o 'http-equiv="refresh"' build/getting_started/quickstart/index.html
 
 Expected: both files exist, and the `grep` prints `http-equiv="refresh"`.
 
-- [ ] **Step 5: Verify every mapped path emitted a page**
+- [x] **Step 5: Verify each redirect points at the destination the map names**
+
+An emitted page proves only that the plugin ran. Read the target each page carries, compare it against the map, and confirm the target is itself built.
 
 ```bash
 cd website
-for p in getting_started/overview getting_started/prerequisites getting_started/quickstart \
-         getting_started/supported_devices getting_started/logs getting_started/monitoring \
-         features/preset features/prefill_decode_disaggregation features/prefix_cache_aware_routing \
-         best_practices/container_image_caching_with_harbor best_practices/hf_model_management_with_pv \
-         benchmarking/deepseek_r1_671b_on_amd_mi300x_gpus_maximum_throughput \
-         reference/heimdall_scheduler reference/odin_inference_service \
-         reference/odin_inference_service_template; do
-  test -f "build/$p/index.html" && echo "ok   $p" || echo "MISS $p"
-done
+python3 - <<'PY'
+import pathlib, re, sys
+cfg = pathlib.Path("docusaurus.config.ts").read_text()
+start = cfg.index("const retypeRedirects")
+block = cfg[start:cfg.index("];", start)]
+pairs = re.findall(r'from:\s*"([^"]+)",\s*\n?\s*to:\s*"([^"]+)"', block)
+fail = 0
+for frm, to in pairs:
+    html = pathlib.Path("build" + frm + "/index.html").read_text()
+    m = re.search(r'http-equiv="refresh"\s+content="0;\s*url=([^"]+)"', html)
+    target = m.group(1) if m else None
+    expected = to if to.endswith("/") else to + "/"
+    dest = pathlib.Path("build" + expected.rstrip("/") + "/index.html")
+    ok = target == expected and dest.exists()
+    fail += 0 if ok else 1
+    if not ok:
+        print(f"FAIL {frm} -> {target}")
+print(f"entries {len(pairs)}, mismatches {fail}")
+sys.exit(1 if fail or len(pairs) != 15 else 0)
+PY
 ```
 
-Expected: 15 lines, every one starting with `ok`. A `MISS` means the `from` value in `retypeRedirects` does not match the path spelled here — reconcile the two before continuing.
+Expected: `entries 15, mismatches 0` and exit status 0. A `FAIL` line names the entry whose emitted target diverges from the map, or whose destination was never built. The entry count is asserted too, so an entry silently dropped from the map fails here.
 
-- [ ] **Step 6: Commit**
+Observed 2026-09-04: `entries 15, mismatches 0`.
+
+- [x] **Step 5b: Confirm the redirect pages stay out of the sitemap**
+
+```bash
+cd website
+grep -c '/getting_started/quickstart/<' build/sitemap.xml
+grep -o '<loc>' build/sitemap.xml | wc -l
+```
+
+Expected: `0` from the first command — redirect stubs must not be advertised as content — and `50` from the second, matching the page count of the site itself.
+
+Observed 2026-09-04: `0` and `50`.
+
+- [x] **Step 6: Commit**
 
 ```bash
 git add website/package.json website/package-lock.json website/docusaurus.config.ts
