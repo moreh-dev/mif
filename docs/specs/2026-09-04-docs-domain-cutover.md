@@ -73,31 +73,41 @@ Within Option B, MIF deploys to the `main` branch of `docs.moreh.io-published` a
 
 ## Task 1: Confirm the deployment credential reaches the new target
 
-`MIF_DOCS_TOKEN` is not a repository secret of `moreh-dev/mif`, so it is inherited from an organization secret whose value is not readable. `gitgod-bot` holds `admin` on `docs.moreh.io-published`, but a fine-grained token can still be scoped to a repository allowlist that excludes it. Confirm before anything else, because every later task assumes the push succeeds.
+`MIF_DOCS_TOKEN` is not a repository secret of `moreh-dev/mif`, so it resolves from an organization secret whose value is not readable. `gitgod-bot` holds `admin` on `docs.moreh.io-published`, but a fine-grained token can still carry a repository allowlist that excludes it. Two of the three checks are observable from an ordinary member account; the third is not, and Step 3 says what to do about that.
 
 **Files:** none.
 
-- [ ] **Step 1: Confirm the bot's standing access to the new target**
+- [x] **Step 1: Confirm the bot's standing access to the new target**
 
 ```bash
 gh api repos/moreh-dev/docs.moreh.io-published/collaborators/gitgod-bot/permission --jq '.permission'
+gh api repos/moreh-dev/test-docs.moreh.io/collaborators/gitgod-bot/permission --jq '.permission'
 ```
 
-Expected: `admin`
+Expected: `admin` from both, meaning the account's effective permission on the new target matches the target it already deploys to.
 
-- [ ] **Step 2: Confirm the secret is not defined at repository level**
+Observed 2026-09-04: `admin` and `admin`. The grant is not a direct collaboration — `repos/moreh-dev/docs.moreh.io-published/collaborators?affiliation=direct` does not list `gitgod-bot` — so it arrives through an organization or team grant, which the permission endpoint resolves authoritatively.
+
+- [x] **Step 2: Confirm where the secret is defined**
 
 ```bash
 gh api repos/moreh-dev/mif/actions/secrets --jq '.secrets[].name'
+gh api repos/moreh-dev/mif/actions/organization-secrets --jq '.secrets[].name'
 ```
 
-Expected: a list that does **not** contain `MIF_DOCS_TOKEN`, confirming it resolves from the organization.
+Expected: `MIF_DOCS_TOKEN` absent from the first list and present in the second, confirming it resolves from the organization.
 
-- [ ] **Step 3: Ask an organization admin to confirm the token's repository scope**
+Observed 2026-09-04: the repository holds `HF_ENDPOINT`, `HF_TOKEN`, `KUBECONFIG_BASE64`; the organization exposes `MIF_DOCS_TOKEN` to this repository. An organization-wide code search returns exactly one consumer, `moreh-dev/mif/.github/workflows/cd-docs.yaml`, so no other workflow's success can serve as evidence about how broadly the token is scoped.
 
-Ask whoever administers the `moreh-dev` organization secrets to confirm that the token behind `MIF_DOCS_TOKEN` either is a classic PAT with `repo` scope, or is a fine-grained PAT whose repository allowlist includes `moreh-dev/docs.moreh.io-published`.
+- [ ] **Step 3: Resolve the token's repository scope, or let Task 6 resolve it**
 
-If it is fine-grained and scoped to `moreh-dev/test-docs.moreh.io` only, the allowlist must be extended before Task 6. Do not start Task 6 until this is answered — a failed push there leaves the workflow red but the live site untouched, which is recoverable, whereas discovering it after the Pages source switch leaves `main` empty and the site broken.
+The token's type and repository allowlist are visible only to an organization secrets administrator; `orgs/moreh-dev/actions/secrets` returns `403` for an ordinary member. Either of the following closes this.
+
+**(a) Ask.** Ask whoever administers `moreh-dev` organization secrets whether the token behind `MIF_DOCS_TOKEN` is a classic PAT carrying `repo` scope, or a fine-grained PAT whose repository allowlist includes `moreh-dev/docs.moreh.io-published`. If it is fine-grained and scoped to `moreh-dev/test-docs.moreh.io` alone, the allowlist has to be extended.
+
+**(b) Let the deployment answer it.** Task 6 Steps 1 through 3 push to `docs.moreh.io-published` while that repository's Pages source still points at `publish-build`. A rejected push fails the workflow and leaves the live site serving the Retype build, so the question is answered at no cost.
+
+The gate is therefore **Task 6 Step 4**, not Task 6 as a whole: do not switch the Pages source branch until Task 6 Step 2 has confirmed the build output is on `main`. Switching first would point Pages at a branch holding only the initial commit, which both breaks the site and drops the CNAME file that keeps the custom domain bound.
 
 ---
 
