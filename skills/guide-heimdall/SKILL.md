@@ -30,10 +30,10 @@ For field-level CRD detail and the full plugin catalog beyond this guide, consul
 
 | Topic | Local path | URL (fallback) |
 | --- | --- | --- |
-| CRD field reference (`AIGateway`, `SchedulingProfile`, `InferenceWorker`) | `website/docs/reference/heimdall/usage.mdx` | https://test-docs.moreh.io/dev/reference/heimdall/usage/ |
-| Plugin catalog (scorers, pickers) | `website/docs/reference/heimdall/plugins.mdx` | https://test-docs.moreh.io/dev/reference/heimdall/plugins/ |
-| End-to-end quickstart | `website/docs/getting-started/quickstart.mdx` | https://test-docs.moreh.io/dev/getting-started/quickstart/ |
-| Operator install (prerequisites) | `website/docs/getting-started/prerequisites.mdx` | https://test-docs.moreh.io/dev/getting-started/prerequisites/ |
+| CRD field reference (`AIGateway`, `SchedulingProfile`, `InferenceWorker`) | `website/docs/reference/heimdall/usage.mdx` | https://docs.moreh.io/dev/reference/heimdall/usage/ |
+| Plugin catalog (scorers, pickers) | `website/docs/reference/heimdall/plugins.mdx` | https://docs.moreh.io/dev/reference/heimdall/plugins/ |
+| End-to-end quickstart | `website/docs/getting-started/quickstart.mdx` | https://docs.moreh.io/dev/getting-started/quickstart/ |
+| Operator install (prerequisites) | `website/docs/getting-started/prerequisites.mdx` | https://docs.moreh.io/dev/getting-started/prerequisites/ |
 
 ---
 

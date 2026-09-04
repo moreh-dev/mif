@@ -42,13 +42,13 @@ kubectl get inferenceservicetemplate -n mif -l mif.moreh.io/template.type=preset
 
 When you need field-level details beyond this guide (e.g., exact CRD validation rules, all supported env variables, template variable list), consult the reference docs below. Prefer the local file path when filesystem access is available (faster, complete). Use the URL as a fallback when filesystem access is unavailable.
 
-| Topic                          | Local path                                                | URL (fallback)                                                         |
-| ------------------------------ | --------------------------------------------------------- | ---------------------------------------------------------------------- |
-| API field reference (CRD spec) | `website/docs/reference/odin/api-reference.mdx`           | https://test-docs.moreh.io/dev/reference/odin/api-reference/           |
-| Template composition & presets | `website/docs/features/preset.mdx`                        | https://test-docs.moreh.io/dev/features/preset/                        |
-| End-to-end quickstart          | `website/docs/getting-started/quickstart.mdx`             | https://test-docs.moreh.io/dev/getting-started/quickstart/             |
-| PV-based model management      | `website/docs/operations/hf-model-management-with-pv.mdx` | https://test-docs.moreh.io/dev/operations/hf-model-management-with-pv/ |
-| Monitoring & metrics           | `website/docs/operations/monitoring/metrics/index.mdx`    | https://test-docs.moreh.io/dev/operations/monitoring/metrics/          |
+| Topic                          | Local path                                                | URL (fallback)                                                    |
+| ------------------------------ | --------------------------------------------------------- | ----------------------------------------------------------------- |
+| API field reference (CRD spec) | `website/docs/reference/odin/api-reference.mdx`           | https://docs.moreh.io/dev/reference/odin/api-reference/           |
+| Template composition & presets | `website/docs/features/preset.mdx`                        | https://docs.moreh.io/dev/features/preset/                        |
+| End-to-end quickstart          | `website/docs/getting-started/quickstart.mdx`             | https://docs.moreh.io/dev/getting-started/quickstart/             |
+| PV-based model management      | `website/docs/operations/hf-model-management-with-pv.mdx` | https://docs.moreh.io/dev/operations/hf-model-management-with-pv/ |
+| Monitoring & metrics           | `website/docs/operations/monitoring/metrics/index.mdx`    | https://docs.moreh.io/dev/operations/monitoring/metrics/          |
 
 ---
 
