@@ -4,7 +4,7 @@
 
 **Goal:** Serve the MIF Docusaurus documentation at `docs.moreh.io`, retire the Retype site that occupies that domain, and remove `test-docs.moreh.io`.
 
-**Architecture:** `docs.moreh.io` is already bound as the GitHub Pages custom domain of `moreh-dev/docs.moreh.io-published`, with an approved certificate. Instead of moving that domain onto the repository MIF deploys into today (`moreh-dev/test-docs.moreh.io`), this plan retargets the MIF deployment workflow at `docs.moreh.io-published` and switches that repository's Pages source branch to the one MIF publishes. The custom-domain binding is never released, so no certificate is reissued and no HSTS gap opens.
+**Architecture:** `docs.moreh.io` is already bound as the GitHub Pages custom domain of `moreh-dev/docs.moreh.io-published`, serving its `publish-build` branch with an approved certificate. Instead of moving that domain onto the repository MIF deploys into today (`moreh-dev/test-docs.moreh.io`), this plan retargets the MIF deployment workflow to publish onto `publish-build` itself. Neither the custom-domain binding nor the Pages configuration is touched, so no certificate is reissued, no HSTS gap opens, and the cutover needs no repository-admin permission.
 
 **Tech Stack:** Docusaurus 3.10, `@docusaurus/plugin-client-redirects`, GitHub Actions, GitHub Pages (legacy branch build), Cloudflare DNS.
 
@@ -44,11 +44,24 @@ Facts that shape the plan:
 | HSTS exposure | `max-age=31556952` is already set on the domain, so visitors get an unbypassable error during the certificate gap | None |
 | Removing the old site | Separate step | Implicit — the same repository starts serving the new content |
 | DNS work | Delete one record | Delete one record |
-| Rollback | Re-bind domain, wait for another certificate | Point the Pages source branch back at `publish-build` |
+| Rollback | Re-bind domain, wait for another certificate | Restore the previous branch content |
 
 Option B is chosen. The decisive difference is the certificate gap: because `docs.moreh.io` already sends HSTS with a one-year max-age, a browser that has seen the site cannot click through a certificate error, so Option A carries a hard-outage window whose length GitHub does not guarantee.
 
-Within Option B, MIF deploys to the `main` branch of `docs.moreh.io-published` and the Pages source moves from `publish-build` to `main`, rather than overwriting `publish-build`. This keeps `publish-build` intact as a rollback snapshot, and it makes a stray run of the Retype publish workflow harmless because that workflow writes only to `publish-build`.
+Within Option B there are two placements for the build, and the deciding factor is permission rather than mechanism.
+
+| | B1: deploy to `main`, repoint Pages at `main` | B2: deploy onto `publish-build`, the branch Pages already serves |
+| --- | --- | --- |
+| GitHub settings change | `PUT /repos/.../pages`, which requires **admin** on `docs.moreh.io-published` | None |
+| Who can perform the cutover | Only a repository admin | Anyone with write, which the docs maintainers already hold |
+| Who can perform the rollback | Only a repository admin | Anyone with write |
+| Previous site preserved | Yes, `publish-build` is left untouched | Only if it is archived to another branch first |
+| Stray Retype publish run | Harmless, it writes to a branch Pages no longer serves | **Overwrites the live site**, so the Retype workflow must be disabled first |
+| Cutover moment | A deliberate settings change after the deploy is verified | The merge itself |
+
+B2 is chosen. The docs maintainers hold `push`, not `admin`, on `docs.moreh.io-published`, so B1 makes both the cutover and every future rollback depend on reaching one of the four repository admins. A recovery path that requires someone else to be available is worse than the checkpoint B1 buys.
+
+B2's two costs are paid up front in Task 6: the previous site is archived to a branch so rollback stays a one-command push, and the Retype publish workflow is disabled so it cannot overwrite the live site.
 
 ## Out of scope
 
@@ -105,9 +118,9 @@ The token's type and repository allowlist are visible only to an organization se
 
 **(a) Ask.** Ask whoever administers `moreh-dev` organization secrets whether the token behind `MIF_DOCS_TOKEN` is a classic PAT carrying `repo` scope, or a fine-grained PAT whose repository allowlist includes `moreh-dev/docs.moreh.io-published`. If it is fine-grained and scoped to `moreh-dev/test-docs.moreh.io` alone, the allowlist has to be extended.
 
-**(b) Let the deployment answer it.** Task 6 Steps 1 through 3 push to `docs.moreh.io-published` while that repository's Pages source still points at `publish-build`. A rejected push fails the workflow and leaves the live site serving the Retype build, so the question is answered at no cost.
+**(b) Let the deployment answer it.** The cutover in Task 7 *is* the deployment. If the token cannot write to `docs.moreh.io-published` the push is rejected, the workflow goes red, and `publish-build` still holds the Retype build, so `docs.moreh.io` is unchanged.
 
-The gate is therefore **Task 6 Step 4**, not Task 6 as a whole: do not switch the Pages source branch until Task 6 Step 2 has confirmed the build output is on `main`. Switching first would point Pages at a branch holding only the initial commit, which both breaks the site and drops the CNAME file that keeps the custom domain bound.
+There is therefore no gate to hold the merge behind. The failure mode is a red workflow over an unchanged site, not a broken one — a property Task 6 secures by archiving `publish-build` and disabling the Retype publish workflow before anything writes to that branch. Resolve the scope question whenever convenient.
 
 ---
 
@@ -343,7 +356,7 @@ git commit -m "MAF-20888: feat(website): serve the documentation site from docs.
 
 ## Task 4: Retarget the deployment workflow
 
-`docusaurus deploy` pushes the build output to `https://<GIT_USER>:<GIT_PASS>@github.com/<ORGANIZATION_NAME>/<PROJECT_NAME>.git` on `<DEPLOYMENT_BRANCH>`. Only `PROJECT_NAME` changes; `DEPLOYMENT_BRANCH` is already `main`, which is the branch this plan makes the new Pages source.
+`docusaurus deploy` pushes the build output to `https://<GIT_USER>:<GIT_PASS>@github.com/<ORGANIZATION_NAME>/<PROJECT_NAME>.git` on `<DEPLOYMENT_BRANCH>`. Both change: the repository becomes the one that owns the `docs.moreh.io` domain, and the branch becomes the one its Pages already serves.
 
 A `workflow_dispatch` trigger is added because the workflow currently fires only on pushes touching `website/**`. The cutover needs to be run and, if necessary, re-run on demand without an unrelated content commit.
 
@@ -381,13 +394,17 @@ In the same file, change:
 
 ```yaml
       PROJECT_NAME: "test-docs.moreh.io"
+      DEPLOYMENT_BRANCH: "main"
 ```
 
 to:
 
 ```yaml
       PROJECT_NAME: "docs.moreh.io-published"
+      DEPLOYMENT_BRANCH: "publish-build"
 ```
+
+`PROJECT_NAME` names the repository `docusaurus deploy` pushes to and `DEPLOYMENT_BRANCH` names the branch. Together they place the build on exactly the branch GitHub Pages already serves for `docs.moreh.io`, which is what removes the need for any settings change.
 
 - [x] **Step 3: Verify the workflow still parses and carries the intended target**
 
@@ -401,11 +418,11 @@ print(json.dumps(d['jobs']['build']['env'], indent=2))
 "
 ```
 
-Expected: no output from `grep`; `triggers: ['workflow_dispatch', 'push']`; and an env block whose `PROJECT_NAME` is `docs.moreh.io-published` with `DEPLOYMENT_BRANCH` still `main`. The YAML load is what catches an indentation slip in the `on:` block, which `grep` cannot see.
+Expected: no output from `grep`; `triggers: ['workflow_dispatch', 'push']`; and an env block whose `PROJECT_NAME` is `docs.moreh.io-published` and `DEPLOYMENT_BRANCH` is `publish-build`. The YAML load is what catches an indentation slip in the `on:` block, which `grep` cannot see.
 
-Observed 2026-09-04: no `grep` output, both triggers present, `PROJECT_NAME` retargeted.
+Observed 2026-09-04: no `grep` output, both triggers present, `PROJECT_NAME` set to `docs.moreh.io-published` and `DEPLOYMENT_BRANCH` to `publish-build`.
 
-Note for Task 6: `workflow_dispatch` becomes selectable only once this file is on the default branch. Until the branch merges, the first deployment has to come from the push trigger.
+Note for Task 7: `workflow_dispatch` becomes selectable only once this file is on the default branch. The cutover deployment therefore comes from the push trigger on merge; the manual trigger exists for re-runs after that.
 
 - [x] **Step 4: Commit**
 
@@ -464,67 +481,105 @@ git commit -m "MAF-20888: docs(skills): cite the docs.moreh.io host"
 
 ---
 
-## Task 6: Deploy to the new target, then switch the Pages source
+## Task 6: Prepare the target before the cutover
 
-Order matters. GitHub Pages reads the CNAME file from whichever branch is the source. If the source branch is switched to `main` while `main` still holds only the initial commit, Pages finds no CNAME file and can drop the custom domain — which is exactly the certificate reissue this plan exists to avoid. Deploy first so `main` already carries `CNAME` and `index.html`, then switch.
+Deploying onto `publish-build` overwrites the live site in place, which costs two protections that placing the build elsewhere would have given for free. Both are bought back here, and both must be done **before** the branch merges.
+
+**Files:** none. This task runs against GitHub and needs only `push` permission.
+
+- [x] **Step 1: Archive the site currently being served**
+
+`publish-build` holds the Retype build that `docs.moreh.io` serves. `docusaurus deploy` force-pushes, so without a second ref pointing at that commit it becomes unreachable.
+
+```bash
+R=moreh-dev/docs.moreh.io-published
+SHA=$(gh api repos/$R/branches/publish-build --jq '.commit.sha')
+echo "$SHA"
+gh api -X POST repos/$R/git/refs --input - <<JSON
+{"ref": "refs/heads/retype-archive", "sha": "$SHA"}
+JSON
+```
+
+Expected: the API returns the new ref with the same SHA the branch reported.
+
+Observed 2026-09-04: `retype-archive` created at `837780c855f6b2a680db5523f15332b3f7ca532d`.
+
+- [x] **Step 2: Confirm the archive really holds the site**
+
+A ref pointing at the right commit is not proof the content is there. Read the tree.
+
+```bash
+gh api "repos/moreh-dev/docs.moreh.io-published/contents?ref=retype-archive" --jq '[.[].name] | join(", ")'
+gh api repos/moreh-dev/docs.moreh.io-published/contents/CNAME?ref=retype-archive --jq '.content' | base64 -d
+```
+
+Expected: `index.html`, `CNAME` and the Retype section directories (`benchmarking`, `best_practices`, `features`, `getting_started`, `reference`), and a CNAME reading `docs.moreh.io`. Without the CNAME the archive would restore the content but drop the custom domain.
+
+Observed 2026-09-04: `.nojekyll, 404.html, CNAME, benchmarking, best_practices, features, getting_started, index.html, reference, resources, robots.txt, sitemap.xml.gz, static`, and `docs.moreh.io`.
+
+- [x] **Step 3: Disable the Retype publish workflow**
+
+`moreh-dev/docs.moreh.io` force-pushes to `publish-build` whenever its `publish` branch is updated. Once the MIF site lives on that branch, such a push silently replaces the live site with the Retype build. Disabling the workflow is what makes the cutover durable, not housekeeping.
+
+The internal preview workflow (`retype-action-main.yml`, which builds `main` into `main-build`) stays enabled. The internal Retype site is not part of this cutover.
+
+```bash
+gh workflow disable "Publish the final version to GitHub Pages" --repo moreh-dev/docs.moreh.io
+gh api repos/moreh-dev/docs.moreh.io/actions/workflows --jq '.workflows[] | "\(.state)\t\(.name)"'
+```
+
+Expected: `Publish the final version to GitHub Pages` reads `disabled_manually`, and `Publish the working version to GitHub Pages` stays `active`.
+
+Observed 2026-09-04: exactly that.
+
+- [ ] **Step 4: Record the unpublished internal commits in the pull request**
+
+```bash
+gh api repos/moreh-dev/docs.moreh.io/compare/publish...main --jq '{ahead_by, behind_by}'
+```
+
+Expected: `{"ahead_by": 6, "behind_by": 1}`, unchanged from 2026-09-04. The 6 ahead are internal Retype edits that were never published to `docs.moreh.io`, so the cutover loses nothing that was live; the 1 behind is `Publish 2026/03/25 (#130)`, which exists only on `publish`. A larger `ahead_by` means more internal edits have accumulated since — still unpublished and still unaffected, but say so in the pull request.
+
+---
+
+## Task 7: Cut over by merging
+
+With Task 6 done, the cutover is the merge. Merging touches `website/**`, which fires `docs-production-deploy`; the workflow builds and force-pushes onto `publish-build`; GitHub Pages rebuilds and `docs.moreh.io` serves the new site. There is no settings change and no separate switch.
+
+This also settles Task 1 Step 3. If the token cannot write to `docs.moreh.io-published` the push fails, the workflow goes red, and `docs.moreh.io` keeps serving the Retype build untouched.
 
 **Files:** none. This task runs against GitHub.
 
-- [ ] **Step 1: Merge the branch to `main` and let the workflow run**
-
-Open a pull request for the branch, merge it, and confirm the `docs-production-deploy` workflow starts. The merge touches `website/**`, so the push trigger fires.
+- [ ] **Step 1: Merge the branch and watch the deployment**
 
 ```bash
 gh run list --repo moreh-dev/mif --workflow docs-production-deploy --limit 3
 ```
 
-Expected: the newest run is `in_progress` or `completed` with `success`. If it failed on the push step, return to Task 1 Step 3 — the token scope is the likely cause.
+Expected: a run for the merge commit reaching `completed` with `success`. A failure on the deploy step points at the token scope — see Task 1 Step 3 — and leaves the live site unchanged.
 
-- [ ] **Step 2: Confirm the build output landed on the new target**
-
-```bash
-gh api repos/moreh-dev/docs.moreh.io-published/contents/CNAME?ref=main --jq '.content' | base64 -d
-gh api repos/moreh-dev/docs.moreh.io-published/contents?ref=main --jq '.[].name' | head -20
-```
-
-Expected: the first command prints `docs.moreh.io`; the second lists `404.html`, `assets`, `blog`, `docs`, `index.html`, `sitemap.xml` among others.
-
-Note: `docusaurus deploy` force-pushes, so the `README.md` currently on `main` is replaced. That file is not referenced anywhere.
-
-- [ ] **Step 3: Record the rollback pointer**
+- [ ] **Step 2: Confirm the build landed on the served branch**
 
 ```bash
-gh api repos/moreh-dev/docs.moreh.io-published/branches/publish-build --jq '.commit.sha'
+R=moreh-dev/docs.moreh.io-published
+gh api repos/$R/contents/CNAME?ref=publish-build --jq '.content' | base64 -d
+gh api "repos/$R/contents?ref=publish-build" --jq '[.[].name] | join(", ")'
 ```
 
-Expected: a commit SHA. Write it into the pull request description. `publish-build` is left untouched and is the rollback target.
+Expected: CNAME still reads `docs.moreh.io`, and the listing now shows the Docusaurus output — `assets`, `blog`, `docs`, `index.html`, `sitemap.xml` — rather than the Retype directories. A CNAME that came back empty or different means the deploy dropped it; restore from `retype-archive` immediately, because the custom domain depends on that file.
 
-- [ ] **Step 4: Switch the Pages source branch**
-
-```bash
-gh api -X PUT repos/moreh-dev/docs.moreh.io-published/pages --input - <<'JSON'
-{"source": {"branch": "main", "path": "/"}}
-JSON
-```
-
-- [ ] **Step 5: Verify the Pages record**
+- [ ] **Step 3: Confirm the Pages configuration was never touched**
 
 ```bash
 gh api repos/moreh-dev/docs.moreh.io-published/pages \
-  --jq '{cname, source, status, https_enforced, cert: .https_certificate.state}'
+  --jq '{cname, source, https_enforced, cert: .https_certificate.state, expires: .https_certificate.expires_at}'
 ```
 
-Expected: `cname` is `docs.moreh.io`, `source.branch` is `main`, `https_enforced` is `true`, and `cert` is `approved`. If `cname` came back `null`, immediately re-set it — the domain must not be left unbound:
+Expected: `cname` is `docs.moreh.io`, `source.branch` is `publish-build`, `https_enforced` is `true`, `cert` is `approved`, and `expires` is `2026-10-12` — the same certificate as before the cutover. A different expiry would mean the domain was released and re-bound somewhere, which this approach is built to avoid.
 
-```bash
-gh api -X PUT repos/moreh-dev/docs.moreh.io-published/pages --input - <<'JSON'
-{"cname": "docs.moreh.io", "https_enforced": true}
-JSON
-```
+- [ ] **Step 4: Verify the live site**
 
-- [ ] **Step 6: Verify the live site**
-
-Wait for `status` to read `built`, then:
+Wait for Pages `status` to read `built`, then:
 
 ```bash
 for p in / /docs/getting-started/quickstart/ /docs/reference/heimdall/usage/ /docs/features/preset/ /blog/; do
@@ -535,7 +590,7 @@ done
 
 Expected: `http=200` on every line.
 
-- [ ] **Step 7: Verify the redirects**
+- [ ] **Step 5: Verify the redirects from the retired Retype paths**
 
 ```bash
 for p in /getting_started/quickstart/ /features/preset/ /reference/heimdall_scheduler/; do
@@ -546,53 +601,11 @@ done
 
 Expected: `1` on every line.
 
-- [ ] **Step 8: Verify the certificate was never reissued**
-
-```bash
-gh api repos/moreh-dev/docs.moreh.io-published/pages --jq '.https_certificate.expires_at'
-```
-
-Expected: `2026-10-12`, unchanged from the pre-cutover observation. A different date means the domain was released and re-bound at some point; the site still works, but note it in the pull request so the certificate window is tracked.
-
----
-
-## Task 7: Stop the Retype publish pipeline
-
-`moreh-dev/docs.moreh.io` force-pushes to `publish-build` whenever its `publish` branch is updated. With the Pages source now on `main`, such a push cannot reach the live site, but leaving the workflow enabled invites a future engineer to believe they are publishing the public site when they are not.
-
-The internal preview workflow (`retype-action-main.yml`, which builds `main` into `main-build`) is left enabled — the internal Retype site is not part of this cutover.
-
-**Files:** none in this repository.
-
-- [ ] **Step 1: Disable the publish workflow**
-
-```bash
-gh workflow disable "Publish the final version to GitHub Pages" --repo moreh-dev/docs.moreh.io
-```
-
-- [ ] **Step 2: Verify it is disabled**
-
-```bash
-gh workflow list --repo moreh-dev/docs.moreh.io --all
-```
-
-Expected: `Publish the final version to GitHub Pages` shows state `disabled_manually`.
-
-- [ ] **Step 3: Note the unpublished commits in the pull request**
-
-`moreh-dev/docs.moreh.io` `main` is 6 commits ahead of `publish` and 1 behind it, the latter being `Publish 2026/03/25 (#130)`, which exists only on `publish`. The 6 ahead were never published to `docs.moreh.io`, so this cutover does not lose anything that was live. Record the divergence in the pull request description.
-
-```bash
-gh api repos/moreh-dev/docs.moreh.io/compare/publish...main --jq '{ahead_by, behind_by}'
-```
-
-Expected: `{"ahead_by": 6, "behind_by": 1}`, unchanged from 2026-09-04. A larger `ahead_by` means someone has written internal Retype docs since; that content is still unpublished and unaffected, but say so in the pull request.
-
 ---
 
 ## Task 8: Retire `test-docs.moreh.io`
 
-Run only after Task 6 verification passes. Until the DNS record is removed, `test-docs.moreh.io` keeps serving the last build pushed to `moreh-dev/test-docs.moreh.io`, which is a working fallback.
+Run only after Task 7 verification passes. Until the DNS record is removed, `test-docs.moreh.io` keeps serving the last build pushed to `moreh-dev/test-docs.moreh.io`, which is a working fallback.
 
 **Files:** none.
 
@@ -653,19 +666,22 @@ Both need `https://test-docs.moreh.io/` rewritten to `https://docs.moreh.io/`. T
 
 ## Rollback
 
+Every row is executable with `push` permission. None of them touches the Pages configuration, so none of them waits on a certificate.
+
 | Situation | Action | Recovery time |
 | --- | --- | --- |
-| New site is broken after the source switch | `gh api -X PUT repos/moreh-dev/docs.moreh.io-published/pages --input -` with `{"source": {"branch": "publish-build", "path": "/"}}` | One Pages build; domain and certificate untouched |
-| Deployment workflow cannot push to the new target | Revert the `PROJECT_NAME` change and re-run; `docs.moreh.io` keeps serving the Retype build because the Pages source has not moved yet | Immediate, provided Task 6 Step 4 has not run |
-| `test-docs.moreh.io` needed again after Task 8 | Re-create the Cloudflare `CNAME` record and re-enable Pages on the archived repository | Five minutes for DNS, plus certificate reissue for the restored domain |
+| The new site is broken after the cutover | `git push --force` the `retype-archive` content back onto `publish-build`, or `gh api -X PATCH repos/moreh-dev/docs.moreh.io-published/git/refs/heads/publish-build -f sha=837780c8... -F force=true` | One Pages build; domain and certificate untouched |
+| The deployment workflow cannot push to the new target | Nothing to undo. The push failed, so `publish-build` still holds the Retype build and `docs.moreh.io` is unchanged. Fix the token scope and re-run | Immediate |
+| A future Retype publish overwrites the live site | Re-run the MIF deployment via `workflow_dispatch`, then confirm the Retype publish workflow is still disabled | One workflow run |
+| `test-docs.moreh.io` is needed again after Task 8 | Re-create the Cloudflare `CNAME` record and re-enable Pages on the archived repository | Five minutes for DNS, plus certificate reissue for the restored domain |
 
-The rollback in the first row is why Task 6 switches the Pages source instead of overwriting `publish-build`: the previous site remains byte-for-byte intact on its own branch.
+The first row is why Task 6 archives `publish-build` before anything writes to it. Without `retype-archive`, the previous site would survive only as an unreferenced commit.
 
 ## Completion criteria
 
 Mapped from the ticket.
 
-- [ ] `docs.moreh.io` serves the MIF Docusaurus site — verified by Task 6 Step 6.
-- [ ] The previous Retype site is no longer served — the Pages source no longer points at `publish-build` (Task 6 Step 5) and its publish pipeline is disabled (Task 7).
+- [ ] `docs.moreh.io` serves the MIF Docusaurus site — verified by Task 7 Step 4.
+- [ ] The previous Retype site is no longer served — its build is replaced on `publish-build` (Task 7 Step 2) and its publish pipeline is disabled (Task 6 Step 3).
 - [ ] `test-docs.moreh.io` no longer resolves — verified by Task 8 Step 2.
-- [ ] HTTPS and the main documentation paths respond correctly after propagation — verified by Task 6 Steps 5 through 8.
+- [ ] HTTPS and the main documentation paths respond correctly after propagation — verified by Task 7 Steps 3 through 5, including that the certificate is the same one as before the cutover.
