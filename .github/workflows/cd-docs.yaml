@@ -1,6 +1,7 @@
 name: docs-production-deploy
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -22,7 +23,7 @@ jobs:
 
     env:
       ORGANIZATION_NAME: "moreh-dev"
-      PROJECT_NAME: "test-docs.moreh.io"
+      PROJECT_NAME: "docs.moreh.io-published"
       DEPLOYMENT_BRANCH: "main"
       GIT_USER: "gitgod-bot"
       GIT_USER_NAME: "gitgod"
