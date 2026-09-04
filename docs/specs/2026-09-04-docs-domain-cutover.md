@@ -292,7 +292,7 @@ git commit -m "MAF-20888: feat(website): redirect retired Retype paths to their 
 - Modify: `website/static/CNAME`
 - Modify: `website/docusaurus.config.ts:17`
 
-- [ ] **Step 1: Update the CNAME file**
+- [x] **Step 1: Update the CNAME file**
 
 ```bash
 echo 'docs.moreh.io' > website/static/CNAME
@@ -301,7 +301,7 @@ cat website/static/CNAME
 
 Expected: `docs.moreh.io`
 
-- [ ] **Step 2: Update the site URL**
+- [x] **Step 2: Update the site URL**
 
 In `website/docusaurus.config.ts`, change:
 
@@ -315,19 +315,24 @@ to:
   url: "https://docs.moreh.io/",
 ```
 
-- [ ] **Step 3: Build and verify the emitted canonical host**
+- [x] **Step 3: Build and verify the emitted canonical host**
+
+`sitemap.xml` is emitted as a single line, so `grep -c` would report `1` no matter how many entries carry the host. Count occurrences instead, and sweep the whole build output rather than the sitemap alone.
 
 ```bash
 cd website
 npm run build
 cat build/CNAME
-grep -c 'https://docs.moreh.io' build/sitemap.xml
-grep -c 'test-docs.moreh.io' build/sitemap.xml
+grep -o 'https://docs\.moreh\.io' build/sitemap.xml | wc -l
+grep -o 'https://test-docs\.moreh\.io' build/sitemap.xml | wc -l
+grep -rl 'test-docs\.moreh\.io' build/
 ```
 
-Expected: `build/CNAME` contains `docs.moreh.io`; the first `grep -c` prints a non-zero count; the second prints `0`.
+Expected: `build/CNAME` reads `docs.moreh.io`; the first count is `50`, matching the sitemap entry count; the second is `0`; and the final `grep -rl` prints nothing, so no page, feed, or search index still carries the old host.
 
-- [ ] **Step 4: Commit**
+Observed 2026-09-04: `docs.moreh.io`, `50`, `0`, and no files. Canonical links across the build resolve to `https://docs.moreh.io` only.
+
+- [x] **Step 4: Commit**
 
 ```bash
 git add website/static/CNAME website/docusaurus.config.ts
@@ -345,7 +350,7 @@ A `workflow_dispatch` trigger is added because the workflow currently fires only
 **Files:**
 - Modify: `.github/workflows/cd-docs.yaml`
 
-- [ ] **Step 1: Add the manual trigger**
+- [x] **Step 1: Add the manual trigger**
 
 In `.github/workflows/cd-docs.yaml`, change:
 
@@ -370,7 +375,7 @@ on:
       - "website/**"
 ```
 
-- [ ] **Step 2: Change the deployment target**
+- [x] **Step 2: Change the deployment target**
 
 In the same file, change:
 
@@ -384,15 +389,25 @@ to:
       PROJECT_NAME: "docs.moreh.io-published"
 ```
 
-- [ ] **Step 3: Verify no other reference to the old target remains in the workflow**
+- [x] **Step 3: Verify the workflow still parses and carries the intended target**
 
 ```bash
 grep -n 'test-docs' .github/workflows/cd-docs.yaml
+python3 -c "
+import yaml, json
+d = yaml.safe_load(open('.github/workflows/cd-docs.yaml'))
+print('triggers:', list(d[True].keys()))
+print(json.dumps(d['jobs']['build']['env'], indent=2))
+"
 ```
 
-Expected: no output.
+Expected: no output from `grep`; `triggers: ['workflow_dispatch', 'push']`; and an env block whose `PROJECT_NAME` is `docs.moreh.io-published` with `DEPLOYMENT_BRANCH` still `main`. The YAML load is what catches an indentation slip in the `on:` block, which `grep` cannot see.
 
-- [ ] **Step 4: Commit**
+Observed 2026-09-04: no `grep` output, both triggers present, `PROJECT_NAME` retargeted.
+
+Note for Task 6: `workflow_dispatch` becomes selectable only once this file is on the default branch. Until the branch merges, the first deployment has to come from the push trigger.
+
+- [x] **Step 4: Commit**
 
 ```bash
 git add .github/workflows/cd-docs.yaml
@@ -407,22 +422,40 @@ git commit -m "MAF-20888: chore(workflow): deploy the docs site to docs.moreh.io
 - Modify: `skills/guide-heimdall/SKILL.md:33-36`
 - Modify: `skills/guide-odin/SKILL.md:47-51`
 
-- [ ] **Step 1: Rewrite the URLs**
+- [x] **Step 1: Rewrite the URLs**
 
 ```bash
 sed -i 's|https://test-docs\.moreh\.io/|https://docs.moreh.io/|g' \
   skills/guide-heimdall/SKILL.md skills/guide-odin/SKILL.md
 ```
 
-- [ ] **Step 2: Verify the repository is clean of the old host**
+- [x] **Step 1b: Realign any fixed-width table the substitution touched**
+
+The new host is five characters shorter. `skills/guide-odin/SKILL.md` pads its reference table to a fixed column width, so the substitution leaves every data row short of the header rule. `skills/guide-heimdall/SKILL.md` uses an unpadded table and needs nothing.
 
 ```bash
-git grep -n 'test-docs\.moreh\.io' -- . ':!website/node_modules' ':!website/.docusaurus'
+sed -n '/^| Topic  /,/^$/p' skills/guide-odin/SKILL.md \
+  | awk 'NF {n=""; for (i = 1; i <= length($0); i++) if (substr($0, i, 1) == "|") n = n" "i; print n}' \
+  | sort -u
+```
+
+Expected: exactly one line, meaning every row places its pipes at the same columns. More than one line means the table needs re-padding.
+
+Observed 2026-09-04: the substitution left the data rows at 162 characters against a 167-character header. Re-padded to a uniform 162; the check now returns the single line `1 34 94 162`.
+
+- [x] **Step 2: Verify the repository is clean of the old host**
+
+```bash
+git grep -n 'test-docs\.moreh\.io' -- . ':!website/node_modules' ':!website/.docusaurus' ':!docs/specs'
 ```
 
 Expected: no output. If `website/versioned_docs/` reports a hit, fix it there too — versioned snapshots are served as live pages.
 
-- [ ] **Step 3: Commit**
+`docs/specs` is excluded because this plan names the retired host throughout as its subject; rewriting those mentions would make the document describe a cutover away from itself. Every other path must come back empty.
+
+Observed 2026-09-04: no output. Every remaining mention in the repository is inside this document.
+
+- [x] **Step 3: Commit**
 
 ```bash
 git add skills/guide-heimdall/SKILL.md skills/guide-odin/SKILL.md
