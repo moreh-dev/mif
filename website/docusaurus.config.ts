@@ -11,6 +11,57 @@ function getLastStableVersion(): string {
   return lastStable;
 }
 
+// Paths served by the Retype site that previously occupied docs.moreh.io.
+// Emitted as static redirect pages because GitHub Pages has no server-side
+// redirect facility.
+const retypeRedirects = [
+  {from: "/getting_started/overview", to: "/"},
+  {
+    from: "/getting_started/prerequisites",
+    to: "/docs/getting-started/prerequisites",
+  },
+  {from: "/getting_started/quickstart", to: "/docs/getting-started/quickstart"},
+  {
+    from: "/getting_started/supported_devices",
+    to: "/docs/reference/supported-devices",
+  },
+  {from: "/getting_started/logs", to: "/docs/operations/monitoring/logs"},
+  {
+    from: "/getting_started/monitoring",
+    to: "/docs/operations/monitoring/metrics",
+  },
+  {from: "/features/preset", to: "/docs/features/preset"},
+  {
+    from: "/features/prefill_decode_disaggregation",
+    to: "/docs/features/prefill-decode-disaggregation",
+  },
+  {
+    from: "/features/prefix_cache_aware_routing",
+    to: "/docs/features/prefix-cache-aware-routing",
+  },
+  {
+    from: "/best_practices/container_image_caching_with_harbor",
+    to: "/docs/operations/container-image-caching-with-harbor",
+  },
+  {
+    from: "/best_practices/hf_model_management_with_pv",
+    to: "/docs/operations/hf-model-management-with-pv",
+  },
+  {
+    from: "/benchmarking/deepseek_r1_671b_on_amd_mi300x_gpus_maximum_throughput",
+    to: "/blog/2025/11/11/deepseek-r1-671b-on-amd-mi300x-gpus-maximum-throughput",
+  },
+  {from: "/reference/heimdall_scheduler", to: "/docs/reference/heimdall/usage"},
+  {
+    from: "/reference/odin_inference_service",
+    to: "/docs/reference/odin/api-reference",
+  },
+  {
+    from: "/reference/odin_inference_service_template",
+    to: "/docs/reference/odin/api-reference",
+  },
+];
+
 const config: Config = {
   title: "Moreh",
   tagline: "MoAI Inference Framework documentation",
@@ -29,6 +80,12 @@ const config: Config = {
       },
     ],
     "docusaurus-plugin-image-zoom",
+    [
+      "@docusaurus/plugin-client-redirects",
+      {
+        redirects: retypeRedirects,
+      },
+    ],
   ],
 
   markdown: {
