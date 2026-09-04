@@ -65,7 +65,7 @@ const retypeRedirects = [
 const config: Config = {
   title: "Moreh",
   tagline: "MoAI Inference Framework documentation",
-  url: "https://test-docs.moreh.io/",
+  url: "https://docs.moreh.io/",
   baseUrl: "/",
   trailingSlash: true,
   favicon: "/moreh-icon.png",
