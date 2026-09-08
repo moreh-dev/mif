@@ -11,11 +11,13 @@ function getLastStableVersion(): string {
   return lastStable;
 }
 
+const docsEntryPath = "/docs/getting-started/quickstart";
+
 // Paths served by the Retype site that previously occupied docs.moreh.io.
 // Emitted as static redirect pages because GitHub Pages has no server-side
 // redirect facility.
 const retypeRedirects = [
-  {from: "/getting_started/overview", to: "/"},
+  {from: "/getting_started/overview", to: docsEntryPath},
   {
     from: "/getting_started/prerequisites",
     to: "/docs/getting-started/prerequisites",
@@ -49,7 +51,7 @@ const retypeRedirects = [
   },
   {
     from: "/benchmarking/deepseek_r1_671b_on_amd_mi300x_gpus_maximum_throughput",
-    to: "/blog/2025/11/11/deepseek-r1-671b-on-amd-mi300x-gpus-maximum-throughput",
+    to: docsEntryPath,
   },
   {from: "/reference/heimdall_scheduler", to: "/docs/reference/heimdall/usage"},
   {
@@ -59,6 +61,18 @@ const retypeRedirects = [
   {
     from: "/reference/odin_inference_service_template",
     to: "/docs/reference/odin/api-reference",
+  },
+];
+
+// Paths this site served before the documentation became its only content.
+// The root entry only takes effect while no page component claims "/" — the
+// redirect plugin drops any redirect whose source is an existing route.
+const retiredSiteRedirects = [
+  {from: "/", to: docsEntryPath},
+  {from: "/blog", to: docsEntryPath},
+  {
+    from: "/blog/2025/11/11/deepseek-r1-671b-on-amd-mi300x-gpus-maximum-throughput",
+    to: docsEntryPath,
   },
 ];
 
@@ -75,6 +89,8 @@ const config: Config = {
     [
       "@cmfcmf/docusaurus-search-local",
       {
+        // Load-bearing: the option defaults to true, and the plugin fails the
+        // build when blog indexing is on with no blog plugin registered.
         indexBlog: false,
         language: "en",
       },
@@ -83,7 +99,7 @@ const config: Config = {
     [
       "@docusaurus/plugin-client-redirects",
       {
-        redirects: retypeRedirects,
+        redirects: [...retypeRedirects, ...retiredSiteRedirects],
       },
     ],
   ],
@@ -113,9 +129,7 @@ const config: Config = {
         theme: {
           customCss: require.resolve("./src/css/custom.css"),
         },
-        blog: {
-          blogTitle: "Blog",
-        },
+        blog: false,
       } satisfies Preset.Options,
     ],
   ],
@@ -129,18 +143,14 @@ const config: Config = {
       title: "",
       logo: {
         alt: "Moreh logo",
+        href: docsEntryPath,
         src: "/moreh-logo.svg",
         srcDark: "/moreh-logo-white.svg",
       },
       items: [
         {
-          to: "/docs/getting-started/quickstart",
+          to: docsEntryPath,
           label: "Docs",
-          position: "left",
-        },
-        {
-          to: "blog",
-          label: "Blog",
           position: "left",
         },
         {

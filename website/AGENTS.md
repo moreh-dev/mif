@@ -4,7 +4,7 @@ Rules specific to the `website/` directory. General contribution guidelines are 
 
 These rules cover both:
 - documentation content under `docs/`
-- Docusaurus site code and configuration in this directory (e.g., `src/`, `static/`, `blog/`, `docusaurus.config.ts`, `sidebars.ts`)
+- Docusaurus site code and configuration in this directory (e.g., `src/`, `static/`, `docusaurus.config.ts`, `sidebars.ts`)
 
 ## Production Build
 
@@ -49,7 +49,7 @@ Commit the generated `versioned_docs`, `versioned_sidebars`, and `versions.json`
 - **Placement**: Place new docs in appropriate subfolders (e.g., `getting-started`, `reference`). Create a new folder with `_category_.yaml` only if necessary.
 - **Artifacts**: Never edit `versioned_docs/` or `versioned_sidebars/` directly.
 - **Documentation source**: For documentation content, edit source files under `docs/` only.
-- **Website code/config**: When the task involves Docusaurus configuration, UI components, assets, or blog content, edit the relevant source files under `website/` (for example `src/`, `static/`, `blog/`, `docusaurus.config.ts`, `sidebars.ts`) instead of generated artifacts.
+- **Website code/config**: When the task involves Docusaurus configuration, UI components, or assets, edit the relevant source files under `website/` (for example `src/`, `static/`, `docusaurus.config.ts`, `sidebars.ts`) instead of generated artifacts.
 - **Images**: If a documentation file contains images, convert the file to a directory of the same name containing an `index.mdx` file. Place images directly within that directory (not in a subdirectory) and use simple filenames (e.g., `my-doc/image.png`).
 
 ## 2. Formatting & Syntax
