@@ -149,11 +149,6 @@ const config: Config = {
       },
       items: [
         {
-          to: docsEntryPath,
-          label: "Docs",
-          position: "left",
-        },
-        {
           type: "docsVersionDropdown",
           position: "right",
         },
