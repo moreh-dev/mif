@@ -25,9 +25,11 @@ jobs:
       ORGANIZATION_NAME: "moreh-dev"
       PROJECT_NAME: "docs.moreh.io-published"
       DEPLOYMENT_BRANCH: "publish-build"
-      GIT_USER: "gitgod-bot"
-      GIT_USER_NAME: "gitgod"
-      GIT_USER_EMAIL: "gitgod@moreh.io"
+      # docusaurus deploy pushes to https://<GIT_USER>:<GIT_PASS>@github.com/...,
+      # and a GitHub App installation token authenticates as "x-access-token".
+      GIT_USER: "x-access-token"
+      GIT_USER_NAME: "moreh-release-automation[bot]"
+      GIT_USER_EMAIL: "316831042+moreh-release-automation[bot]@users.noreply.github.com"
 
     steps:
       - name: Checkout
@@ -45,7 +47,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Mint a token for the publishing repository
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          owner: moreh-dev
+          repositories: docs.moreh.io-published
+
       - name: Deploy to GitHub Pages
         env:
-          GIT_PASS: ${{ secrets.MIF_DOCS_TOKEN }}
+          GIT_PASS: ${{ steps.app-token.outputs.token }}
         run: npm run deploy
