@@ -161,6 +161,7 @@ An inference pod joins a gateway through the `mif.moreh.io/aigateway` label, who
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
+| `bypass` | boolean | no | Bypass forwards OpenAI-native requests to the engine unchanged instead of running the gateway codec; renderer and parsers are unused when set. |
 | `kvCacheBlockSize` | integer | no | KvCacheBlockSize is the engine's KV block size in tokens per block; it must match the serving engine's configured block size. Defaults to 16. |
 | `maxModelLen` | integer | no | MaxModelLen overrides `config.json::max_position_embeddings`. |
 | `name` | string | yes | Name is the base model identifier (e.g., "meta-llama/Llama-3-8B"). |

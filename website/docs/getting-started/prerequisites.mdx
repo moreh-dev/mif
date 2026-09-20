@@ -98,7 +98,7 @@ Odin is the operator that manages inference services — the vLLM pods that serv
 Install the Odin CRDs first. CRDs are packaged as a separate chart so their lifecycle is independent of the operator.
 
 ```shell
-helm upgrade -i odin-crd moreh/odin-crd --version v0.12.0 -n mif
+helm upgrade -i odin-crd moreh/odin-crd --version v0.13.0 -n mif
 ```
 
 This installs the `InferenceService` and `InferenceServiceTemplate` custom resource definitions.
@@ -107,7 +107,7 @@ Then install the operator.
 
 ```shell
 helm upgrade -i odin moreh/odin \
-    --version v0.12.0 \
+    --version v0.13.0 \
     -n mif \
     --create-namespace
 ```
@@ -126,7 +126,7 @@ Install the Heimdall CRDs first.
 
 ```shell
 helm upgrade -i heimdall-crd moreh/heimdall-crd --version v0.5.0 -n mif
-helm upgrade -i heimdall-aigateway-crd moreh/heimdall-aigateway-crd --version v0.14.0 -n mif
+helm upgrade -i heimdall-aigateway-crd moreh/heimdall-aigateway-crd --version v0.15.0 -n mif
 ```
 
 This installs the `AIGateway` and `SchedulingProfile` custom resource definitions.
