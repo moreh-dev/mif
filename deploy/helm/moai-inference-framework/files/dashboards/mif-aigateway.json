@@ -1625,13 +1625,14 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (model) (rate(aigateway_tokenizer_cache_hits_total{namespace=~\"$namespace\", aigateway=~\"$aigateway\", model=~\"$model\"}[$__rate_interval])) / ((sum by (model) (rate(aigateway_tokenizer_cache_hits_total{namespace=~\"$namespace\", aigateway=~\"$aigateway\", model=~\"$model\"}[$__rate_interval])) + sum by (model) (rate(aigateway_tokenizer_cache_misses_total{namespace=~\"$namespace\", aigateway=~\"$aigateway\", model=~\"$model\"}[$__rate_interval]))) > 0)",
+          "expr": "sum by (model) (rate(aigateway_tokenizer_cache_hit_prefix_tokens_total{namespace=~\"$namespace\", aigateway=~\"$aigateway\", model=~\"$model\"}[$__rate_interval])) / (sum by (model) (rate(aigateway_tokenizer_cache_encoded_tokens_total{namespace=~\"$namespace\", aigateway=~\"$aigateway\", model=~\"$model\"}[$__rate_interval])) > 0)",
           "legendFormat": "{{model}}",
           "refId": "A"
         }
       ],
-      "title": "Cache hit ratio by model",
-      "type": "timeseries"
+      "title": "Token-weighted cache reuse by model",
+      "type": "timeseries",
+      "description": "Share of tokenizer output tokens served from the prefix cache: reused prefix tokens / encoded tokens. Empty for gateways that do not export aigateway_tokenizer_cache_encoded_tokens_total."
     },
     {
       "datasource": {
@@ -1678,7 +1679,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (model) (rate(aigateway_tokenizer_cache_hits_total{namespace=~\"$namespace\", aigateway=~\"$aigateway\", model=~\"$model\"}[$__rate_interval]))",
+          "expr": "(sum by (model) (rate(aigateway_tokenizer_cache_lookup_hits_total{namespace=~\"$namespace\", aigateway=~\"$aigateway\", model=~\"$model\"}[$__rate_interval])) or sum by (model) (rate(aigateway_tokenizer_cache_hits_total{namespace=~\"$namespace\", aigateway=~\"$aigateway\", model=~\"$model\"}[$__rate_interval])))",
           "legendFormat": "{{model}} hits",
           "refId": "A"
         },
@@ -1687,13 +1688,14 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (model) (rate(aigateway_tokenizer_cache_misses_total{namespace=~\"$namespace\", aigateway=~\"$aigateway\", model=~\"$model\"}[$__rate_interval]))",
+          "expr": "(sum by (model) (rate(aigateway_tokenizer_cache_lookup_misses_total{namespace=~\"$namespace\", aigateway=~\"$aigateway\", model=~\"$model\"}[$__rate_interval])) or sum by (model) (rate(aigateway_tokenizer_cache_misses_total{namespace=~\"$namespace\", aigateway=~\"$aigateway\", model=~\"$model\"}[$__rate_interval])))",
           "legendFormat": "{{model}} misses",
           "refId": "B"
         }
       ],
-      "title": "Cache hits/misses per second by model",
-      "type": "timeseries"
+      "title": "Cache lookups per second by model",
+      "type": "timeseries",
+      "description": "Encodes whose lookup matched any cached prefix, however short. Nearly every chat prompt shares its leading special token, so the hit rate here does not measure cache efficiency."
     },
     {
       "datasource": {
@@ -1740,7 +1742,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (model) (rate(aigateway_tokenizer_cache_hit_prefix_tokens_total{namespace=~\"$namespace\", aigateway=~\"$aigateway\", model=~\"$model\"}[$__rate_interval])) / (sum by (model) (rate(aigateway_tokenizer_cache_hits_total{namespace=~\"$namespace\", aigateway=~\"$aigateway\", model=~\"$model\"}[$__rate_interval])) > 0)",
+          "expr": "sum by (model) (rate(aigateway_tokenizer_cache_hit_prefix_tokens_total{namespace=~\"$namespace\", aigateway=~\"$aigateway\", model=~\"$model\"}[$__rate_interval])) / ((sum by (model) (rate(aigateway_tokenizer_cache_lookup_hits_total{namespace=~\"$namespace\", aigateway=~\"$aigateway\", model=~\"$model\"}[$__rate_interval])) or sum by (model) (rate(aigateway_tokenizer_cache_hits_total{namespace=~\"$namespace\", aigateway=~\"$aigateway\", model=~\"$model\"}[$__rate_interval]))) > 0)",
           "legendFormat": "{{model}}",
           "refId": "A"
         }
