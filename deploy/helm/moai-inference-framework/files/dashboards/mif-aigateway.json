@@ -1695,7 +1695,7 @@
       ],
       "title": "Cache lookups per second by model",
       "type": "timeseries",
-      "description": "Encodes whose lookup matched any cached prefix, however short. Nearly every chat prompt shares its leading special token, so the hit rate here does not measure cache efficiency."
+      "description": "Tokenizer encodes whose cache lookup matched any cached prefix, however short. Nearly every chat prompt shares its leading special token, so the hit rate here does not measure cache efficiency."
     },
     {
       "datasource": {
