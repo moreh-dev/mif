@@ -1625,14 +1625,14 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (model) (rate(aigateway_tokenizer_cache_hit_prefix_tokens_total{namespace=~\"$namespace\", aigateway=~\"$aigateway\", model=~\"$model\"}[$__rate_interval])) / (sum by (model) (rate(aigateway_tokenizer_cache_encoded_tokens_total{namespace=~\"$namespace\", aigateway=~\"$aigateway\", model=~\"$model\"}[$__rate_interval])) > 0)",
+          "expr": "sum by (model) (rate(aigateway_tokenizer_cache_hit_prefix_tokens_total{namespace=~\"$namespace\", aigateway=~\"$aigateway\", model=~\"$model\"}[$__rate_interval]) and rate(aigateway_tokenizer_cache_encoded_tokens_total{namespace=~\"$namespace\", aigateway=~\"$aigateway\", model=~\"$model\"}[$__rate_interval])) / (sum by (model) (rate(aigateway_tokenizer_cache_encoded_tokens_total{namespace=~\"$namespace\", aigateway=~\"$aigateway\", model=~\"$model\"}[$__rate_interval])) > 0)",
           "legendFormat": "{{model}}",
           "refId": "A"
         }
       ],
       "title": "Token-weighted cache reuse by model",
       "type": "timeseries",
-      "description": "Share of tokenizer output tokens served from the prefix cache: reused prefix tokens / encoded tokens. Empty for gateways that do not export aigateway_tokenizer_cache_encoded_tokens_total."
+      "description": "Share of tokenizer output tokens served from the prefix cache: reused prefix tokens / encoded tokens, counted only on gateways that export aigateway_tokenizer_cache_encoded_tokens_total."
     },
     {
       "datasource": {
