@@ -135,24 +135,32 @@ This section reports the request traffic the Heimdall AI Gateway routes, both in
 
 ### KV cache hit (request-observed)
 
-This section reports how many prompt tokens the inference engines actually served from their KV cache, per served model. The Heimdall AI Gateway reads `usage.prompt_tokens_details.cached_tokens` from the final engine response of each request and exports it as two counters, `aigateway_prompt_tokens_observed_total` and `aigateway_cached_tokens_reports_total`. In a prefill-decode disaggregated deployment, the value comes from the prefill worker. These counters carry only the `model` label, so the section has no per-endpoint breakdown. The gateway records them for `/v1/chat/completions`, `/v1/completions`, `/v1/messages`, and `/v1/responses`, streaming or not.
+This section reports how many input tokens the inference engines actually served from their KV cache, per served model, and how close the gateway's own prediction came. The Heimdall AI Gateway reads `usage.prompt_tokens` and `usage.prompt_tokens_details.cached_tokens` from the final engine response of each request and exports them as per-request histograms. In a prefill-decode disaggregated deployment, the cached count comes from the prefill worker. The histograms carry only the `model` label, so the section has no per-endpoint breakdown. The gateway records them for `/v1/chat/completions`, `/v1/completions`, `/v1/messages`, and `/v1/responses`, streaming or not.
 
-- **KV cache hit ratio by model**: Cached prompt tokens divided by all engine-reported prompt tokens (cached plus prefilled). The denominator is the engine's own prompt token count, not the gateway's **Input tokens/sec**, because the engine can expand multimodal placeholders into more tokens than the gateway counted.
-- **Cached-token report coverage by model**: The share of finished requests whose engine reported `cached_tokens`. The hit ratio covers only this share. Requests that did not report add no tokens, so they neither raise nor lower the ratio.
-- **Prompt tokens/sec by source and model**: Engine-reported prompt tokens per second, split into `cache` (served from the KV cache) and `prefill` (computed by the engine).
-- **Cached-token reports/sec by result and model**: Finished requests per second, split into `reported` and `absent`.
+| Metric | Records |
+| --- | --- |
+| `aigateway_engine_input_tokens` | The engine's input token count, for every request whose engine returned usage |
+| `aigateway_engine_cached_tokens` | The input tokens the engine served from its KV cache, for requests whose engine response included `cached_tokens` |
+| `aigateway_predicted_cached_tokens` | The input tokens the gateway's KV index held as cached on the worker picked to run prefill, read before the request was sent, for the same requests as `aigateway_engine_cached_tokens` |
+
+- **KV cache hit ratio by model**: `measured` is cached tokens divided by input tokens, both as the engine counted them. A request without `cached_tokens` adds input tokens and no cached tokens, so the ratio is exact only when coverage is 100% and a lower bound otherwise. `predicted` is the predicted cached tokens over the same input tokens.
+- **Cached-token coverage by model**: `engine` is the share of requests whose engine response included `cached_tokens`. `prediction` is the share of those requests that also had a prediction. Compare the two hit ratios only when prediction coverage is close to 100%.
+- **Engine input, cached and predicted tokens/sec by model**: The token rates behind the hit ratio panel.
+- **Cached tokens per request p50/p95 by model**: The distribution of cached tokens per request. A high p95 with a low hit ratio means a few long prefixes are reused while most requests miss.
 
 :::info
 vLLM returns `cached_tokens` only when the worker runs with `--enable-prompt-tokens-details`. MoAI Engine and SGLang always return it. If coverage stays below 100% for a model served by vLLM, check the engine arguments of its workers before you read the hit ratio. A request that the client cancels mid-stream is not counted in any panel of this section.
 :::
 
+Gateways that do not export these histograms yet export the older `aigateway_prompt_tokens_observed_total` and `aigateway_cached_tokens_reports_total` counters instead. The measured hit ratio, the engine coverage, and the input and cached token rates read those counters on such gateways, so the panels keep their values during a rolling update. The predicted series and the per-request distribution need the histograms.
+
 Three different signals are called a cache hit rate, and they answer different questions. Only this section shows the result of each request.
 
 | Signal | Source | Meaning |
 | --- | --- | --- |
-| Request-observed hit ratio (this section) | `cached_tokens` in each final engine response | The measured share of prompt tokens served from the KV cache, per model. Use it to judge whether prefix caching pays off. |
+| Measured hit ratio (this section) | `cached_tokens` in each final engine response | The share of input tokens served from the KV cache, per model. Use it to judge whether prefix caching pays off. |
+| Predicted hit ratio (this section) | The gateway's KV index, read for the picked worker before the request is sent | A prediction, not a result. Its gap from the measured ratio shows how far the index is from the engine's cache. |
 | Engine aggregate hit rate | The engine's own gauge, such as `vllm:gpu_prefix_cache_hit_rate` or `sglang:cache_hit_rate` | The running hit rate of one worker across all of its traffic. It is not per request and not per model. |
-| Scheduler predicted hit rate | The prefix-cache scorer in the Heimdall AI Gateway, at routing time | A prediction of how much of the prefix a candidate endpoint holds, used to rank endpoints. It is written to debug logs and is not a result. |
 
 The dashboard's **Tokenizer cache** section, which follows this one, is unrelated to the KV cache. It shows the gateway's own tokenizer cache.
 
