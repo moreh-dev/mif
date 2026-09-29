@@ -143,7 +143,7 @@ This section reports how many prompt tokens the inference engines actually serve
 - **Cached-token reports/sec by result and model**: Finished requests per second, split into `reported` and `absent`.
 
 :::info
-vLLM and MoAI Engine report `cached_tokens` only when the worker runs with `--enable-prompt-tokens-details`. SGLang always reports it. If coverage stays below 100% for a model, check the engine arguments of its workers before you read the hit ratio. A stream that ends early, such as a request the client cancels, also counts as `absent`.
+vLLM and MoAI Engine report `cached_tokens` only when the worker runs with `--enable-prompt-tokens-details`. SGLang always reports it. If coverage stays below 100% for a model, check the engine arguments of its workers before you read the hit ratio. A request that the client cancels mid-stream is not counted in any panel of this section.
 :::
 
 Three different signals are called a cache hit rate, and they answer different questions. Only this section shows the result of each request.

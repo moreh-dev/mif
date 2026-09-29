@@ -1639,7 +1639,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Share of finished requests whose final engine usage reported cached_tokens. The hit ratio panel covers only this share of the traffic. A value below 100% usually means a vLLM or MoAI Engine worker runs without --enable-prompt-tokens-details. Streams that end early also count as not reported. SGLang always reports.",
+      "description": "Share of finished requests whose final engine usage reported cached_tokens. The hit ratio panel covers only this share of the traffic. A value below 100% usually means a vLLM or MoAI Engine worker runs without --enable-prompt-tokens-details. SGLang always reports. A request that the client cancels mid-stream is not counted here.",
       "fieldConfig": {
         "defaults": {
           "unit": "percentunit",
