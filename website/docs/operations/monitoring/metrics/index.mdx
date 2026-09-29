@@ -133,6 +133,29 @@ This section reports the request traffic the Heimdall AI Gateway routes, both in
 - **ISL p50/p75/p95 by model**: Input sequence length distribution per model.
 - **OSL p50/p75/p95 by model**: Output sequence length distribution per model.
 
+### KV cache hit (request-observed)
+
+This section reports how many prompt tokens the inference engines actually served from their KV cache, per served model. The Heimdall AI Gateway reads `usage.prompt_tokens_details.cached_tokens` from the final engine response of each request and exports it as two counters, `aigateway_prompt_tokens_observed_total` and `aigateway_cached_tokens_reports_total`. In a prefill-decode disaggregated deployment, the value comes from the prefill worker. These counters carry only the `model` label, so the section has no per-endpoint breakdown. The gateway records them for `/v1/chat/completions`, `/v1/completions`, `/v1/messages`, and `/v1/responses`, streaming or not.
+
+- **KV cache hit ratio by model**: Cached prompt tokens divided by all engine-reported prompt tokens (cached plus prefilled). The denominator is the engine's own prompt token count, not the gateway's **Input tokens/sec**, because the engine can expand multimodal placeholders into more tokens than the gateway counted.
+- **Cached-token report coverage by model**: The share of finished requests whose engine reported `cached_tokens`. The hit ratio covers only this share. Requests that did not report add no tokens, so they neither raise nor lower the ratio.
+- **Prompt tokens/sec by source and model**: Engine-reported prompt tokens per second, split into `cache` (served from the KV cache) and `prefill` (computed by the engine).
+- **Cached-token reports/sec by result and model**: Finished requests per second, split into `reported` and `absent`.
+
+:::info
+vLLM and MoAI Engine report `cached_tokens` only when the worker runs with `--enable-prompt-tokens-details`. SGLang always reports it. If coverage stays below 100% for a model, check the engine arguments of its workers before you read the hit ratio. A stream that ends early, such as a request the client cancels, also counts as `absent`.
+:::
+
+Three different signals are called a cache hit rate, and they answer different questions. Only this section shows the result of each request.
+
+| Signal | Source | Meaning |
+| --- | --- | --- |
+| Request-observed hit ratio (this section) | `cached_tokens` in each final engine response | The measured share of prompt tokens served from the KV cache, per model. Use it to judge whether prefix caching pays off. |
+| Engine aggregate hit rate | The engine's own gauge, such as `vllm:gpu_prefix_cache_hit_rate` or `sglang:cache_hit_rate` | The running hit rate of one worker across all of its traffic. It is not per request and not per model. |
+| Scheduler predicted hit rate | The prefix-cache scorer in the Heimdall AI Gateway, at routing time | A prediction of how much of the prefix a candidate endpoint holds, used to rank endpoints. It is written to debug logs and is not a result. |
+
+The dashboard's **Tokenizer cache** section, which follows this one, is unrelated to the KV cache. It shows the gateway's own tokenizer cache.
+
 ### Odin InferenceService
 
 :::info
