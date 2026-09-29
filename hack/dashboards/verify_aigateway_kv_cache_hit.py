@@ -3,18 +3,21 @@
 against a local Prometheus fed by fake gateways, and check the values each
 panel reports.
 
-The fake gateways export aigateway_prompt_tokens_observed_total and
-aigateway_cached_tokens_reports_total as the gateway would after these
-requests per second:
+The fake gateways model a rolling update from the old counters
+(aigateway_prompt_tokens_observed_total, aigateway_cached_tokens_reports_total)
+to the per-request histograms (aigateway_engine_input_tokens,
+aigateway_engine_cached_tokens, aigateway_predicted_cached_tokens). Per
+second:
 
-- model A, replica 1: one reported request with 64 of 100 prompt tokens
-  cached.
-- model A, replica 2: one reported request with 0 of 100 cached, and one
-  request with no cached_tokens (absent).
-- model B: two absent requests only, like a vLLM worker without
-  --enable-prompt-tokens-details. The gateway never creates the observed
-  token series for it.
-- model C: one reported request with 0 of 50 cached, a real full miss.
+- model A, new pod: three requests of 100 input tokens. Two had 64 cached
+  tokens and a 48-token prediction; one had no cached_tokens.
+- model A, old pod: 64 cached and 36 prefilled tokens from one reported
+  request, plus one absent request.
+- model B, old pod: two absent requests only, like a vLLM worker without
+  --enable-prompt-tokens-details. The old gateway never creates the token
+  series for it.
+- model C, new pod: one request of 50 input tokens with no cached_tokens.
+  The new gateway still creates the cached series, at count 0.
 
 Usage:
     python3 hack/dashboards/verify_aigateway_kv_cache_hit.py --prometheus /path/to/prometheus
@@ -44,53 +47,65 @@ DASHBOARD = (
 
 LABELS = 'namespace="ns",aigateway="gw"'
 
-# Per-second rates each fake gateway replica exports, as
-# (metric, extra labels) -> rate.
+# The gateway's token buckets: 1 to 262144, four times apart.
+BUCKETS = [4**i for i in range(10)]
+
+
+def histogram(name, model, observations):
+    """Series of one histogram, as (series, value per second).
+
+    `observations` lists (count per second, tokens per observation).
+    """
+    labels = f'model="{model}"'
+    series = []
+    for le in BUCKETS:
+        count = sum(c for c, v in observations if v <= le)
+        series.append((f'{name}_bucket{{{labels},le="{le}"}}', count))
+    total = sum(c for c, _ in observations)
+    series.append((f'{name}_bucket{{{labels},le="+Inf"}}', total))
+    series.append((f"{name}_sum{{{labels}}}", sum(c * v for c, v in observations)))
+    series.append((f"{name}_count{{{labels}}}", total))
+    return series
+
+
 PODS = {
-    "a-1": {
-        ('aigateway_prompt_tokens_observed_total', 'model="A",source="cache"'): 64,
-        ('aigateway_prompt_tokens_observed_total', 'model="A",source="prefill"'): 36,
-        ('aigateway_cached_tokens_reports_total', 'model="A",result="reported"'): 1,
-    },
-    "a-2": {
-        ('aigateway_prompt_tokens_observed_total', 'model="A",source="cache"'): 0,
-        ('aigateway_prompt_tokens_observed_total', 'model="A",source="prefill"'): 100,
-        ('aigateway_cached_tokens_reports_total', 'model="A",result="reported"'): 1,
-        ('aigateway_cached_tokens_reports_total', 'model="A",result="absent"'): 1,
-    },
-    "b": {
-        ('aigateway_cached_tokens_reports_total', 'model="B",result="absent"'): 2,
-    },
-    "c": {
-        ('aigateway_prompt_tokens_observed_total', 'model="C",source="cache"'): 0,
-        ('aigateway_prompt_tokens_observed_total', 'model="C",source="prefill"'): 50,
-        ('aigateway_cached_tokens_reports_total', 'model="C",result="reported"'): 1,
-    },
+    "new-a": histogram("aigateway_engine_input_tokens", "A", [(3, 100)])
+    + histogram("aigateway_engine_cached_tokens", "A", [(2, 64)])
+    + histogram("aigateway_predicted_cached_tokens", "A", [(2, 48)]),
+    "old-a": [
+        ('aigateway_prompt_tokens_observed_total{model="A",source="cache"}', 64),
+        ('aigateway_prompt_tokens_observed_total{model="A",source="prefill"}', 36),
+        ('aigateway_cached_tokens_reports_total{model="A",result="reported"}', 1),
+        ('aigateway_cached_tokens_reports_total{model="A",result="absent"}', 1),
+    ],
+    "old-b": [
+        ('aigateway_cached_tokens_reports_total{model="B",result="absent"}', 2),
+    ],
+    "new-c": histogram("aigateway_engine_input_tokens", "C", [(1, 50)])
+    + histogram("aigateway_engine_cached_tokens", "C", []),
 }
 
-# Expected value per (panel id, target refId), keyed by the series' labels
-# other than model, joined with the model. A missing key means the query must
-# return no series for it.
+NAN = float("nan")
+
+# Expected value per (panel id, target refId), keyed by model. A missing model
+# means the query must return no series for it.
 EXPECTED = {
-    # Cached over engine prompt tokens, across both replicas of model A. Model
-    # B reported nothing, so it has no ratio instead of a false 0%. Model C
-    # reported a real 0.
-    (84, "A"): {("A",): 64 / 200, ("C",): 0.0},
-    # Model A: 2 of 3 requests reported. Model B reported none, which must
-    # show as 0% and not disappear.
-    (85, "A"): {("A",): 2 / 3, ("B",): 0.0, ("C",): 1.0},
-    (86, "A"): {
-        ("A", "cache"): 64,
-        ("A", "prefill"): 136,
-        ("C", "cache"): 0,
-        ("C", "prefill"): 50,
-    },
-    (87, "A"): {
-        ("A", "reported"): 2,
-        ("A", "absent"): 1,
-        ("B", "absent"): 2,
-        ("C", "reported"): 1,
-    },
+    # Cached over input tokens across both pods of model A. Model B exported no
+    # tokens, so it has no ratio instead of a false 0%.
+    (84, "A"): {"A": (128 + 64) / (300 + 100), "C": 0.0},
+    # Only the new pod predicts, over its own input tokens.
+    (84, "B"): {"A": 96 / 300},
+    # Requests with cached tokens over all requests, either version. Model B
+    # has none and shows 0%, not a missing series.
+    (85, "A"): {"A": (2 + 1) / (3 + 2), "B": 0.0, "C": 0.0},
+    # Every request of model A with cached tokens on the new pod was predicted.
+    (85, "B"): {"A": 1.0},
+    (86, "A"): {"A": 300 + 100, "C": 50},
+    (86, "B"): {"A": 128 + 64, "C": 0.0},
+    (86, "C"): {"A": 96},
+    # Every cached observation of model A is 64 tokens, in the (16, 64] bucket.
+    (87, "A"): {"A": 16 + (64 - 16) * 0.50, "C": NAN},
+    (87, "B"): {"A": 16 + (64 - 16) * 0.95, "C": NAN},
 }
 
 RATE_WINDOW = "20s"
@@ -102,13 +117,13 @@ def free_port():
         return s.getsockname()[1]
 
 
-def serve_pod(port, rates, started):
+def serve_pod(port, series, started):
     class Handler(http.server.BaseHTTPRequestHandler):
         def do_GET(self):
             elapsed = time.time() - started
             body = "".join(
-                f"{name}{{{LABELS},{labels}}} {rate * elapsed}\n"
-                for (name, labels), rate in rates.items()
+                f"{name.replace('{', '{' + LABELS + ',', 1)} {rate * elapsed}\n"
+                for name, rate in series
             )
             self.send_response(200)
             self.send_header("Content-Type", "text/plain; version=0.0.4")
@@ -122,18 +137,19 @@ def serve_pod(port, rates, started):
     threading.Thread(target=server.serve_forever, daemon=True).start()
 
 
-def series_key(metric):
-    extra = metric.get("source") or metric.get("result")
-    return (metric.get("model"), extra) if extra else (metric.get("model"),)
-
-
 def query(base, expr):
     url = f"{base}/api/v1/query?" + urllib.parse.urlencode({"query": expr})
     with urllib.request.urlopen(url) as resp:
         body = json.load(resp)
     if body["status"] != "success":
         raise RuntimeError(f"query failed: {body}")
-    return {series_key(r["metric"]): float(r["value"][1]) for r in body["data"]["result"]}
+    return {r["metric"].get("model"): float(r["value"][1]) for r in body["data"]["result"]}
+
+
+def close(got, want):
+    if math.isnan(want):
+        return math.isnan(got)
+    return math.isclose(got, want, rel_tol=1e-3, abs_tol=1e-9)
 
 
 def panel_exprs():
@@ -158,9 +174,9 @@ def main():
 
     started = time.time()
     targets = []
-    for rates in PODS.values():
+    for series in PODS.values():
         port = free_port()
-        serve_pod(port, rates, started)
+        serve_pod(port, series, started)
         targets.append(f"127.0.0.1:{port}")
 
     prom_port = free_port()
@@ -189,10 +205,7 @@ def main():
             deadline = time.time() + 120
             while True:
                 try:
-                    counts = query(
-                        base,
-                        "min(count_over_time(aigateway_cached_tokens_reports_total[1m]))",
-                    )
+                    counts = query(base, "min(count_over_time(up[1m]))")
                     if counts and min(counts.values()) >= 25:
                         break
                 except OSError:
@@ -205,9 +218,7 @@ def main():
             for key, title, expr in panel_exprs():
                 got = query(base, expr)
                 want = EXPECTED[key]
-                ok = got.keys() == want.keys() and all(
-                    math.isclose(got[k], want[k], rel_tol=1e-3, abs_tol=1e-9) for k in want
-                )
+                ok = got.keys() == want.keys() and all(close(got[m], want[m]) for m in want)
                 failed |= not ok
                 print(f"{'ok  ' if ok else 'FAIL'} panel {key[0]} {key[1]} {title}: got {got}, want {want}")
             sys.exit(1 if failed else 0)
