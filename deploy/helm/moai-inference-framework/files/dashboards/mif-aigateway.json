@@ -1574,6 +1574,235 @@
         "x": 0,
         "y": 74
       },
+      "id": 83,
+      "panels": [],
+      "title": "KV cache hit (request-observed)",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Share of prompt tokens that the engine served from its KV cache: cached / (cached + prefilled). The values come from usage.prompt_tokens_details.cached_tokens in each final engine response. Only requests whose engine reported cached_tokens count, so read this panel together with the report coverage panel. This is the measured result of each request. It is not the engine's own aggregate prefix cache gauge (vllm:gpu_prefix_cache_hit_rate, sglang:cache_hit_rate), which mixes all traffic on one worker. It is also not the hit rate that the prefix-cache scorer predicts at routing time.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "auto"
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "min": 0,
+          "max": 1
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 75
+      },
+      "id": 84,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (model) (rate(aigateway_prompt_tokens_observed_total{namespace=~\"$namespace\", aigateway=~\"$aigateway\", model=~\"$model\", source=\"cache\"}[$__rate_interval])) / (sum by (model) (rate(aigateway_prompt_tokens_observed_total{namespace=~\"$namespace\", aigateway=~\"$aigateway\", model=~\"$model\"}[$__rate_interval])) > 0)",
+          "legendFormat": "{{model}}",
+          "refId": "A"
+        }
+      ],
+      "title": "KV cache hit ratio by model",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Share of finished requests whose final engine usage reported cached_tokens. The hit ratio panel covers only this share of the traffic. A value below 100% usually means a vLLM or MoAI Engine worker runs without --enable-prompt-tokens-details. Streams that end early also count as not reported. SGLang always reports.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "auto"
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "min": 0,
+          "max": 1
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 75
+      },
+      "id": 85,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum by (model) (rate(aigateway_cached_tokens_reports_total{namespace=~\"$namespace\", aigateway=~\"$aigateway\", model=~\"$model\", result=\"reported\"}[$__rate_interval])) or 0 * sum by (model) (rate(aigateway_cached_tokens_reports_total{namespace=~\"$namespace\", aigateway=~\"$aigateway\", model=~\"$model\"}[$__rate_interval]))) / (sum by (model) (rate(aigateway_cached_tokens_reports_total{namespace=~\"$namespace\", aigateway=~\"$aigateway\", model=~\"$model\"}[$__rate_interval])) > 0)",
+          "legendFormat": "{{model}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Cached-token report coverage by model",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Engine-reported prompt tokens per second, split by source: cache (served from the KV cache) and prefill (computed by the engine). The two series together are the denominator of the hit ratio. This uses the engine's prompt token count, so it can differ from Input tokens/sec, which the gateway tokenizer counts for every request.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "cps",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "auto"
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 83
+      },
+      "id": 86,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (model, source) (rate(aigateway_prompt_tokens_observed_total{namespace=~\"$namespace\", aigateway=~\"$aigateway\", model=~\"$model\"}[$__rate_interval]))",
+          "legendFormat": "{{model}} {{source}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Prompt tokens/sec by source and model",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Finished requests per second, split by whether the final engine usage reported cached_tokens (reported) or not (absent). An absent request adds no tokens to the hit ratio.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "auto"
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 83
+      },
+      "id": 87,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (model, result) (rate(aigateway_cached_tokens_reports_total{namespace=~\"$namespace\", aigateway=~\"$aigateway\", model=~\"$model\"}[$__rate_interval]))",
+          "legendFormat": "{{model}} {{result}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Cached-token reports/sec by result and model",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 91
+      },
       "id": 76,
       "panels": [],
       "title": "Tokenizer cache",
@@ -1605,7 +1834,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 75
+        "y": 92
       },
       "id": 77,
       "options": {
@@ -1658,7 +1887,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 75
+        "y": 92
       },
       "id": 78,
       "options": {
@@ -1720,7 +1949,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 83
+        "y": 100
       },
       "id": 79,
       "options": {
@@ -1773,7 +2002,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 83
+        "y": 100
       },
       "id": 80,
       "options": {
@@ -1826,7 +2055,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 91
+        "y": 108
       },
       "id": 81,
       "options": {
@@ -1879,7 +2108,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 91
+        "y": 108
       },
       "id": 82,
       "options": {
@@ -1913,7 +2142,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 99
+        "y": 116
       },
       "id": 63,
       "panels": [],
@@ -1947,7 +2176,7 @@
         "h": 4,
         "w": 8,
         "x": 0,
-        "y": 100
+        "y": 117
       },
       "id": 64,
       "options": {
@@ -2005,7 +2234,7 @@
         "h": 4,
         "w": 8,
         "x": 8,
-        "y": 100
+        "y": 117
       },
       "id": 65,
       "options": {
@@ -2070,7 +2299,7 @@
         "h": 4,
         "w": 8,
         "x": 16,
-        "y": 100
+        "y": 117
       },
       "id": 66,
       "options": {
@@ -2125,7 +2354,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 104
+        "y": 121
       },
       "id": 72,
       "options": {
@@ -2235,7 +2464,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 112
+        "y": 129
       },
       "id": 67,
       "options": {
@@ -2342,7 +2571,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 120
+        "y": 137
       },
       "id": 68,
       "options": {
@@ -2394,7 +2623,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 120
+        "y": 137
       },
       "id": 69,
       "options": {
@@ -2448,7 +2677,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 128
+        "y": 145
       },
       "id": 73,
       "options": {
@@ -2502,7 +2731,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 136
+        "y": 153
       },
       "id": 74,
       "options": {
@@ -2556,7 +2785,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 136
+        "y": 153
       },
       "id": 75,
       "options": {
