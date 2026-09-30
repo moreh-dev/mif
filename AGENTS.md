@@ -10,6 +10,19 @@ This guide serves as the unified source of truth for all contributors, both huma
 
 ## General Rules
 
+### Public Repository
+
+This repository is public. Anyone can read its code, comments, commit messages, PR titles and descriptions, review comments, issues, and CI logs. Do not put private information in any of them:
+
+- Links to private or internal repositories, issues, or PRs. Check a repository with `gh repo view <owner>/<repo> --json visibility` before you link it.
+- Internal hostnames, URLs, cluster names, namespaces, and deployment names.
+- Values from internal or customer environments, such as live metrics, logs, workloads, and the models that run there.
+- Credentials, tokens, and other secrets.
+
+JIRA ticket links and Claude artifact links are allowed. Only signed-in members can open them, so the link itself does not expose their content.
+
+Write PR titles, descriptions, and review comments in English. Keep internal details in JIRA or other internal tools. Put evidence in a PR only when others can reproduce it from public code, for example with a script that runs against fake exporters. Older PRs that break these rules are not a precedent.
+
 ### Git Commit Guidelines
 
 > [!NOTE]

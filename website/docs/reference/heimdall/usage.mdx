@@ -142,7 +142,7 @@ An inference pod joins a gateway through the `mif.moreh.io/aigateway` label, who
 {/* AUTO-GENERATED:aigateway-crd-inferenceworker START */}
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `framework` | string | yes | Framework is the inference engine running on this pod (e.g., "vllm", "trt-llm"). |
+| `engine` | string | no | Engine is the inference engine running on this pod (e.g., "vllm", "sglang"). During the framework -&gt; engine migration the sidecar writes the same value to both Engine and the deprecated Framework; consumers should resolve Engine with Framework as fallback. |
 | `gpuKvCacheBlocks` | integer | no | GpuKvCacheBlocks is the total number of GPU KV cache blocks the engine allocated (vLLM `num_gpu_blocks`). Fixed at engine init; sourced by the sidecar from the engine cache-config metric. Used by the kv-cache-utilization scorer as the occupancy denominator. Optional — unset means "no advertised capacity" (scorer is neutral for this worker). |
 | `instances` | [array](#inferenceworker-instances) | yes | Instances is the list of serving instances on this pod, one per listening port. A data-parallel deployment has multiple instances on a single pod. |
 | `modelCard` | [object](#inferenceworker-modelcard) | yes | ModelCard pins the codec policy for the base model this worker serves. |
