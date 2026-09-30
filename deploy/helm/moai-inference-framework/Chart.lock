@@ -2,26 +2,8 @@ dependencies:
 - name: common
   repository: oci://registry-1.docker.io/bitnamicharts
   version: 2.31.4
-- name: kube-prometheus-stack
-  repository: https://prometheus-community.github.io/helm-charts
-  version: 80.7.0
 - name: kubernetes-replicator
   repository: https://helm.mittwald.de
   version: 2.12.2
-- name: node-feature-discovery
-  repository: oci://registry.k8s.io/nfd/charts
-  version: 0.18.3
-- name: minio
-  repository: https://charts.min.io
-  version: 5.4.0
-- name: loki
-  repository: https://grafana.github.io/helm-charts
-  version: 6.30.0
-- name: vector
-  repository: https://helm.vector.dev
-  version: 0.39.0
-- name: tempo-distributed
-  repository: https://grafana-community.github.io/helm-charts
-  version: 2.23.1
-digest: sha256:48df69758dc827c813f3ff8225706f18c15536e3513a701bf7be60917adc6a63
-generated: "2026-06-29T18:05:18.228377809+09:00"
+digest: sha256:f3f6fa86c1ad5e9b6630d3f31ecfcbc09245022771d18f8101c6d5cb692c49bc
+generated: "2026-09-30T11:48:42.995544+09:00"
