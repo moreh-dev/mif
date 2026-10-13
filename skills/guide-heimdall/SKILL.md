@@ -313,7 +313,7 @@ helm repo update moreh
   helm upgrade -i heimdall moreh/heimdall --version <heimdall-version> -n mif
   ```
 
-Each chart is versioned independently — pin every `--version` to the matching entry in your release's chart list (see `website/docs/getting-started/prerequisites.mdx` for the full ordered install: cert-manager → moai-inference-framework → CRDs → Odin → Heimdall → presets).
+Each chart is versioned independently — pin every `--version` to the matching entry in your release's chart list (see `website/docs/getting-started/prerequisites.mdx` for the full ordered install: cert-manager → registry pull secret → CRDs → Odin → Heimdall → presets).
 
 ### Deploy the routing resources
 

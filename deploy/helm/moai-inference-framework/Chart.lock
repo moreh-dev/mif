@@ -1,9 +1,0 @@
-dependencies:
-- name: common
-  repository: oci://registry-1.docker.io/bitnamicharts
-  version: 2.31.4
-- name: kubernetes-replicator
-  repository: https://helm.mittwald.de
-  version: 2.12.2
-digest: sha256:f3f6fa86c1ad5e9b6630d3f31ecfcbc09245022771d18f8101c6d5cb692c49bc
-generated: "2026-09-30T11:48:42.995544+09:00"

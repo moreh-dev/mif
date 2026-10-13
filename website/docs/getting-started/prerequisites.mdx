@@ -42,9 +42,164 @@ helm upgrade -i cert-manager oci://quay.io/jetstack/charts/cert-manager \
 
 ---
 
-## moai-inference-framework
+## Registry pull secret
 
-The `moai-inference-framework` Helm chart deploys the infrastructure and observability dependencies required by the MoAI Inference Framework (such as monitoring, logging, and object storage), excluding GPU and network-related components. To deploy it, you first need to add Moreh's Helm chart repository.
+The container images for the MoAI Inference Framework are distributed through a private repository on [Amazon ECR](https://aws.amazon.com/ecr/) `255250787067.dkr.ecr.ap-northeast-2.amazonaws.com`, and you need an authorization token to download them. An ECR token expires after 12 hours, so an ECR token refresher CronJob issues a new one every hour. It writes the token as the `moreh-registry` image pull secret into the `mif` namespace and into every namespace labeled `mif=enabled`.
+
+:::info
+If you pull images through a local registry such as Harbor instead of directly from ECR, skip this section. See [Container image caching with Harbor](../operations/container-image-caching-with-harbor/index.mdx) for details.
+:::
+
+:::warning
+**The AWS credentials (`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`) should have been provided to you along with your purchase or trial issuance of the MoAI Inference Framework**. If you did not receive this information, please contact your point of purchase separately.
+:::
+
+Create the `mif` namespace and store the AWS credentials in it. **You need to replace `<AWS_ACCESS_KEY_ID>` and `<AWS_SECRET_ACCESS_KEY>` with your own values**.
+
+```shell {3-4}
+kubectl create namespace mif
+kubectl create secret generic ecr-token-refresher-aws -n mif \
+    --from-literal=AWS_ACCESS_KEY_ID=<AWS_ACCESS_KEY_ID> \
+    --from-literal=AWS_SECRET_ACCESS_KEY=<AWS_SECRET_ACCESS_KEY>
+```
+
+Create an `ecr-token-refresher.yaml` file with the following content.
+
+```yaml title="ecr-token-refresher.yaml"
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ecr-token-refresher
+  namespace: mif
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: ecr-token-refresher
+rules:
+  - apiGroups: [""]
+    resources: [namespaces]
+    verbs: [list]
+  - apiGroups: [""]
+    resources: [secrets]
+    verbs: [create]
+  - apiGroups: [""]
+    resources: [secrets]
+    # Must match SECRET_NAME of the CronJob.
+    resourceNames: [moreh-registry]
+    verbs: [get, patch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ecr-token-refresher
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: ecr-token-refresher
+subjects:
+  - kind: ServiceAccount
+    name: ecr-token-refresher
+    namespace: mif
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ecr-token-refresher
+  namespace: mif
+spec:
+  schedule: "0 * * * *"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: ecr-token-refresher
+          containers:
+            - name: main
+              image: heyvaldemar/aws-kubectl:2.0.0
+              command:
+                - bash
+                - -c
+              args:
+                - |
+                  set -euo pipefail
+
+                  password="$(aws ecr get-login-password --region "${AWS_REGION}")"
+                  config="$(mktemp)"
+                  trap 'rm -f "${config}"' EXIT
+                  jq -n --arg server "${REGISTRY}" --arg auth "$(printf 'AWS:%s' "${password}" | base64 -w0)" \
+                    '{auths: {($server): {auth: $auth}}}' > "${config}"
+
+                  namespaces="$(
+                    {
+                      echo "${POD_NAMESPACE}"
+                      kubectl get namespace -l "${NAMESPACE_SELECTOR}" -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}'
+                    } | sort -u
+                  )"
+
+                  # Keep going on a per-namespace failure (e.g. Terminating) but fail the Job.
+                  failed=0
+                  for ns in ${namespaces}; do
+                    kubectl create secret generic "${SECRET_NAME}" -n "${ns}" \
+                      --type=kubernetes.io/dockerconfigjson \
+                      --from-file=.dockerconfigjson="${config}" \
+                      --dry-run=client -o yaml \
+                    | kubectl apply --server-side --force-conflicts --field-manager=ecr-token-refresher -f - \
+                    || failed=1
+                  done
+                  exit "${failed}"
+              env:
+                - name: POD_NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.namespace
+                - name: NAMESPACE_SELECTOR
+                  value: mif=enabled
+                - name: SECRET_NAME
+                  value: moreh-registry
+                - name: REGISTRY
+                  value: 255250787067.dkr.ecr.ap-northeast-2.amazonaws.com
+                - name: AWS_REGION
+                  value: ap-northeast-2
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: ecr-token-refresher-aws
+                      key: AWS_ACCESS_KEY_ID
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: ecr-token-refresher-aws
+                      key: AWS_SECRET_ACCESS_KEY
+```
+
+Deploy the refresher, and run it once so that the secret exists before the first scheduled run.
+
+```shell
+kubectl apply -f ecr-token-refresher.yaml
+kubectl create job -n mif --from=cronjob/ecr-token-refresher ecr-token-refresher-init
+kubectl wait -n mif --for=condition=complete job/ecr-token-refresher-init --timeout=5m
+```
+
+You can verify that the `moreh-registry` secret has been created using the following command.
+
+```shell
+kubectl get secret -n mif moreh-registry
+```
+
+:::info
+A namespace labeled `mif=enabled` after the last run receives the secret at the next hourly run. To provide it right away, run the refresher again with `kubectl create job -n mif --from=cronjob/ecr-token-refresher <job-name>`, using a job name that does not exist yet.
+:::
+
+---
+
+## Odin
+
+Odin is the operator that manages inference services — the vLLM pods that serve a model. Install it after cert-manager.
+
+The Odin and Heimdall charts are published to Moreh's Helm chart repository. Add the repository first.
 
 ```shell
 helm repo add moreh https://moreh-dev.github.io/helm-charts
@@ -56,49 +211,10 @@ If you have already added the repository, make sure to update it.
 helm repo update moreh
 ```
 
-The container images for the MoAI Inference Framework are distributed through a private repository on [Amazon ECR](https://aws.amazon.com/ecr/) `255250787067.dkr.ecr.ap-northeast-2.amazonaws.com`, and you need to obtain an authorization token to download them. To facilitate this, the `moai-inference-framework` chart defines the installation of an ECR token refresher. You need to specify your AWS credentials in the values file to configure the ECR token refresher.
-
-:::info
-If you pull images through a local registry such as Harbor instead of directly from ECR, disable the ECR token refresher by setting `ecrTokenRefresher.enabled` to `false`. See [Container image caching with Harbor](../operations/container-image-caching-with-harbor/index.mdx) for details.
-:::
-
-:::warning
-**The AWS credentials (`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`) should have been provided to you along with your purchase or trial issuance of the MoAI Inference Framework**. If you did not receive this information, please contact your point of purchase separately.
-:::
-
-Create a `moai-inference-framework-values.yaml` file as follows. **You need to replace `<AWS_ACCESS_KEY_ID>` and `<AWS_SECRET_ACCESS_KEY>` with your own values**.
-
-```yaml title="moai-inference-framework-values.yaml" {3-4}
-ecrTokenRefresher:
-  aws:
-    accessKeyId: <AWS_ACCESS_KEY_ID>
-    secretAccessKey: <AWS_SECRET_ACCESS_KEY>
-```
-
-:::info
-If an infrastructure dependency such as `kube-prometheus-stack` is already installed in your cluster, skip its installation by setting the corresponding value to `false`. Refer to [moai-inference-framework README](https://github.com/moreh-dev/mif/tree/main/deploy/helm/moai-inference-framework) for the full list of dependencies.
-:::
-
-Then, deploy the `moai-inference-framework` chart using the following command:
-
-```shell
-helm upgrade -i mif moreh/moai-inference-framework \
-    --version v0.5.0 \
-    -n mif \
-    --create-namespace \
-    -f moai-inference-framework-values.yaml
-```
-
----
-
-## Odin
-
-Odin is the operator that manages inference services — the vLLM pods that serve a model. Install it after cert-manager.
-
 Install the Odin CRDs first. CRDs are packaged as a separate chart so their lifecycle is independent of the operator.
 
 ```shell
-helm upgrade -i odin-crd moreh/odin-crd --version v0.13.0 -n mif
+helm upgrade -i odin-crd moreh/odin-crd --version v0.13.0 -n mif --create-namespace
 ```
 
 This installs the `InferenceService` and `InferenceServiceTemplate` custom resource definitions.
@@ -215,7 +331,7 @@ node-feature-discovery:
 
 :::info
 
-- The `moai-inference-framework` chart already deploys Node Feature Discovery (NFD) and the `moai-accelerator` NodeFeatureRule for heterogeneous accelerator labeling. Set `node-feature-discovery.enabled: false` in the GPU Operator values to avoid installing a duplicate NFD instance. For a full list of supported hardware, see [supported devices](../reference/supported-devices.mdx).
+- If Node Feature Discovery (NFD) is already installed in your cluster, set `node-feature-discovery.enabled: false` in the GPU Operator values to avoid installing a duplicate NFD instance. For a full list of supported hardware, see [supported devices](../reference/supported-devices.mdx).
 - If the AMD GPU Operator is already installed on your system, verify that the toleration key is set to `amd.com/gpu`. MoAI Inference Framework assumes this name.
 
 :::

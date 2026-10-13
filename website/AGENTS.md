@@ -105,7 +105,7 @@ See [Docusaurus Admonitions](https://docusaurus.io/docs/markdown-features/admoni
 
 - **No duplicate installation steps**: Operation or feature docs must not repeat the values file example or `helm upgrade` command that already appears in `getting-started/prerequisites.mdx`. Instead, link directly to the relevant section:
   ```mdx
-  See [Prerequisites](../getting-started/prerequisites.mdx#moai-inference-framework) for the required values and install command.
+  See [Prerequisites](../getting-started/prerequisites.mdx#heimdall) for the required values and install command.
   ```
   Duplication causes the two pages to diverge whenever the chart version or values change.
 
@@ -132,5 +132,3 @@ The `--version` value in the `helm upgrade` commands of `getting-started/prerequ
 `heimdall`, `heimdall-crd`, `heimdall-aigateway-crd`, `odin`, `odin-crd`
 
 Those values are rewritten from the published Helm repository index, so do not bump them by hand.
-
-`moai-inference-framework` is deliberately excluded. Its pin may lead the published index so the guide can document an imminent release, so it stays hand-maintained in both its install command and `operations/latest-release.mdx`.
