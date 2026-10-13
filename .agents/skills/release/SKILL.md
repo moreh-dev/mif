@@ -13,8 +13,9 @@ description: >
 Tag MIF releases and, for stable versions, publish GitHub release notes that highlight
 dependency version changes and key improvements.
 
-Publishing is driven entirely by **pushing a tag** — the workflows in `.github/workflows/`
-trigger on the tag pattern. Nothing publishes until a tag reaches the remote.
+A tag publishes nothing by itself: this repository ships no Helm chart, so no workflow
+triggers on a tag. Odin and Heimdall charts are released from their own repositories. A
+stable release here is the versioned docs snapshot plus the GitHub release notes.
 
 ## Version Rules
 
@@ -32,18 +33,13 @@ version are normal — v0.4.0 went through `rc.1` to `rc.5` before the stable ta
 
 ## Release types
 
-The tag pattern selects the workflow, and the workflows differ in where they publish:
+| Tag | GitHub release | Versioned docs |
+|---|---|---|
+| `vX.Y.Z-rc.N` | no | no |
+| `vX.Y.Z` | yes | yes |
 
-| Tag | Workflow | Publishes to | GitHub release | Versioned docs |
-|---|---|---|---|---|
-| `vX.Y.Z-rc.N` | `cd-mif-stage.yaml` | artifact-keeper ChartMuseum **only** | no | no |
-| `vX.Y.Z` | `cd-mif-prod.yaml` | ChartMuseum **and** the public `moreh-dev/helm-charts` | yes | yes |
-
-**An rc never reaches the public Helm repository.** `release-chart/action.yaml` defaults
-`publish_helm_charts` to `"false"`, and only the prod workflow sets it to `"true"`.
-Do not expect an rc to fix version pins in `website/docs/` — those resolve at the stable
-release. (`v0.5.0-rc.1` appears in the public index only because it was tagged before
-`ad11141` split publishing per environment.)
+Releases up to `v0.5.x` also published the `moai-inference-framework` chart on tag push;
+the chart was removed afterwards, and its published versions stay in the Helm repository.
 
 ### Release candidate flow
 
@@ -60,15 +56,12 @@ test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || { echo "HEAD is
 # 2. Annotated tag, message summarizing the delta since the previous rc
 git tag -a <version> -m "<summary>"
 
-# 3. Push the tag — this is what triggers cd-mif-stage.yaml
+# 3. Push the tag
 git push origin <version>
-
-# 4. Verify the workflow fired and succeeded
-gh run list --limit 5
 ```
 
 Include any upgrade hazard in the tag message; it is the only release artifact an rc
-produces. Then jump to [Verify the publish](#7-verify-the-publish).
+produces.
 
 ## Stable release flow
 
@@ -154,7 +147,6 @@ git diff <prevVersion>..<releaseVersion> --stat | tail -5
 ```
 
 Group commits by scope to understand the breadth of changes:
-- `deploy` — Helm chart, infrastructure, dependency bumps
 - `website` — documentation
 - `skills` — agent skills
 
@@ -170,7 +162,8 @@ cat website/versioned_docs/version-<releaseVersion>/operations/latest-release.md
 cat website/versioned_docs/version-<prevVersion>/operations/latest-release.mdx
 ```
 
-If versioned docs don't exist for the previous release, extract versions from the Helm chart at that tag:
+If versioned docs don't exist for a previous release up to `v0.5.x`, extract versions from the
+Helm chart at that tag:
 
 ```bash
 git show <prevVersion>:deploy/helm/moai-inference-framework/Chart.yaml
@@ -181,9 +174,6 @@ git show <prevVersion>:deploy/helm/moai-inference-framework/Chart.yaml
 Check each major area for changes:
 
 ```bash
-# Helm chart changes
-git diff <prevVersion>..<releaseVersion> --stat -- deploy/helm/moai-inference-framework/
-
 # Website changes
 git diff <prevVersion>..<releaseVersion> --stat -- website/
 
@@ -197,12 +187,6 @@ Structure the release notes as follows:
 
 ```markdown
 ## Dependency Version Changes
-
-### MIF Helm Charts
-
-| Component | <prevVersion> | <releaseVersion> |
-|-----------|--------|--------|
-| moai-inference-framework | vX.Y.Z | **vA.B.C** |
 
 ### Core Components
 
@@ -219,17 +203,6 @@ operator:
 | Heimdall CRD | vX.Y.Z | **vA.B.C** |
 | Heimdall AIGateway CRD | vX.Y.Z | **vA.B.C** |
 | LWS | X.Y.Z | **A.B.C** |
-
-### Infrastructure Dependencies
-
-Bundled as sub-charts in `moai-inference-framework`. Take the list from that chart's
-`Chart.yaml` at the release tag rather than from this template — sub-charts are added and
-removed between releases (`odin`, `odin-crd`, and `keda` were unbundled in `c58d8bb`):
-
-| Component | <prevVersion> | <releaseVersion> |
-|-----------|--------|--------|
-| kube-prometheus-stack | X.Y.Z | X.Y.Z |
-| ... | ... | ... |
 
 > Use `—` for components that didn't exist in the previous release.
 > **Bold** changed versions. Leave unchanged versions unbolded.
@@ -275,8 +248,7 @@ curl -s https://moreh-dev.github.io/helm-charts/index.yaml \
 
 ### 6. Create GitHub Release
 
-`gh release create` creates the tag at the target commit if it does not already exist, and
-that tag push is what triggers `cd-mif-prod.yaml`. Confirm the working tree is clean and
+`gh release create` creates the tag at the target commit if it does not already exist. Confirm the working tree is clean and
 `HEAD` matches `origin/main` first.
 
 ```bash
@@ -296,20 +268,3 @@ gh release edit <version> --notes "$(cat <<'EOF'
 EOF
 )"
 ```
-
-### 7. Verify the publish
-
-The tag only starts the job — confirm it finished and landed where expected.
-
-```bash
-# The deploy workflow should appear for this tag and succeed
-gh run list --limit 5
-
-# Stable only: the chart should appear in the public index
-curl -s https://moreh-dev.github.io/helm-charts/index.yaml \
-  | grep -A2 'moai-inference-framework'
-```
-
-A successful stage run publishes to the ChartMuseum only, so the public index will **not**
-change for an rc. Report which registry actually received the chart rather than assuming
-from the workflow name.

@@ -456,17 +456,16 @@ Splits the model across pipeline stages on separate pods using `vllm-pp` or `vll
 
 ## Odin Helm Chart (Operator)
 
-The Odin operator is deployed as part of MIF via the `moai-inference-framework` umbrella chart. Key configuration:
+The Odin operator is deployed with the standalone `moreh/odin` chart. Key configuration:
 
 ```yaml
-# In moai-inference-framework values.yaml
-odin:
-  lws:
-    enabled: false # Set true if LWS not already installed
-  replicas: 1
-  extraArgs:
-    - --zap-encoder=json
-    - --zap-log-level=info
+# In odin values.yaml
+lws:
+  enabled: false # Set true if LWS not already installed
+replicas: 1
+extraArgs:
+  - --zap-encoder=json
+  - --zap-log-level=info
 ```
 
 The chart creates: Deployment (controller manager), Service (webhook 443 + metrics 8443), ClusterRole/Binding, MutatingWebhookConfiguration (defaults `dataLocal` from `data`), ValidatingWebhookConfiguration (validates InferenceService and Template), and cert-manager Issuer/Certificates.

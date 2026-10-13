@@ -4,7 +4,6 @@ This guide serves as the unified source of truth for all contributors, both huma
 
 ## How to navigate this repo
 
-- For Helm chart rules, see [`deploy/helm/AGENTS.md`](deploy/helm/AGENTS.md).
 - For website and documentation rules, see [`website/AGENTS.md`](website/AGENTS.md).
 - For agent workflow guides tied to specific domains, see [`skills/README.md`](skills/README.md) and the relevant `SKILL.md`.
 
@@ -117,10 +116,6 @@ When a directory accumulates enough domain-specific rules to warrant separation,
 4. **Update the Agent Self-Improvement section** in the parent to mention the new file as a recording target.
 
 ## Domain References
-
-### Helm Charts
-
-See [`deploy/helm/AGENTS.md`](deploy/helm/AGENTS.md) for design principles and chart development rules.
 
 ### Website
 

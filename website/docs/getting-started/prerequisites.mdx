@@ -42,9 +42,17 @@ helm upgrade -i cert-manager oci://quay.io/jetstack/charts/cert-manager \
 
 ---
 
-## moai-inference-framework
+## Container image access
 
-The `moai-inference-framework` Helm chart deploys the infrastructure and observability dependencies required by the MoAI Inference Framework (such as monitoring, logging, and object storage), excluding GPU and network-related components. To deploy it, you first need to add Moreh's Helm chart repository.
+The container images for the MoAI Inference Framework are distributed through a private repository on [Amazon ECR](https://aws.amazon.com/ecr/) `255250787067.dkr.ecr.ap-northeast-2.amazonaws.com`. Moreh provides AWS IAM credentials (`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`) along with your purchase or trial issuance of the MoAI Inference Framework, and you can pull the images using them. If you did not receive the credentials, contact your point of purchase.
+
+---
+
+## Odin
+
+Odin is the operator that manages inference services — the vLLM pods that serve a model. Install it after cert-manager.
+
+The Odin and Heimdall charts are published to Moreh's Helm chart repository. Add the repository first.
 
 ```shell
 helm repo add moreh https://moreh-dev.github.io/helm-charts
@@ -56,49 +64,10 @@ If you have already added the repository, make sure to update it.
 helm repo update moreh
 ```
 
-The container images for the MoAI Inference Framework are distributed through a private repository on [Amazon ECR](https://aws.amazon.com/ecr/) `255250787067.dkr.ecr.ap-northeast-2.amazonaws.com`, and you need to obtain an authorization token to download them. To facilitate this, the `moai-inference-framework` chart defines the installation of an ECR token refresher. You need to specify your AWS credentials in the values file to configure the ECR token refresher.
-
-:::info
-If you pull images through a local registry such as Harbor instead of directly from ECR, disable the ECR token refresher by setting `ecrTokenRefresher.enabled` to `false`. See [Container image caching with Harbor](../operations/container-image-caching-with-harbor/index.mdx) for details.
-:::
-
-:::warning
-**The AWS credentials (`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`) should have been provided to you along with your purchase or trial issuance of the MoAI Inference Framework**. If you did not receive this information, please contact your point of purchase separately.
-:::
-
-Create a `moai-inference-framework-values.yaml` file as follows. **You need to replace `<AWS_ACCESS_KEY_ID>` and `<AWS_SECRET_ACCESS_KEY>` with your own values**.
-
-```yaml title="moai-inference-framework-values.yaml" {3-4}
-ecrTokenRefresher:
-  aws:
-    accessKeyId: <AWS_ACCESS_KEY_ID>
-    secretAccessKey: <AWS_SECRET_ACCESS_KEY>
-```
-
-:::info
-If an infrastructure dependency such as `kube-prometheus-stack` is already installed in your cluster, skip its installation by setting the corresponding value to `false`. Refer to [moai-inference-framework README](https://github.com/moreh-dev/mif/tree/main/deploy/helm/moai-inference-framework) for the full list of dependencies.
-:::
-
-Then, deploy the `moai-inference-framework` chart using the following command:
-
-```shell
-helm upgrade -i mif moreh/moai-inference-framework \
-    --version v0.5.0 \
-    -n mif \
-    --create-namespace \
-    -f moai-inference-framework-values.yaml
-```
-
----
-
-## Odin
-
-Odin is the operator that manages inference services — the vLLM pods that serve a model. Install it after cert-manager.
-
 Install the Odin CRDs first. CRDs are packaged as a separate chart so their lifecycle is independent of the operator.
 
 ```shell
-helm upgrade -i odin-crd moreh/odin-crd --version v0.13.0 -n mif
+helm upgrade -i odin-crd moreh/odin-crd --version v0.13.0 -n mif --create-namespace
 ```
 
 This installs the `InferenceService` and `InferenceServiceTemplate` custom resource definitions.
@@ -215,7 +184,7 @@ node-feature-discovery:
 
 :::info
 
-- The `moai-inference-framework` chart already deploys Node Feature Discovery (NFD) and the `moai-accelerator` NodeFeatureRule for heterogeneous accelerator labeling. Set `node-feature-discovery.enabled: false` in the GPU Operator values to avoid installing a duplicate NFD instance. For a full list of supported hardware, see [supported devices](../reference/supported-devices.mdx).
+- If Node Feature Discovery (NFD) is already installed in your cluster, set `node-feature-discovery.enabled: false` in the GPU Operator values to avoid installing a duplicate NFD instance. For a full list of supported hardware, see [supported devices](../reference/supported-devices.mdx).
 - If the AMD GPU Operator is already installed on your system, verify that the toleration key is set to `amd.com/gpu`. MoAI Inference Framework assumes this name.
 
 :::
