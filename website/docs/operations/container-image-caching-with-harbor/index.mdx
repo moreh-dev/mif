@@ -255,7 +255,7 @@ sudo systemctl restart containerd
 
 - Provider: AWS ECR
 - Endpoint URL: `https://255250787067.dkr.ecr.ap-northeast-2.amazonaws.com`
-- Use the AWS credentials described in [Registry pull secret](../../getting-started/prerequisites.mdx#registry-pull-secret) for the `Access ID` and `Access Secret`.
+- Use the AWS credentials described in [Container image access](../../getting-started/prerequisites.mdx#container-image-access) for the `Access ID` and `Access Secret`.
 
 ![Create New Endpoint](./registry-endpoint.png)
 
@@ -418,14 +418,3 @@ ecr-rewrite-registry   true        true         True    19h   Ready
 
 </TabItem>
 </Tabs>
-
----
-
-## Remove ECR token refresher
-
-When pulling images through Harbor instead of directly from Amazon ECR, the [ECR token refresher](../../getting-started/prerequisites.mdx#registry-pull-secret) is no longer needed. Harbor handles ECR authentication on its own using the registry endpoint credentials configured earlier. If you have already deployed the refresher, remove it:
-
-```shell
-kubectl delete -f ecr-token-refresher.yaml
-kubectl delete secret -n mif ecr-token-refresher-aws
-```

@@ -36,7 +36,7 @@ You need a namespace for deploying and running the workload. This guide assumes 
 kubectl create namespace quickstart
 ```
 
-Label the namespace `mif=enabled` so the `moreh-registry` image pull secret is written into it. The [ECR token refresher](./prerequisites.mdx#registry-pull-secret) writes this secret only into namespaces with this label; without it, the vLLM pods cannot pull images from the private registry.
+Label the namespace `mif=enabled`, and make sure the pods in it can pull the MoAI Inference Framework images. See [Container image access](./prerequisites.mdx#container-image-access).
 
 ```shell
 kubectl label namespace quickstart mif=enabled
